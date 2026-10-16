@@ -1,0 +1,10 @@
+private-key.pem
+*.log
+# 签发台账含买家设备码，属隐私数据，不进仓库
+issued-ledger.md
+# 图标生成物（.icns 与各尺寸由 icon/make_icon.swift 程序化生成，可随时重建）
+macapp/icon/AppIcon.iconset/
+macapp/icon/AppIcon.icns
+macapp/icon/AppIcon-1024.png
+macapp/icon/AppIcon-compact.png
+macapp/build/

@@ -1,0 +1,13 @@
+race activitiesEnabled=true n=24 gap=0.0
+race-0 audit running=1 isPro=true codes=[C-4082]
+probe request ok id=0558ADD1-09AD-4241-931C-CBA4A6B5A589
+race-A baseline running=1 PASS ids=[78DE8679-DCD9-4C62-9AA3-CF4E54D4FB7D]
+race-B ready running=0 PASS ids=[]
+race-B concurrent-burst running=1 PASS ids=[96D4AA2B-118E-4A52-A5E4-C22115D9891B]
+race-C spaced gap=0.0 running=1 PASS ids=[96D4AA2B-118E-4A52-A5E4-C22115D9891B]
+race-D 人为发起两个活动（复现用户看到的重复卡）
+race-D duplicated running=3（人为造出，模拟主人截图里的两张卡，此处不看判定）
+race-D after-sync running=1 PASS ids=[96D4AA2B-118E-4A52-A5E4-C22115D9891B]
+race-E 已注入「迟到的旧活动」，等延迟复查收掉它
+race-E late-arrival running=1 PASS ids=[36D5A8CF-9740-4116-9B4B-2CA4F92F0EDF]
+race done

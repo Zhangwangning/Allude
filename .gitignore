@@ -1,0 +1,36 @@
+# ── macOS ─────────────────────────────────────────
+.DS_Store
+
+# ── Xcode 构建产物 ─────────────────────────────────
+# 旧包目录：项目内 build-sim/（2026-10-14 的陈旧产物，勿提交）
+build-sim/
+build/
+DerivedData/
+*.xcuserstate
+
+# ── Xcode 用户态（每人不同，不入库）─────────────────
+xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# ── Swift Package Manager ──────────────────────────
+.swiftpm/
+Packages/
+Package.resolved
+
+# ── 第三方依赖 ─────────────────────────────────────
+Pods/
+Carthage/Build/
+
+# ── 本地密钥与签名材料（绝不入库）──────────────────
+*.mobileprovision
+*.p12
+*.cer
+*.keystore
+.env
+
+# ── 说明 ──────────────────────────────────────────
+# .workbuddy/memory/ 有意入库：那里存的是工程约定与决策日志
+# （构建命令、模拟器脚手架、字段口径定稿），是恢复上下文的依据。
+# 若日后不希望入库，在此追加 .workbuddy/ 即可。
