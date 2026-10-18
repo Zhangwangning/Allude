@@ -80,7 +80,7 @@ struct RecordDetailView: View {
     /// 实时匹配，多个命中取最长词条；匹配不到 = 这条没有驿站（如韵达加盟
     /// 门店「林成驾校店」这类地址，不是固定驿站品牌，不进词表）。
     private var stationName: String? {
-        stationDirectory.matchedName(in: [record.address, record.rawMessage])
+        stationDirectory.matchedName(in: [record.rawMessage])
     }
 
     /// 品牌官方图标的调色板；未收录的品牌回落到「品牌主色 + 它的暗色档」

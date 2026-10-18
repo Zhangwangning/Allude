@@ -183,19 +183,16 @@ enum PickupParser {
 
     // MARK: - 快递公司识别
 
+    /// **短信平台** = `【】` 内的内容（发短信的平台）。2026-10-18 主人定：
+    /// 平台严格等于【】内文本；短信不含【】时平台为空串，不再回落正文或「未知快递」哨兵。
     static func company(from text: String) -> String {
-        if let bracketed = firstMatch(companyBracketPattern, in: text) {
-            var name = bracketed.trimmingCharacters(in: .whitespaces)
-            // 「【中国邮政】」这类前缀去掉更贴近用户叫法
-            for prefix in ["中国", "国内"] where name.hasPrefix(prefix) && name.count > 4 {
-                name.removeFirst(prefix.count)
-            }
-            return name
+        guard let bracketed = firstMatch(companyBracketPattern, in: text) else { return "" }
+        var name = bracketed.trimmingCharacters(in: .whitespaces)
+        // 「【中国邮政】」这类前缀去掉更贴近用户叫法
+        for prefix in ["中国", "国内"] where name.hasPrefix(prefix) && name.count > 4 {
+            name.removeFirst(prefix.count)
         }
-        if let fallback = firstMatch(companyFallbackPattern, in: text) {
-            return fallback
-        }
-        return "未知快递"
+        return name
     }
 
     /// **快递公司（承运方）**：与平台（`company(from:)`）分开的两个概念。
@@ -205,17 +202,35 @@ enum PickupParser {
     ///   2. 否则在**正文**里找快递公司品牌词根的最早出现，后缀（快递/速递/…）一并带上
     ///      （「您的圆通快递YT886…」→「圆通快递」；「您的中国邮政包裹」→「中国邮政」）；
     ///   3. 找不到 → 空串（**留空**，不编造）。
+    /// **快递公司（承运方）** —— 2026-10-18 主人定口径：
+    ///   1. 先在 `【】` **以外**的正文里找快递公司品牌词根（最早出现、带后缀）；
+    ///   2. 正文没有，则看 `【】` 内内容（platform）本身是不是快递公司（白名单）；
+    ///   3. 都不是 → 空串（**留空**，不编造）。
+    /// 与 `company(from:)`（平台=【】内）彻底分离，不再互为回填。
     static func courierCompany(from text: String, platform: String) -> String {
-        if let regex = regexes[platformIsCourierPattern],
+        // ① 正文（去掉【】内）优先
+        let body = stripBracket(text)
+        if let name = firstCourierKey(in: body) { return name }
+
+        // ② 正文无 → 看【】内是否为快递公司
+        if !platform.isEmpty,
+           let regex = regexes[platformIsCourierPattern],
            regex.firstMatch(in: platform, options: [],
                             range: NSRange(platform.startIndex..., in: platform)) != nil {
             return platform
         }
+        return ""
+    }
 
+    /// 去掉 `【…】` 片段，得到纯粹的「正文」用于快递公司匹配
+    private static func stripBracket(_ text: String) -> String {
+        text.replacingOccurrences(of: #"【[^】]*】"#, with: "", options: .regularExpression)
+    }
+
+    /// 在给定文本里找最早的快递公司词根（带后缀），无则 nil
+    private static func firstCourierKey(in text: String) -> String? {
         var best: (start: String.Index, name: String)?
         for key in courierCompanyKeys {
-            // 每个词根只看**首次出现**；跨词根取最早，同位置取更长的
-            // （「中国邮政」与「邮政」同处一格时留下前者）。
             guard let range = text.range(of: key) else { continue }
             if let found = best {
                 if range.lowerBound > found.start { continue }
@@ -228,7 +243,7 @@ enum PickupParser {
             }
             best = (range.lowerBound, String(text[range.lowerBound..<end]))
         }
-        return best?.name ?? ""
+        return best?.name
     }
 
     /// 链式取件码（一码多件）：整段匹配文本按 `、`/`,`/`，` 切开。
@@ -294,16 +309,8 @@ enum PickupParser {
         result.courier = courierCompany(from: text, platform: platform)
         result.shelf = shelf(from: text)
 
-        // 平台与快递公司互为回填（2026-09-23 主人定）：一边没匹配到，就与另一边
-        // 保持相同 —— 「【韵达快递】…」这类快递公司直发的短信，平台即快递公司；
-        // 「【拼多多】您的圆通快递…」两边都识别得出，则各是各的，互不覆盖。
-        // 「未知快递」是平台公式的兜底哨兵，视同「没匹配到」：此时若正文里
-        // 找到了快递公司，平台也回填成它，卡片上不再出现「未知快递」。
-        if result.courier.isEmpty {
-            if result.company != "未知快递" { result.courier = result.company }
-        } else if result.company == "未知快递" {
-            result.company = result.courier
-        }
+        // 平台与快递公司彻底分离（2026-10-18 主人定）：平台=【】内（无则空），
+        // 快递公司=正文优先→【】内兜底→空，两者各算各的，不再互为回填。
 
         // 运单号公式里带「(快递|件|运单)尾号」分支（V7.3.0 本体行为），
         // 「取运单尾号7872包裹」会同时命中运单号与尾号两套公式 —— 同一串数字

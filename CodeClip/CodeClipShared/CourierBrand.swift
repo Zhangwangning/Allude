@@ -123,7 +123,7 @@ enum CourierBrand {
 
         // ───────────────────── 驿站 / 代收平台 ─────────────────────
         // 具体品牌必须排在通用「驿站」之前
-        Info(key: "拼多多", name: "拼多多驿站", category: .station,
+        Info(key: "拼多多驿站", name: "拼多多驿站", category: .station,
              from: 0xE22E1F, to: 0xA81F13, glyph: .symbol("bag.fill"),
              asset: "brand-pinduoduo"),
         Info(key: "妈妈驿站", name: "妈妈驿站", category: .station,
@@ -133,10 +133,10 @@ enum CourierBrand {
              from: 0x007A33, to: 0x005324, glyph: .symbol("storefront.fill")),
         Info(key: "菜鸟", name: "菜鸟驿站", category: .station,
              from: 0x1E9EFF, to: 0x0A72C9, glyph: .symbol("bird.fill"),
-             asset: "brand-cainiao"),
+             asset: "brand-cainiao", aliases: ["菜鸟裹裹"]),
         Info(key: "兔喜", name: "兔喜生活", category: .station,
              from: 0x363AFB, to: 0x2327B8, glyph: .mark("喜"),
-             asset: "brand-tuxi"),
+             asset: "brand-tuxi", aliases: ["兔喜生活", "兔喜快递柜"]),
         Info(key: "驿收发", name: "驿收发", category: .station,
              from: 0x142F55, to: 0x0C1E38, glyph: .symbol("arrow.left.arrow.right"),
              asset: "brand-yishoufa"),
@@ -145,7 +145,7 @@ enum CourierBrand {
              asset: "brand-linli"),
         Info(key: "喵站", name: "喵站", category: .station,
              from: 0xF58220, to: 0xC25F0C, glyph: .symbol("pawprint.fill"),
-             asset: "brand-miaozhan"),
+             asset: "brand-miaozhan", aliases: ["喵柜"]),
         Info(key: "快宝", name: "快宝驿站", category: .station,
              from: 0x22C55E, to: 0x168040, glyph: .symbol("storefront.fill"),
              asset: "brand-kuaibao"),
@@ -163,7 +163,7 @@ enum CourierBrand {
              from: 0x475569, to: 0x2C3746, glyph: .symbol("person.badge.shield.checkmark.fill")),
         Info(key: "微快递", name: "微快递", category: .station,
              from: 0x0EA5E9, to: 0x066FAF, glyph: .symbol("shippingbox.fill")),
-        Info(key: "多多", name: "多多代收点", category: .station,
+        Info(key: "多多代收点", name: "多多代收点", category: .station,
              from: 0xE22E1F, to: 0xA81F13, glyph: .symbol("bag.fill"),
              asset: "brand-duoduodaishou"),
         Info(key: "绿驿", name: "绿驿生活", category: .station,
@@ -175,6 +175,18 @@ enum CourierBrand {
              from: 0x7C3AED, to: 0x5620B3, glyph: .symbol("tray.and.arrow.down.fill")),
         Info(key: "驿站", name: "快递驿站", category: .station,
              from: 0x16A34A, to: 0x0E7433, glyph: .symbol("storefront.fill")),
+        // 2026-10-18 互联网统计新增（CNPP《2026 快递驿站十大品牌》+ 报告大厅《2025 代收十大》补全覆盖）
+        Info(key: "极兔邻里", name: "极兔邻里", category: .station,
+             from: 0xD2103C, to: 0x9C0A2A, glyph: .symbol("storefront.fill")),
+        Info(key: "百世邻里", name: "百世邻里", category: .station,
+             from: 0x1B3F7A, to: 0x112A55, glyph: .symbol("storefront.fill")),
+        Info(key: "中通快递超市", name: "中通快递超市", category: .station,
+             from: 0x1663C7, to: 0x0B4A96, glyph: .symbol("storefront.fill")),
+        Info(key: "申通快递超市", name: "申通快递超市", category: .station,
+             from: 0xF58220, to: 0xC25F0C, glyph: .symbol("storefront.fill")),
+        Info(key: "京东驿栈", name: "京东驿栈", category: .station,
+             from: 0xE1251B, to: 0xA81A12, glyph: .symbol("storefront.fill"),
+             aliases: ["京东快递站"]),
 
         // ─────────────────────── 智能快递柜 ───────────────────────
         Info(key: "丰巢", name: "丰巢", category: .locker,
@@ -203,10 +215,22 @@ enum CourierBrand {
              from: 0x0D9488, to: 0x0A6F66, glyph: .symbol("cabinet.fill")),
         Info(key: "快递柜", name: "快递柜", category: .locker,
              from: 0x0D9488, to: 0x0A6F66, glyph: .symbol("cabinet.fill")),
+        // 2026-10-18 互联网统计新增（智能柜榜单补全覆盖）
+        Info(key: "速递易", name: "速递易", category: .locker,
+             from: 0x00C2A8, to: 0x00897B, glyph: .symbol("cabinet.fill")),
+        Info(key: "递易", name: "递易", category: .locker,
+             from: 0x5B5BD6, to: 0x3E3EA8, glyph: .symbol("cabinet.fill")),
+        Info(key: "熊猫智能柜", name: "熊猫智能柜", category: .locker,
+             from: 0x3A3A3A, to: 0x1A1A1A, glyph: .symbol("cabinet.fill")),
+        Info(key: "日日顺乐家", name: "日日顺乐家", category: .locker,
+             from: 0x0072C6, to: 0x00538F, glyph: .symbol("cabinet.fill")),
 
         // ───────────────────── 商家 / 电商 ─────────────────────
         // 「取餐码、到店码」场景的主力：短信里出现的多是下单平台而非快递公司。
         // 顺序同样按「长关键词优先」——「淘宝闪购」必须在「淘宝」之前。
+        Info(key: "拼多多", name: "拼多多", category: .merchant,
+             from: 0xE22E1F, to: 0xA81F13, glyph: .symbol("bag.fill"),
+             asset: "brand-pinduoduo"),
         Info(key: "京东秒送", name: "京东秒送", category: .merchant,
              from: 0xE1251B, to: 0xA81F12, glyph: .mark("秒"),
              asset: "brand-jd-miaosong"),
@@ -319,6 +343,30 @@ enum CourierBrand {
             }
         }
         return best?.item
+    }
+
+    /// **快递驿站 / 智能柜的实在品牌名匹配**（2026-10-18 主人定稿）。
+    ///
+    /// 数据源**仅短信原文**：在传入文本里做「包含匹配」，命中 station / locker
+    /// 两类品牌的 name / key / alias，取**最长词条**（「菜鸟裹裹」同时含「菜鸟」
+    /// 与「菜鸟裹裹」时取后者）。
+    ///
+    /// 与 `matchedInfo` 共用同一张 `table`，因此图标、分类、颜色永远一致 ——
+    /// 不会出现「图标画 A、分类判 B」的漂移。返回 `(name, length)` 供上层
+    /// （`StationDirectory.matchedName`）叠加自定义名时按最长优先比较。
+    static func stationMatch(in texts: [String]) -> (name: String, length: Int)? {
+        let haystacks = texts.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard !haystacks.isEmpty else { return nil }
+
+        var best: (name: String, length: Int)?
+        for item in table where item.category == .station || item.category == .locker {
+            for word in [item.name, item.key] + item.aliases {
+                guard haystacks.contains(where: { $0.localizedCaseInsensitiveContains(word) }) else { continue }
+                if best == nil || word.count > best!.length { best = (item.name, word.count) }
+            }
+        }
+        return best
     }
 
     /// 品牌主色（内容层配色的统一入口）

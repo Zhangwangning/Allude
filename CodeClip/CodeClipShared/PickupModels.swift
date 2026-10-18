@@ -108,8 +108,9 @@ struct PickupRecord: Identifiable, Hashable, Codable {
         "\(kind.rawValue)|\(code)|\(address)"
     }
 
-    /// 快递公司品牌色（内容层配色来源）
-    var brandColor: Color { CourierBrand.color(for: company) }
+    /// 品牌色（内容层配色来源）：优先取短信平台色；平台为空（无【】）时回落快递公司色，
+    /// 保证裸取件码短信也能拿到稳定配色，而不是掉进「未知快递」兜底灰块。
+    var brandColor: Color { CourierBrand.color(for: company.isEmpty ? (courier ?? "") : company) }
 
     /// 全局搜索命中判断（取件码 / 快递公司 / 平台 / 地址 / 运单号 / 尾号 / 原文）
     func matches(_ query: String) -> Bool {
@@ -168,44 +169,16 @@ struct PickupRecord: Identifiable, Hashable, Codable {
         return String(text.prefix(limit)) + "…"
     }
 
-    // MARK: 驿站 / 网点短名（2026-09-23）
+    // MARK: 快递驿站（2026-10-18 主人定稿）
 
-    /// 短信地址里的**站点词**，命中它就算找到了"驿站"这一层信息。
+    /// **快递驿站** = 短信原文里命中的实在驿站品牌名（菜鸟驿站 / 兔喜生活 / 丰巢…）。
     ///
-    /// 顺序即优先级：「驿站」最明确，其余是各地常见的代收点形态。
-    private static let stationKeywords = [
-        "驿站", "快递柜", "自提柜", "便利店", "超市", "营业点",
-        "服务点", "网点", "代收点", "收发室", "门卫", "物业",
-    ]
-
-    /// **驿站 / 网点短名** —— 从地址里裁出来的那一小段。
-    ///
-    /// 为什么是裁剪而不是新加一个字段：取件短信里根本没有"驿站"这个结构化字段，
-    /// 站点名与地址在原文里是同一句话（「到**菜鸟驿站**取件，地址：恒大御府东门菜鸟驿站」）。
-    /// 加字段意味着**改解析引擎、改正则真值表、改历史数据**——为一个展示选项动
-    /// 核心解析是亏的。而地址里的站名对用户来说本来就是可辨识的一段字，
-    /// 按站点词往前收 2 个字就够了。
-    ///
-    /// 取 2 个字的理由（对照真实语料）：
-    ///   · 恒大御府东门**菜鸟驿站** → 菜鸟驿站 ✓（取 3 会得到"门菜鸟驿站"）
-    ///   · 河西学院北门圆通**妈妈驿站** → 妈妈驿站 ✓
-    ///   · 馨月湖小区南门**兴裕隆超市** → 裕隆超市（略截，可接受）
-    ///   · 万寿街**顺丰营业点** → 顺丰营业点 ✓
-    /// 没有站点词时返回空串（例如「恒大御府南门西侧3栋104号」），
-    /// 调用侧据此自动退回完整地址。
+    /// 数据源**仅短信原文（rawMessage）**——驿站是发件方在短信里明确的品牌，
+    /// 不是用户手填的取件地址（两者必须解耦：地址是「去哪取」，驿站是「谁发的」）。
+    /// 用 `CourierBrand.stationMatch` 在品牌词表里做包含匹配，命中即用规范名，
+    /// 未命中返回空串。该匹配是纯函数、不依赖 UIKit，App 与 Widget 共用同一张词表。
     var station: String {
-        let text = address.trimmingCharacters(in: .whitespaces)
-        guard !text.isEmpty else { return "" }
-
-        for keyword in Self.stationKeywords {
-            guard let range = text.range(of: keyword) else { continue }
-            // 往前收 2 个字作为店招。用 character 数而不是 utf8 偏移 ——
-            // 中文地址里 index 走错一位就会把字割坏。
-            let head = text[text.startIndex ..< range.lowerBound]
-            let prefix = String(head.suffix(2))
-            return prefix + keyword
-        }
-        return ""
+        CourierBrand.stationMatch(in: [rawMessage])?.name ?? ""
     }
 
     // MARK: 小组件二级信息行

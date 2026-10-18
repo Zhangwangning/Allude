@@ -1089,7 +1089,7 @@ struct PickupCard: View {
         return c.isEmpty ? nil : c
     }
     private var stationName: String? {
-        stationDirectory.matchedName(in: [record.address, record.rawMessage])
+        stationDirectory.matchedName(in: [record.rawMessage])
     }
     private var titlePrimary: String {
         courierName ?? stationName ?? record.company

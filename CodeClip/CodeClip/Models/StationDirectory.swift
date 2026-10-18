@@ -41,17 +41,8 @@ final class StationDirectory: ObservableObject {
             }
     }()
 
-    /// 内置匹配词条：规范名 + 匹配关键词 + 别名（如「菜鸟驿站」由 key「菜鸟」命中）
-    private static let builtinEntries: [(display: String, keywords: [String])] = {
-        CourierBrand.table
-            .filter { $0.category == .station || $0.category == .locker }
-            .map { info in
-                var words = [info.name, info.key] + info.aliases
-                var seen = Set<String>()
-                words = words.filter { !$0.isEmpty && seen.insert($0).inserted }
-                return (info.name, words)
-            }
-    }()
+    /// 内置匹配已迁移到 `CourierBrand.stationMatch`（2026-10-18）：词表 / 图标 /
+    /// 分类在 CourierBrand 单一维护，StationDirectory 只负责「内置 + 自定义」叠加。
 
     // MARK: 自定义驿站名
 
@@ -188,24 +179,16 @@ final class StationDirectory: ObservableObject {
 
     // MARK: 匹配
 
-    /// 在给定文本（地址 / 短信原文等）里做「包含匹配」，返回命中的驿站名。
-    /// 多个命中取**最长词条**——「菜鸟驿站甘州店」同时含「驿站」与「菜鸟驿站」时取后者。
+    /// 在给定文本里做「包含匹配」，返回命中的驿站名。
+    /// 内置品牌走 `CourierBrand.stationMatch`（与图标 / 分类共用同一张表，零漂移）；
+    /// 再叠加用户自定义驿站名（最长优先）。
+    ///
+    /// ⚠️ 调用方**只传短信原文**（2026-10-18 主人定：驿站从短信匹配，不是从地址），
+    /// 传入地址会让「恒大御府东门菜鸟驿站」这类地址噪声被误判成驿站品牌。
     func matchedName(in texts: [String]) -> String? {
-        let haystacks = texts.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        guard !haystacks.isEmpty else { return nil }
-
-        var best: (name: String, length: Int)?
-
-        for (display, words) in Self.builtinEntries {
-            for word in words {
-                guard haystacks.contains(where: { $0.localizedCaseInsensitiveContains(word) }) else { continue }
-                if best == nil || word.count > best!.length { best = (display, word.count) }
-            }
-        }
-        // 自定义词条按输入原文整体匹配，天然比内置泛词长 → 最长优先规则下自然胜出
+        var best = CourierBrand.stationMatch(in: texts)
         for name in customNames {
-            guard haystacks.contains(where: { $0.localizedCaseInsensitiveContains(name) }) else { continue }
+            guard texts.contains(where: { $0.localizedCaseInsensitiveContains(name) }) else { continue }
             if best == nil || name.count > best!.length { best = (name, name.count) }
         }
         return best?.name
