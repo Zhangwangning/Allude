@@ -213,8 +213,12 @@ final class PickupStore: ObservableObject {
         }
     }
 
-    /// 免费版同屏展示上限（2026-10-30 主人定为 3；仅渲染裁剪，数据完整保留）
-    static let freeVisibleLimit = 3
+    /// 免费版同屏展示上限（2026-10-30 主人定为 3；仅渲染裁剪，数据完整保留）。
+    ///
+    /// 🔴 **引用共享层常量，不要在这里另写数字**：这里原先是独立的 `3`，
+    ///    而 `PickupLimits.freeVisible` 是 `4` —— App 列表裁 3 条、桌面小组件给 4 条，
+    ///    同一个「免费版」两套额度。现在两边同源。
+    static let freeVisibleLimit = PickupLimits.freeVisible
     /// 免费版短信存储上限（2026-10-30 主人定为 50；超出后 FIFO 淘汰最旧）
     static let freeStorageLimit = 50
     /// 「不限量」的替代值。**不要用 `Int.max`** —— `pending.count - limit`
@@ -235,17 +239,11 @@ final class PickupStore: ObservableObject {
 
     /// 按本机凭证重算权益。**导入凭证成功后必须调一次**，否则界面还停在免费档。
     ///
-    /// 🔴 判「已购」不能只看 `EntitlementSnapshot.load().isPro` ——
-    ///    那个 `load()` 在**快照文件不存在**时会回落 `.lifetime`（是为了让小组件
-    ///    与实时活动在全新安装上不假死）。直接采信它的话，没买过的用户一装就是
-    ///    全功能，买断制当场失效。所以这里额外要求 `license` 非空：
-    ///    那是导入凭证时才写进去的原始串，留着供每次读取重新验签。
+    /// 判断本身在共享层 `EntitlementSnapshot.licensedPro` —— 小组件扩展也读同一份，
+    /// 两边口径必须一致（App 判免费、桌面却给满量的那种事不能再有）。
     func refreshEntitlement() {
         let snapshot = EntitlementSnapshot.load()
-        let backed = !(snapshot.license ?? "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .isEmpty
-        plan = (backed && snapshot.isPro) ? snapshot.plan : .none
+        plan = EntitlementSnapshot.licensedPro ? snapshot.plan : .none
     }
 
     private init() {

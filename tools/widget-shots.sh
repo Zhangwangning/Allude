@@ -7,7 +7,10 @@
 #
 # 用法：
 #   tools/widget-shots.sh              # 全功能档（PRO=1）
-#   PRO=0 tools/widget-shots.sh        # 免费档（出锁定态与 4 条截断）
+#   PRO=0 tools/widget-shots.sh        # 免费档（出「免费版」标记与 3 条截断）
+#
+# PRO 由 `WidgetSnapshot.preview()` 读取（0/1 强制档位）—— 命令行改不了真实权益文件，
+# 靠它一次拍出两种档位。2026-10-30 起免费档额度是 3 条（原 4 条）。
 #
 # ⚠️ 变量一律用 ${} 包起来：中文全角括号紧跟在 $VAR 后面时，
 #    非 UTF-8 locale 会把多字节字符的首字节也算进变量名（`$PRO）` → 变量 `PRO\xef`），

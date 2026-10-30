@@ -161,7 +161,9 @@ struct WidgetPageIntent: AppIntent {
     }
 
     func perform() async throws -> some IntentResult {
-        let isPro = EntitlementSnapshot.load().isPro
+        // 与 `WidgetSnapshot.load()` 同一口径：翻页可及的最大条数也要按档位裁，
+        // 否则免费用户在免费档上能翻到第 4 条以后（列表里根本没有那些条目）。
+        let isPro = EntitlementSnapshot.licensedPro
         let cap = isPro ? PickupLimits.widgetListCap : PickupLimits.freeVisible
 
         // 现数一遍页数，不复用可视层传进来的值：翻页意图可能在任何时刻被唤醒，
@@ -597,9 +599,23 @@ extension WidgetSnapshot {
         ]
     }
 
+    /// 预览快照（App 内「桌面小组件」页与 `SCREEN=widgets`）。
+    ///
+    /// 🔴 2026-10-30：**按档位裁**。免费档桌面本来就只看得到 3 条，
+    ///    预览却铺 10 条还带翻页控件，等于给人看一个自己用不上的形态。
+    ///    `PRO` 环境变量（`0` / `1`）可强制档位 —— 命令行没法改真实权益文件，
+    ///    要靠它一次拍出「免费 / 买断」两种观感（`tools/widget-shots.sh` 用它）。
     static func preview() -> WidgetSnapshot {
-        WidgetSnapshot(items: samples,
-                       pendingTotal: samples.count,
-                       pickedTodayCount: 2)
+        let forced = ProcessInfo.processInfo.environment["PRO"]
+        let isPro = forced == "1" ? true
+            : forced == "0" ? false
+            : EntitlementSnapshot.licensedPro
+        let visible = isPro ? samples : Array(samples.prefix(PickupLimits.freeVisible))
+
+        return WidgetSnapshot(items: visible,
+                              // 头部数字用**真实总数**，与线上口径一致：
+                              // 免费档也要显示「还有 7 件」，否则会被读成"一共就 3 件"。
+                              pendingTotal: samples.count,
+                              pickedTodayCount: 2)
     }
 }

@@ -92,11 +92,15 @@ enum PickupStorage {
 // MARK: - 免费版额度（App 与小组件扩展共读）
 //
 // 放在共享层而不是 `PickupStore` 里：**小组件扩展不编译 App target**，
-// 拿不到 `PickupStore`，但它同样要按档位裁剪列表（免费版桌面也只给 4 条）。
+// 拿不到 `PickupStore`，但它同样要按档位裁剪列表。
 
 enum PickupLimits {
-    /// 同屏展示上限（仅渲染裁剪，数据完整保留）
-    static let freeVisible = 4
+    /// 同屏展示上限（仅渲染裁剪，数据完整保留）。
+    ///
+    /// 🔴 2026-10-30 **唯一定义点**。这里原先是 4，而 `PickupStore.freeVisibleLimit`
+    ///    另写了一个 3 —— App 列表裁 3 条、小组件却给 4 条，同一个「免费版」两个数字。
+    ///    现在 App 侧直接引用这个常量，以后改额度只改这里。
+    static let freeVisible = 3
     /// 存储上限，超出后 FIFO 淘汰最旧
     static let freeStorage = 60
     /// 「不限量」的替代值。**不要用 `Int.max`**：`count - limit` 这类减法会溢出崩溃。
@@ -191,11 +195,23 @@ enum WidgetPageSize {
 
     /// 小组件注册的尺寸集 —— 参数化注册后四类小组件共用同一份。
     ///
-    /// 部署目标已是 iOS 27，`systemExtraLargePortrait` 无需可用性分支。
-    static let supportedFamilies: [WidgetFamily] = [
+    /// 🔴 2026-10-30 主人定：**免费版只给小 / 中两个尺寸**。
+    ///    大尺寸与超大尺寸一屏 6–10 条，等于把「免费只看 3 条」的限制从桌面绕过去；
+    ///    而且中尺寸一页正好 3 条，与 App 内的同屏上限对得上。
+    ///
+    /// 判定读小组件进程自己的 `EntitlementSnapshot.licensedPro`，不依赖主 App 运行。
+    static var supportedFamilies: [WidgetFamily] {
+        EntitlementSnapshot.licensedPro ? allFamilies : freeFamilies
+    }
+
+    /// 付费档：五档全开。部署目标已是 iOS 27，`systemExtraLargePortrait` 无需可用性分支。
+    private static let allFamilies: [WidgetFamily] = [
         .systemSmall, .systemMedium, .systemLarge,
         .systemExtraLarge, .systemExtraLargePortrait,
     ]
+
+    /// 免费档：只有小 / 中。
+    private static let freeFamilies: [WidgetFamily] = [.systemSmall, .systemMedium]
 
     /// 补位空槽的**数量上限**。
     ///
@@ -227,7 +243,9 @@ struct WidgetSnapshot {
     /// 档位由小组件**自己判定**（读 `EntitlementSnapshot`），不依赖主 App 是否运行 ——
     /// 用户重启手机后首先被系统唤醒的可能就是小组件。
     static func load() -> WidgetSnapshot {
-        let isPro = EntitlementSnapshot.load().isPro
+        // 用 `licensedPro` 而不是 `load().isPro`：后者在快照文件缺失时回落成付费档，
+        // 全新安装的免费用户会拿到满量列表（等于免费版桌面能翻 60 条）。
+        let isPro = EntitlementSnapshot.licensedPro
         let cap = isPro ? PickupLimits.widgetListCap : PickupLimits.freeVisible
 
         let all = PickupStorage.load()
@@ -366,6 +384,22 @@ struct EntitlementSnapshot: Codable, Equatable {
     /// 全新安装上实时活动**永远起不来**（每次 sync 都被 `guard isPro else { endAll() }`
     /// 收掉），且不留任何日志。模拟器实测该目录下确实没有 entitlement.json。
     static let lifetime = EntitlementSnapshot(isPro: true, plan: .lifetime, updatedAt: .distantPast)
+
+    /// 「有凭证支撑的付费档」—— App 与小组件**必须用同一口径**判档。
+    ///
+    /// 🔴 为什么不直接用 `load().isPro`：`load()` 在**快照文件不存在**时回落到
+    ///    `.lifetime`（见上方 `lifetime` 的理由：别让实时活动在全新安装上假死）。
+    ///    直接采信它，没买过的用户一装就是「全功能」，买断制当场失效。
+    ///    所以还要看快照里是否真的存着一串凭证 —— 那是导入凭证时才写进去的。
+    ///
+    /// 与 App 侧 `PickupStore.refreshEntitlement()` 是同一条判断，别各写一份。
+    static var licensedPro: Bool {
+        let snapshot = load()
+        let backed = !(snapshot.license ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty
+        return backed && snapshot.isPro
+    }
 
     init(isPro: Bool, plan: MembershipPlan, updatedAt: Date,
          expiresAt: Date? = nil, lastSeenAt: Date? = nil, license: String? = nil) {

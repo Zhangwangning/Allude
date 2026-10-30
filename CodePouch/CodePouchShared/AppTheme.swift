@@ -72,6 +72,12 @@ enum AppTheme {
     static let heroRadius: CGFloat = 26
     static let heroNumber: CGFloat = 46
     static let innerRadius: CGFloat = 14
+    /// 「最大圆角」—— 胶囊形提示条专用（2026-10-30 主人定：提示类形状圆角给满）。
+    ///
+    /// `RoundedRectangle` 会把超过半高的圆角自动夹成胶囊形，所以给一个够大的数
+    /// 就能拿到「满圆角」，不必为它新造一个 Shape 分支 —— 这样 `cardSurface` 的
+    /// 描边与阴影仍走同一条路径，不会出现「填充是胶囊、边框是方块」的错位。
+    static let capsuleRadius: CGFloat = 1_000
     static let hInset: CGFloat = 16
     static let cardPadding: CGFloat = 15
     static let listSpacing: CGFloat = 10

@@ -1367,6 +1367,11 @@ struct PickupCard: View {
 
 // MARK: - 超出免费版展示上限的提示（规格 §二 R3）
 
+/// 「还有 N 条 · 升级后查看」提示条。
+///
+/// 2026-10-30 主人要求：**提示类形状的圆角给最大**（原来是 14 的 innerRadius，
+/// 夹在 22 圆角的卡片中间显得像个没做完的方块）。这里直接用满圆角成胶囊，
+/// 与列表卡片的 22 拉开一档 —— 提示是「另一类东西」，视觉上本就该有区别。
 struct HiddenHint: View {
     let count: Int
 
@@ -1379,9 +1384,9 @@ struct HiddenHint: View {
             Spacer(minLength: 0)
         }
         .foregroundStyle(.secondary)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 18)
         .padding(.vertical, 13)
-        .cardSurface(radius: AppTheme.innerRadius)
+        .cardSurface(radius: AppTheme.capsuleRadius)
     }
 }
 

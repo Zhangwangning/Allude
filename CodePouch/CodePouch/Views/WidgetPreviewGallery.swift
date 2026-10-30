@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import WidgetKit
 
 // MARK: ============================================================================
 // 小组件预览（App 内 · 真实渲染）
@@ -71,6 +72,17 @@ struct WidgetCanvas: View {
 
         /// 宽于手机屏的尺寸（iPad 超大）需要横向滚动才看得到右半部分
         var overflowsPhoneWidth: Bool { size.width > 360 }
+
+        /// 对应的系统尺寸 —— 用来和 `WidgetPageSize.supportedFamilies` 对档位过滤
+        var family: WidgetFamily {
+            switch self {
+            case .small: .systemSmall
+            case .medium: .systemMedium
+            case .large: .systemLarge
+            case .extraLarge: .systemExtraLarge
+            case .extraLargePortrait: .systemExtraLargePortrait
+            }
+        }
     }
 
     let style: Style
@@ -154,13 +166,16 @@ struct WidgetGalleryContent: View {
     /// 示例快照：8 条，跨两页 —— 只有超过一页才看得出翻页控件对不对。
     private var snapshot: WidgetSnapshot { .preview() }
 
-    /// **按设备过滤**：iPad 超大（690pt 宽）只存在于 iPad 的桌面；
-    /// iPhone 上渲染它等于展示一个用户永远加不出来的东西。
+    /// **按设备 + 档位过滤**：
+    ///  · iPad 超大（690pt 宽）只存在于 iPad 的桌面，iPhone 上渲染它等于展示一个加不出来的尺寸；
+    ///  · 免费版只注册了小 / 中两个尺寸（`WidgetPageSize.supportedFamilies`），
+    ///    预览里再铺大尺寸，用户到系统图库里根本找不到 —— 会以为是自己没找到。
     private var styles: [WidgetCanvas.Style] {
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            return WidgetCanvas.Style.allCases
-        }
-        return WidgetCanvas.Style.allCases.filter { $0 != .extraLarge }
+        let allowed = WidgetPageSize.supportedFamilies
+        let deviceFiltered = UIDevice.current.userInterfaceIdiom == .pad
+            ? WidgetCanvas.Style.allCases
+            : WidgetCanvas.Style.allCases.filter { $0 != .extraLarge }
+        return deviceFiltered.filter { allowed.contains($0.family) }
     }
 
     var body: some View {
@@ -182,6 +197,13 @@ struct WidgetGalleryContent: View {
                     }
                     Spacer(minLength: 0)
                 }
+            }
+
+            if !EntitlementSnapshot.licensedPro {
+                Text("免费版只注册小、中两种尺寸，桌面最多显示 \(PickupLimits.freeVisible) 条待取。")
+                    .font(.footnote)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Text("以上为**示例数据**（不是你自己的待取件），用来展示版式；桌面小组件显示的是你的真实记录。真机上由系统决定圆角与内边距；翻页控件可点，滑动不可用 —— 小组件不支持原生滚动。".richText)
