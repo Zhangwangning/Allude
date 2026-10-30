@@ -9,14 +9,21 @@ SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 
 ## 硬规则（违反会出事故）
 
-### 1. 构建必须带 `-disable-sandbox`
+### 1. 构建带上 `-disable-sandbox`
 
-缺了这个参数，宏插件服务在沙箱内起不来，会报
-`FoundationModelsMacros.GeneratableMacro could not be found` /
-`swift-plugin-server produced malformed response`，并连带抛出一堆**假错误**
-（典型是 `SwipeActionRow.swift` 里的 `'self' is immutable`）。
+这个参数是**防沙箱，不是修代码**。宏插件（`FoundationModelsMacros`）要让
+`swift-plugin-server` 拉起一个子进程；**只要 xcodebuild 本身被沙箱包住**
+（agent 运行时 / CI / Xcode 的 User Script Sandboxing），子进程起不来，就会报
+`could not be found` / `swift-plugin-server produced malformed response`，
+并连带抛出一堆**假错误**（典型是 `SwipeActionRow.swift` 里的 `'self' is immutable`）。
 
-**那是工具链问题，不是代码问题。** 不要为了让这些报错消失去改业务代码。
+**那是工具链问题，不是代码问题。** 不要为了让这些报错消失去改业务代码 ——
+先确认构建进程是不是被沙箱包着，把参数补上重跑一次。
+
+> 2026-10-30 实测，别被两种情形搞混：在**普通 shell** 里（不经 agent 沙箱）
+> 不带宽也照样 0 warning 构建通过，产物二进制与带宽版本 sha 完全相同。
+> 所以「没带宽却过了」不代表这条规则错了，只代表这次没被沙箱包住；
+> 反过来「带宽了还报假错误」才是真正需要排查的信号。
 
 ### 2. 这四项内部标识绝不能改
 
