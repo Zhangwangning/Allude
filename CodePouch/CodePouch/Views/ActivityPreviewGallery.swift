@@ -470,7 +470,8 @@ struct ActivityPreviewGallery: View {
 
             ZStack(alignment: .top) {
                 mockupLayers
-                activityLayer
+                islandLayer
+                lockCardLayer
             }
             .frame(width: 450, height: 920, alignment: .top)
             .scaleEffect(scale, anchor: .topLeading)
@@ -500,59 +501,45 @@ struct ActivityPreviewGallery: View {
         }
     }
 
-    // MARK: 舞台 · 活动本体（岛 → 落向锁屏）
+    // MARK: 舞台 · 灵动岛（展开 ⇄ 折叠，缩放变形）
 
-    /// 三个状态是**同一块活动**，只是尺寸和位置不同：
+    /// 岛只有一个动作：**在黑岛自己的形状里缩放**。
     ///
     /// ```
-    /// 展开   371 × 92   圆角 46    顶在挖孔处（顶边 37.7pt）
-    /// 紧凑   230 × 43   圆角 21.5  顶在挖孔处
-    /// 锁屏   374 × 93   圆角 24    落到距屏底 148pt 的实时活动位置
+    /// 展开   371 × 115   圆角 46      （内容按 92 布局，见 activityHeight 注释）
+    /// 紧凑   230 × 43    圆角 21.5
     /// ```
     ///
-    /// 宽高只差几个点，所以「岛变卡片」主要是**一次垂直位移 + 圆角变化**，
-    /// 背景同时从黑岛淡成卡面材质 —— 这比两页交叉淡入连贯得多：
-    /// 眼睛跟的是同一个东西在动，而不是两张图在对穿。
-    private var activityLayer: some View {
+    /// 宽高、圆角连续插值，两套内容在同一个黑岛里交叉 —— 读起来是"这张卡展开 / 收起"，
+    /// 不是两张图对穿。切到锁屏时它**自己收掉**（淡出 + 轻微缩小），
+    /// 不会往屏幕下面走：锁屏卡片和灵动岛是两回事，没有从岛里长出卡片的道理。
+    private var islandLayer: some View {
         ZStack {
-            // 底：黑岛 ⇄ 卡面材质（材质自己折射下层壁纸，正是液态玻璃的观感）
-            RoundedRectangle(cornerRadius: activityRadius, style: .continuous)
-                .fill(Color.black)
-                .opacity(isLockState ? 0 : 1)
-
-            RoundedRectangle(cornerRadius: activityRadius, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay {
-                    RoundedRectangle(cornerRadius: activityRadius, style: .continuous)
-                        .fill(accent.opacity(0.16))
-                }
-                .opacity(isLockState ? 1 : 0)
-
-            // 内容三套，各自淡入淡出 —— 与真机上「岛换内容」是同一套观感
             compactIslandContent
                 .opacity(isCompactState ? 1 : 0)
 
             IslandExpandedContent(state: islandState)
                 .frame(width: 371, height: IslandExpandedMetrics.previewTotalHeight)
                 .opacity(currentState == .expanded ? 1 : 0)
-
-            ActivityLockScreenCard(state: multiState)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .frame(width: 374, height: 93)
-                .opacity(isLockState ? 1 : 0)
         }
-        .frame(width: activityWidth, height: activityHeight)
-        .clipShape(.rect(cornerRadius: activityRadius, style: .continuous))
+        .frame(width: islandWidth, height: islandHeight)
+        .clipShape(.rect(cornerRadius: islandRadius, style: .continuous))
+        .background {
+            RoundedRectangle(cornerRadius: islandRadius, style: .continuous)
+                .fill(Color.black)
+        }
         .overlay {
-            // 描边只属于岛；落到锁屏后卡片没有 keyline
-            RoundedRectangle(cornerRadius: activityRadius, style: .continuous)
+            RoundedRectangle(cornerRadius: islandRadius, style: .continuous)
                 .strokeBorder(islandKeyline, lineWidth: islandKeylineWidth)
-                .opacity(isLockState ? 0 : 1)
         }
         // 岛内恒为深色底，品牌色与文字取深色档（与真机一致）
         .environment(\.colorScheme, .dark)
-        .position(x: 225, y: activityCenterY)
+        // 落向锁屏时收起来：淡出 + 缩一点，像岛收回了传感器那边
+        .opacity(isLockState ? 0 : 1)
+        .scaleEffect(isLockState ? 0.88 : 1, anchor: .top)
+        // 450 宽居中、贴顶 37.7pt —— 与机模挖孔顶边等高
+        .frame(width: 450, height: 920, alignment: .top)
+        .offset(y: 37.7)
     }
 
     private var compactIslandContent: some View {
@@ -563,6 +550,19 @@ struct ActivityPreviewGallery: View {
         }
         .padding(.horizontal, 7)
         .frame(width: 230, height: 43)
+    }
+
+    // MARK: 舞台 · 锁屏卡片（独立对象，就地浮出）
+
+    private var lockCardLayer: some View {
+        ActivityCardShell(tint: accent) {
+            ActivityLockScreenCard(state: multiState)
+        }
+        .frame(width: 374)
+        .frame(width: 450, height: 920, alignment: .bottom)
+        // 卡片底距屏幕底 148pt（真机锁屏实测）；出现前低 18pt，浮上来才自然
+        .offset(y: -148 + (isLockState ? 0 : 18))
+        .opacity(isLockState ? 1 : 0)
     }
 
     // MARK: 舞台 · 尺寸与状态
@@ -582,43 +582,19 @@ struct ActivityPreviewGallery: View {
     private var isCompactState: Bool { currentState == .compact }
     private var isLockState: Bool { currentState == .lock }
 
-    /// 活动的几何：尺寸、圆角、落点全部在这三组值之间连续插值。
-    private var activityWidth: CGFloat {
-        switch currentState {
-        case .expanded: 371
-        case .compact: 230
-        case .lock: 374
-        }
-    }
+    /// 岛的几何：在展开 / 紧凑两套值之间连续插值；锁屏态沿用紧凑值（此时已淡出）。
+    private var islandWidth: CGFloat { isCompactState ? 230 : 371 }
 
     /// 展开态比 `previewTotalHeight` 再高 1/4。
     ///
     /// 🔴 2026-10-30 主人对着真机比：预览里这块黑岛**自身的高度**偏矮（不是位置偏），
     ///    差约四分之一。所以外壳高度 = 92 × 1.25 = **115**，内容仍按 92 布局、
     ///    在壳里居中 —— 多出来的 23pt 均匀落在上下，取件码与地址的相对间距不变。
-    private var activityHeight: CGFloat {
-        switch currentState {
-        case .expanded: IslandExpandedMetrics.previewTotalHeight * 1.25
-        case .compact: 43
-        case .lock: 93
-        }
+    private var islandHeight: CGFloat {
+        isCompactState ? 43 : IslandExpandedMetrics.previewTotalHeight * 1.25
     }
 
-    private var activityRadius: CGFloat {
-        switch currentState {
-        case .expanded: 46
-        case .compact: 21.5
-        case .lock: 24
-        }
-    }
-
-    /// 岛顶 37.7pt（与机模挖孔顶边等高）；锁屏卡片底距屏底 148pt（真机实测）。
-    private var activityCenterY: CGFloat {
-        switch currentState {
-        case .lock: 920 - 148 - activityHeight / 2
-        default: 37.7 + activityHeight / 2
-        }
-    }
+    private var islandRadius: CGFloat { isCompactState ? 21.5 : 46 }
 
     // MARK: 文案
 
