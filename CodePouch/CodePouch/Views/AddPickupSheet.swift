@@ -330,8 +330,11 @@ struct AddPickupSheet: View {
 /// 用户点「添加」之前能一眼确认「是不是识别成了我要的东西」——
 /// 这比添加完再去列表里翻找要可靠得多。
 ///
-/// 🔴 字段口径（2026-09-23 主人定）：尽量全地列出每一项 ——
-///    取件码 / 平台 / 快递公司 / 运单号 / 尾号 / 地址；
+/// 🔴 字段口径（2026-10-30 主人修订）：预览卡只列**核对得上的四项** ——
+///    取件码 / 平台 / 快递公司 / 地址。
+///    运单号、尾号**不再单独成行**：绝大多数短信里这两个字段是空的，
+///    留着就是两行空占位；即便有值，主凭证位已经显示了真正要核对的那串码。
+///    数据本身照旧解析并入库，需要时在详情页查看（`RecordDetailView` 仍保留这两项）。
 ///    **识别不出的字段留空**，不写「未识别到」也不编造。
 ///
 /// 🔴 2026-10-28 主人：「拾码内再不区分取件码信息的类型」——
@@ -344,9 +347,6 @@ struct ParsePreviewCard: View {
 
     /// 主凭证 —— 不论解析时走的是哪条公式，到界面上一律叫「取件码」
     private var code: String { parsed.value }
-    /// 运单号 / 尾号只在**与主凭证不同**时才单独列（同一串数字不重复出现两遍）
-    private var waybill: String { parsed.waybill == parsed.value ? "" : parsed.waybill }
-    private var tail: String { parsed.tail == parsed.value ? "" : parsed.tail }
     /// 快递公司（2026-09-23 主人定）：与平台一边没匹配到就保持相同。
     /// 解析层已互填归一，这里再兜底一次，防 OCR 之外的路径漏网。
     private var courier: String { parsed.courier.isEmpty ? parsed.company : parsed.courier }
@@ -405,8 +405,6 @@ struct ParsePreviewCard: View {
             field(label: "取件码", value: code, mono: true, tint: tint)
             field(label: "平台", value: parsed.company, mono: false, tint: .secondary)
             field(label: "快递公司", value: courier, mono: false, tint: .secondary)
-            field(label: "运单号", value: waybill, mono: true, tint: .secondary)
-            field(label: "尾号", value: tail, mono: true, tint: .secondary)
             field(label: "地址", value: parsed.address, mono: false, tint: .secondary)
         }
         .padding(15)

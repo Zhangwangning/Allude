@@ -544,6 +544,10 @@ struct CodePouchApp: App {
                     PickedUpView()
                 case "notify":
                     NavigationStack { NotificationSettingsView() }
+                case "license":
+                    // 签名凭证页（设置 › 解锁 › 签名凭证）。命令行点不到设置里的行，
+                    // 逐页验收只能靠这个入口。顺带验「未激活 / 已激活」两种状态。
+                    NavigationStack { LicenseActivationView() }
                 // ⚠️ 2026-09-23：`auth` / `phone` / `email` / `password` /
                 //    `loginMethods` 五个截图分支随第三方登录体系一起删除。
                 // ⚠️ 2026-10-14：`vip` / `premium` / `license` / `profilePushed` /

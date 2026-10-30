@@ -30,6 +30,13 @@ Carthage/Build/
 *.keystore
 .env
 
+# ── 离线凭证签名私钥（绝对不入库）──────────────────
+# 2026-10-30 补：签发脚本 tools/license-gen/issue-*.{py,mjs} 就在仓库里，
+# 之前只靠"没人执行过 git add"侥幸没把 private-key.pem 带进去。
+# 私钥一旦进库（哪怕只推到私有仓），等于整套买断制作废 —— 谁拿到都能自己签。
+tools/license-gen/private-key.pem
+tools/license-gen/*.pem
+
 # ── 说明 ──────────────────────────────────────────
 # .workbuddy/memory/ 有意入库：那里存的是工程约定与决策日志
 # （构建命令、模拟器脚手架、字段口径定稿），是恢复上下文的依据。

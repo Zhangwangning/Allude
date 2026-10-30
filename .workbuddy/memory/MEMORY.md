@@ -2,6 +2,8 @@
 
 ## 🔴 路径口径（2026-10-30 改名，旧笔记里的 CodeClip 路径全部作废）
 - 仓库根：`/Volumes/ZWN/Downloads/Project/CodePouch/`
+- 远端（2026-10-30 已改名并推送）：`https://github.com/Zhangwangning/CodePouch`（PRIVATE，main）
+  旧地址 `github.com/Zhangwangning/CodeClip` 会 301 重定向到新地址。
 - 工程根：`CodePouch/`（旧名 `CodeClip/`）
 - App 源码：`CodePouch/CodePouch/`（三层同名，别数错）
 - 工程文件：`CodePouch/CodePouch.xcodeproj`，scheme/target 均为 `CodePouch`
@@ -33,7 +35,10 @@ cd CodePouch && xcodebuild -project CodePouch.xcodeproj -scheme CodePouch \
 - iPhone 16 Pro（回归基准）`272DD31C-D94F-46B4-9CC7-974A61439777`；iPhone Duo `4EBF7555-25F6-46D2-952D-02FBAD23BE3D`；18 Pro Max `B26F46C7-D209-4D54-8A36-B511A185BED7`。
 - `simctl launch` 传环境变量**必须 `SIMCTL_CHILD_` 前缀**；重启用 `--terminate-running-process`（普通 terminate+launch 有时旧进程不退、变量不注入）。
 - 截图必加 `SIMCTL_CHILD_SKIP_PERM=1`（通知弹窗点不掉）+ `SKIP_ONBOARDING=1`；首帧慢，sleep ≥4s（冷启动 6–8s）。
-- SCREEN 值：`settings` / `courierGallery` / `stationGallery` / `pickedUp` / `share` / `stats` / `smsLibrary` / `ingest` / `metrics`。
+- SCREEN 值：`settings` / `courierGallery` / `stationGallery` / `pickedUp` / `share` / `stats` / `ingest` / `metrics`
+  / **`add`**（添加面板，配 `SEED=<短信全文>` 预填识别）/ **`scan`** / **`scanPhoto`**（扫描面板）。
+  `SCREEN=add` 是验证识别预览卡的唯一命令行路径 —— 面板要手点 `+` 才能开，而 App 未注册
+  URL Scheme、本机无 idb/applesimutils、AppleScript 驱动模拟器被辅助功能权限拒绝（-10004）。
 - 其他：`EDIT=1`、`DETAIL_MATCH=<码>`、`SEED=<短信>`、`GALLERY_ANCHOR=<分类>`、`SELECT_MODE=1`、`SWIPE_STRETCH=<pt>`、`COPY_TOAST=1`、`SORT=company|oldest|newest`。
 - 分享面板取证：`SCREEN=share`（直渲，绕开长按菜单；`SHARE_HIT` 成功率仅约一半，已弃用）。
 - `simctl io <udid> screenshot --display=<id> <file>`；Duo 外屏 `--display=1`，内屏需 `enumerate` 找 2007x2853 端口 UUID。

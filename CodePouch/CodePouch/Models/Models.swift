@@ -213,24 +213,40 @@ final class PickupStore: ObservableObject {
         }
     }
 
-    /// 免费版同屏展示上限（2026-09-21 由 10 收紧到 4；仅渲染裁剪，数据完整保留）
-    static let freeVisibleLimit = 4
-    /// 免费版短信存储上限（2026-09-21 由 100 收紧到 60；超出后 FIFO 淘汰最旧）
-    static let freeStorageLimit = 60
+    /// 免费版同屏展示上限（2026-10-30 主人定为 3；仅渲染裁剪，数据完整保留）
+    static let freeVisibleLimit = 3
+    /// 免费版短信存储上限（2026-10-30 主人定为 50；超出后 FIFO 淘汰最旧）
+    static let freeStorageLimit = 50
     /// 「不限量」的替代值。**不要用 `Int.max`** —— `pending.count - limit`
     /// 这类减法会直接溢出崩溃；一个够大的常数能达到同样效果且安全。
     static let unlimitedCount = 9_999
 
-    /// 当前权益档位。
+    /// 当前权益档位 —— 由**本机凭证**决定（2026-10-30 买断制恢复，主人定）。
     ///
-    /// 🔴 **2026-10-14 全功能化（主人定稿）：VIP/会员体系整体退役，
-    /// 所有功能无条件开放** —— 档位恒为 `lifetime`（全功能）。
-    /// 保留属性只因小组件扩展与 `EntitlementSnapshot` 的读取链还在共用；
-    /// 它不再有任何「免费档」分支。
-    @Published private(set) var plan: MembershipPlan = .lifetime
+    /// 🔴 2026-09-21～2026-10-14 期间这里是恒 `.lifetime`（全功能化，VIP 退役）；
+    ///    2026-10-30 起改为凭证驱动：默认 `.none` = 免费档，
+    ///    导入有效买断凭证后变 `.lifetime`。
+    ///    判定口径见 `refreshEntitlement()`，别直接读 `EntitlementSnapshot.isPro`。
+    @Published private(set) var plan: MembershipPlan = .none
 
-    /// 是否已解锁全部能力。**恒 true**（全功能版，无任何限制）。
-    var isPro: Bool { true }
+    /// 是否已解锁全部能力。
+    /// 免费档限制：同屏 3 条（`freeVisibleLimit`）、存储 50 条（`freeStorageLimit`）。
+    var isPro: Bool { plan.isActive }
+
+    /// 按本机凭证重算权益。**导入凭证成功后必须调一次**，否则界面还停在免费档。
+    ///
+    /// 🔴 判「已购」不能只看 `EntitlementSnapshot.load().isPro` ——
+    ///    那个 `load()` 在**快照文件不存在**时会回落 `.lifetime`（是为了让小组件
+    ///    与实时活动在全新安装上不假死）。直接采信它的话，没买过的用户一装就是
+    ///    全功能，买断制当场失效。所以这里额外要求 `license` 非空：
+    ///    那是导入凭证时才写进去的原始串，留着供每次读取重新验签。
+    func refreshEntitlement() {
+        let snapshot = EntitlementSnapshot.load()
+        let backed = !(snapshot.license ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty
+        plan = (backed && snapshot.isPro) ? snapshot.plan : .none
+    }
 
     private init() {
         // 首次启动用示例数据铺底，之后一律以本地文件为准。
@@ -249,6 +265,10 @@ final class PickupStore: ObservableObject {
         sanitizeShelfAddresses()
         dedupeIdenticalRecords()
         purgeInvalidCodes()
+        // 放在最后：前面几步与权益无关，等数据就位再定档位。
+        // 🔴 注意这里**不会**触发 `enforceStorageLimit()` —— 那个只在 `ingest()` 里跑，
+        //    所以「免费档超量」不会在启动瞬间删数据，用户还有机会先导入凭证。
+        refreshEntitlement()
     }
 
     /// 存量记录按**当前解析规则**刷新派生字段（2026-10-30）。
