@@ -134,15 +134,15 @@ enum LicenseError: Error, Equatable {
         case .wrongPrefix:
             return "拾码的凭证以 CLIP1 开头。如果卖家给的是图片或链接，请让对方发原始的一串码。"
         case .badSignature:
-            return "这串码校验不通过，可能是复制时漏了字符或多了空格。请整段重新复制一次；仍然不行请联系卖家核对。"
+            return "这串码校验不通过，可能是复制时漏了字符或多了空格。请整段重新复制一次；仍然不行请向签发方核对。"
         case .expired(let date):
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy 年 M 月 d 日"
-            return "这张凭证的有效期到 \(formatter.string(from: date))，已经过期。需要继续使用请联系卖家续期。"
+            return "这张凭证的有效期到 \(formatter.string(from: date))，已经过期。需要继续使用请联系签发方。"
         case .unbound:
-            return "这张凭证没有绑定任何设备，无法在本机启用。请把本机的设备码发给卖家，让他重新签发一张。"
+            return "这张凭证没有绑定任何设备，无法在本机启用。请把本机设备码提供给签发方，按这个码重新签发。"
         case .wrongDevice:
-            return "每张凭证只在一台设备上生效，这张不是为当前设备签发的。请在「解锁」页把本机设备码发给卖家，让他按这个码重新签发。"
+            return "每张凭证只在一台设备上生效，这张不是为当前设备签发的。请把本机设备码提供给签发方，按这个码重新签发。"
         }
     }
 }

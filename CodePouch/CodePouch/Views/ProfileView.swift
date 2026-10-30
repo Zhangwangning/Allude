@@ -798,7 +798,7 @@ struct LicenseActivationView: View {
                 .minimumScaleFactor(0.7)
                 .textSelection(.enabled)
 
-            Text("把这串发给卖家，他按它签发凭证。每张凭证只在这一台设备上生效 —— 转发给别人也用不了。")
+            Text("凭证与本机绑定，这一串就是绑定依据。更换设备后需按新设备重新签发。")
                 .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
