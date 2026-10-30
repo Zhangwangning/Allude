@@ -711,196 +711,201 @@ struct LicenseActivationView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
-                statusCard
-                deviceCard
-                inputCard
-                if let outcome { resultCard(outcome) }
+            // 版式对齐「通知提醒」「小组件」这些二级设置页：
+            // 分组标题（卡外）→ 白卡 → 卡外说明，组间距 24。
+            //
+            // 🔴 2026-10-30 改版：原先是三张**品牌色卡**（天蓝 / 琥珀 / 绿）各自带
+            //    彩色图标标题，放进一排白卡的设置模块里像另一个 App 的页面。
+            //    设置语言里颜色只用来标"值的状态"，不用来给整张卡上色。
+            VStack(spacing: 24) {
+                statusSection
+                deviceSection
+                activateSection
+                if let outcome { resultSection(outcome) }
             }
-            .padding(AppTheme.hInset)
+            .padding(.horizontal, AppTheme.hInset)
+            .padding(.top, 14)
+            .padding(.bottom, 60)
             .frame(maxWidth: AppTheme.contentMaxWidth)
             .frame(maxWidth: .infinity)
-            .padding(.top, 8)
-            .padding(.bottom, 40)
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("签名凭证")
+        .cloaksTabBar()
         .navigationBarTitleDisplayMode(.inline)
         .scrollDismissesKeyboard(.interactively)
     }
 
     // MARK: 当前状态
 
-    /// 顶部一句状态话。买断制口径 —— **不出现「会员 / 年费 / 月付」任何订阅词**。
+    /// 行尾的档位文字。买断制口径 —— **不出现「会员 / 年费 / 月付」任何订阅词**。
     /// 临时凭证按到期时间算剩余天数（凭证里签的是绝对时间，这里只是显示）。
-    private var statusTitle: String {
+    private var planValue: String {
         guard store.isPro else { return "免费档" }
         if store.plan == .lifetime { return "已解锁 · 永久" }
         if let expiry = EntitlementSnapshot.load().expiresAt {
             let days = max(0, Calendar.current.dateComponents([.day], from: Date(), to: expiry).day ?? 0)
-            return "已解锁 · 临时（剩 \(days) 天）"
+            return "临时 · 剩 \(days) 天"
         }
-        return "已解锁 · 临时"
+        return "临时"
     }
 
-    private var statusCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: store.isPro ? "checkmark.seal.fill" : "lock.fill")
-                    .font(.system(size: 14, weight: .semibold))
-                Text(statusTitle)
-                    .font(.system(size: 15, weight: .semibold))
-                Spacer(minLength: 0)
+    private var statusSection: some View {
+        SettingsGroup(title: "授权状态",
+                      note: store.isPro
+                        ? "全部功能已解锁。凭证只在本机校验，不联网、不上传。"
+                        : "同屏显示 \(PickupStore.freeVisibleLimit) 条，最多存 \(PickupStore.freeStorageLimit) 条；超出后自动移除最旧的。") {
+            SettingsPlainRow(title: "当前档位") {
+                Text(planValue)
+                    .font(.system(size: 17))
+                    .foregroundStyle(store.isPro ? AppTheme.doneTint : Color.secondary)
+                    .fixedSize()
             }
-            .foregroundStyle(store.isPro ? AppTheme.doneTint : Color.secondary)
-
-            Text(store.isPro
-                 ? "全部功能已解锁。凭证只在本机校验，不联网、不上传。"
-                 : "同屏显示 \(PickupStore.freeVisibleLimit) 条，最多存 \(PickupStore.freeStorageLimit) 条；超出后自动移除最旧的。")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface(tint: store.isPro ? AppTheme.doneTint : AppTheme.amber)
     }
 
     // MARK: 本机设备码
 
-    private var deviceCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
-                Image(systemName: "iphone.gen3")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(AppTheme.sky)
-                Text("本机设备码")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Spacer(minLength: 0)
+    private var deviceSection: some View {
+        SettingsGroup(title: "本机设备码",
+                      note: "凭证与本机绑定，这一串就是绑定依据。更换设备后需按新设备重新签发。") {
+            SettingsPlainRow(title: "设备码") {
                 Button { copyDevice() } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: copiedDevice ? "checkmark.circle.fill" : "doc.on.doc")
-                            .font(.system(size: 11, weight: .semibold))
-                        Text(copiedDevice ? "已复制" : "复制")
-                            .font(.system(size: 12, weight: .medium))
-                    }
-                    .foregroundStyle(copiedDevice ? AppTheme.doneTint : AppTheme.sky)
+                    Text(copiedDevice ? "已复制" : "复制")
+                        .font(.system(size: 17))
+                        .foregroundStyle(copiedDevice ? AppTheme.doneTint : AppTheme.accent)
                 }
                 .buttonStyle(.plain)
             }
 
-            // 15pt 等宽 + 单行：32 位十六进制分四组共 35 字符，
-            // 约 315pt，正好落在卡片内容宽内。**字号不要再调大**，一调就折行。
+            SettingsDivider(style: .plain)
+
+            // 35 个字符（32 位十六进制分四组）放不进行尾：17pt 标题已占去半行，
+            // 挤在右边只剩 ~250pt，必然折行。整串单独占一行，15pt 等宽。
             Text(LicenseDevice.display(deviceCode))
                 .font(.system(size: 15, weight: .semibold, design: .monospaced))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
                 .textSelection(.enabled)
-
-            Text("凭证与本机绑定，这一串就是绑定依据。更换设备后需按新设备重新签发。")
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface(tint: AppTheme.sky)
     }
 
     // MARK: 输入凭证
 
-    private var inputCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
-                Image(systemName: "key.fill")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(AppTheme.amber)
-                Text("粘贴凭证")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Spacer(minLength: 0)
-                if !trimmed.isEmpty {
-                    Text("\(trimmed.count) 字")
-                        .font(.caption2)
-                        .monospacedDigit()
-                        .foregroundStyle(.tertiary)
+    private var activateSection: some View {
+        VStack(spacing: 12) {
+            SettingsGroup(title: "激活凭证",
+                          note: "验签只在本机进行，不联网。凭证与设备码一一对应，换机需重新签发。") {
+                editor
+                SettingsDivider(style: .plain)
+                actionRow(title: "从剪贴板粘贴", systemImage: "doc.on.clipboard") { pasteCredential() }
+
+                if !text.isEmpty {
+                    SettingsDivider(style: .plain)
+                    actionRow(title: "清空", systemImage: "xmark.circle", tint: .secondary) {
+                        text = ""
+                        outcome = nil
+                    }
                 }
             }
 
-            ZStack(alignment: .topLeading) {
-                TextEditor(text: $text)
-                    .font(.system(size: 12, design: .monospaced))
-                    .scrollContentBackground(.hidden)
-                    .frame(minHeight: 88)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 4)
-
-                if text.isEmpty {
-                    Text("CLIP1 开头的一整串，中间没有空格。")
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundStyle(.tertiary)
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 12)
-                        .allowsHitTesting(false)
-                }
-            }
-            .background(Color(.tertiarySystemFill), in: .rect(cornerRadius: 10))
-
-            HStack(spacing: 10) {
-                Button { pasteCredential() } label: {
-                    Label("粘贴", systemImage: "doc.on.clipboard")
-                }
-                .buttonStyle(.bordered)
-
-                Button {
-                    text = ""
-                    outcome = nil
-                } label: {
-                    Label("清空", systemImage: "xmark.circle")
-                }
-                .buttonStyle(.bordered)
-                .disabled(text.isEmpty)
-
-                Spacer(minLength: 0)
-
-                Button { activate() } label: {
-                    Text("激活").fontWeight(.semibold)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(trimmed.isEmpty)
-            }
-            .font(.system(size: 13))
-            .buttonBorderShape(.capsule)
+            activateButton
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface(tint: AppTheme.amber)
     }
 
-    // MARK: 结果
+    private var editor: some View {
+        ZStack(alignment: .topLeading) {
+            TextEditor(text: $text)
+                .font(.system(size: 13, design: .monospaced))
+                .scrollContentBackground(.hidden)
+                .frame(minHeight: 96)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
 
-    private func resultCard(_ outcome: Outcome) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            switch outcome {
-            case .unlocked(let label):
-                Label("已激活 · \(label)", systemImage: "checkmark.seal.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(AppTheme.doneTint)
-
-            case .rejected(let title, let message):
-                Label(title, systemImage: "exclamationmark.triangle.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.red)
-                Text(message)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+            if text.isEmpty {
+                Text("CLIP1 开头的一整串，中间没有空格。")
+                    .font(.system(size: 13, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 12)
+                    .allowsHitTesting(false)
             }
         }
+        .background(Color(.tertiarySystemFill), in: .rect(cornerRadius: 10))
         .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface()
+    }
+
+    /// 设置页形态的动作行：整行可点，标题用强调色，右侧配一个弱化的符号。
+    ///
+    /// 原先这里是一排胶囊小按钮（粘贴 / 清空 / 激活），那是工具条的语汇；
+    /// 放进「授权状态 + 设备码」这排设置卡里，只有它长得不像设置页。
+    private func actionRow(title: String, systemImage: String,
+                           tint: Color = AppTheme.accent,
+                           action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Text(title)
+                    .font(.system(size: 17))
+                    .foregroundStyle(tint)
+
+                Spacer(minLength: 8)
+
+                Image(systemName: systemImage)
+                    .font(.system(size: 16))
+                    .foregroundStyle(tint.opacity(0.75))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(minHeight: 48)
+            .frame(maxWidth: .infinity)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// 主操作：与「添加」页的提交键同一口径（胶囊实心主色）。
+    private var activateButton: some View {
+        Button { activate() } label: {
+            Text("激活")
+                .font(.system(size: 15, weight: .semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 13)
+                .background(trimmed.isEmpty ? Color(.tertiarySystemFill) : AppTheme.accent,
+                            in: .capsule)
+                .foregroundStyle(trimmed.isEmpty ? Color.secondary : Color.white)
+        }
+        .buttonStyle(.plain)
+        .disabled(trimmed.isEmpty)
+    }
+    // MARK: 结果
+
+    /// 激活结果：同样走「卡 + 卡外说明」。失败的原因是下一步该怎么做，
+    /// 属于说明文字而不是行内值 —— 放进卡里会把行撑成两行、每行都变高。
+    @ViewBuilder
+    private func resultSection(_ outcome: Outcome) -> some View {
+        switch outcome {
+        case .unlocked(let label):
+            SettingsGroup(title: "激活结果") {
+                SettingsPlainRow(title: "已激活") {
+                    Label(label, systemImage: "checkmark.seal.fill")
+                        .font(.system(size: 17))
+                        .foregroundStyle(AppTheme.doneTint)
+                        .labelStyle(.titleAndIcon)
+                }
+            }
+
+        case .rejected(let title, let message):
+            SettingsGroup(title: "激活结果", note: message) {
+                SettingsPlainRow(title: title) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Color.red)
+                }
+            }
+        }
     }
 
     // MARK: 动作
