@@ -183,76 +183,6 @@ struct IslandShell: View {
     }
 }
 
-// MARK: - 机身上半截
-
-/// 机身 —— 用官网导出的 **iPhone 16 Pro** 机模当底，全部按真实 pt 尺寸绘制后整体缩放。
-///
-/// 🔴 2026-10-28 主人：「机模是真实的尺寸啊，你完全可以按照机模来做，做完做缩放的合适大小」。
-/// 这张机模图的**屏幕里已经带壁纸**（日期、天气、图标、Dock 全在），
-/// 所以不再需要单独铺一层屏幕截图，只叠灵动岛即可。
-///
-/// 实测（图 939×1920 px，屏幕 839px = 402pt → 2.087 px/pt）：
-/// ```
-/// 整机   450 × 920 pt
-/// 屏幕   402 × 857 pt，左上角 (24, 23)
-/// 挖孔   顶边 y = 62.3 pt，宽 121 pt（官方 125.34）
-/// 灵动岛 374 × 111 pt（16 Pro 官方展开宽），水平居中 → x = (450−374)/2 = 38
-/// ```
-/// 岛顶 62.3 与挖孔顶同值 → 天然等高。
-struct PhoneTopShell<Content: View>: View {
-
-    // 真实尺寸（pt）。机模图 1350×2760 px，**屏幕实测 1206px 宽 = 402pt** → **3.0 px/pt**，
-    // 于是整图 = 450 × 920pt。这组数字不是估的，是 2026-10-30 主人给的四张
-    // 16 Pro 真实尺寸机模逐像素量出来的（四张几何完全一致）：
-    // ```
-    // 屏幕     x 72…1277（1206px = 402pt），顶边 y 69px = 23pt
-    // 挖孔     x 490…859（370px = 123.3pt），y 113…217（105px = 35pt）→ 顶边 37.7pt，水平居中
-    // 机身外沿 x 17…1334，y 25…2734
-    // ```
-    private let designWidth: CGFloat = 450       // 1350 ÷ 3
-    private let designHeight: CGFloat = 920      // 2760 ÷ 3
-    /// 灵动岛顶边（相对整图顶边）—— 直接取实测的挖孔顶：岛是从这个 y 往下长的。
-    private let islandTopInImage: CGFloat = 37.7
-    private var holeTop: CGFloat { islandTopInImage }
-
-    /// 岛宽 / 岛高。默认 = 展开态（Apple HIG：16 Pro 展开态岛宽 **371**，屏 402）；
-    /// 紧凑态传 `230 × 43`，并把 `islandTop` 上提半个高度差，让两种形态竖直居中对齐。
-    var islandWidth: CGFloat = 371
-    var islandHeight: CGFloat = IslandExpandedMetrics.previewTotalHeight
-    /// 岛顶边的额外上提量（pt）。紧凑态比展开态矮，需要上提才与挖孔居中对齐。
-    var islandTopLift: CGFloat = 0
-
-    /// ⚠️ 必须声明在最后：`content` 排第一时 memberwise init 也把它排第一，
-    ///    `PhoneTopShell(islandWidth: 230) { ... }` 这种尾随闭包写法就编译不过。
-    @ViewBuilder let content: () -> Content
-
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        GeometryReader { proxy in
-            let scale = max(proxy.size.width, 1) / designWidth
-
-            ZStack(alignment: .topLeading) {
-                // 机模（屏幕里自带壁纸，不需要额外铺屏幕内容）
-                // 浅色 / 深色各一张：有专用图就用专用图，没有退回旧单张。
-                Image(MockupArt.name(.home, scheme: colorScheme))
-                    .resizable()
-                    .frame(width: designWidth, height: designHeight)
-
-                // 灵动岛：顶部与挖孔顶边等高
-                content()
-                    .frame(width: islandWidth, height: islandHeight, alignment: .top)
-                    .offset(x: (designWidth - islandWidth) / 2, y: holeTop - islandTopLift)
-            }
-            .frame(width: designWidth, height: designHeight, alignment: .topLeading)
-            .scaleEffect(scale, anchor: .topLeading)
-            .frame(width: designWidth * scale, height: designHeight * scale,
-                   alignment: .topLeading)
-        }
-        .aspectRatio(designWidth / designHeight, contentMode: .fit)
-    }
-}
-
 // MARK: - 机模底图（浅色 / 深色）
 
 /// 机模底图选择。
@@ -343,77 +273,6 @@ enum MockupArt {
     }
 }
 
-// MARK: - 锁屏机模
-
-/// 锁屏机模 —— 官网导出的 iPhone 16 Pro 锁屏图，锁屏卡片摆进它的实时活动位置。
-///
-/// 🔴 底图必须是 **`Photoshop/iPhone 16 Pro.png`**（1350×2760、**hasAlpha=yes**）。
-/// 用剪贴板里的 jpg 会出白色底（没有 alpha 通道），主人已指认过一次。
-///
-/// 实测（图 1350×2760，屏幕宽 1206px = 402pt → **3.0 px/pt**，正好 3x）：
-/// ```
-/// 整图   450 × 920 pt
-/// 屏幕   x 72…1277（宽 402pt）= 24…426pt，机身框各约 24pt
-/// 状态栏文字 y 33…53px
-/// 日期       y 149…188px  → 50…63pt
-/// 时间 12:58 y 422…683px  → 141…228pt
-/// 手电筒/相机 y 2421…2486px → 807…829pt
-/// ```
-/// 🔴 2026-10-28 主人给了**真机拾码锁屏截图**，位置与"时间下方"完全不同：
-/// 卡片贴在**屏幕底部**、手电筒按钮上方（无通知时 iOS 把实时活动排在最下一位）。
-/// 真机图实测（883×1920，883px = 402pt → 2.196 px/pt）：
-/// ```
-/// 卡片 x 30…855（宽 825px = 376pt），左右各留 30px ≈ 14pt
-/// 卡片底 y≈1610px，距屏幕底 310px ≈ 141pt
-/// 卡片顶 y≈1405px → 高 205px ≈ 93pt
-/// ```
-/// 所以这里用**底部定位**：卡片底距屏幕底 148pt，左右各 14pt。
-/// 用底部定位而不是顶部，是因为卡片高度由内容决定，顶部定位一旦内容换行就会整体错位。
-struct LockScreenShell<Content: View>: View {
-
-    /// ⚠️ 必须最后声明，尾随闭包才成立（同 `PhoneTopShell`）。
-    @ViewBuilder let content: () -> Content
-
-    private let designWidth: CGFloat = 450      // 939 ÷ 2.087
-    private let designHeight: CGFloat = 920     // 1920 ÷ 2.087
-    /// 屏幕内容左缘（图内 50px ÷ 2.087）
-    private let screenLeft: CGFloat = 24
-    /// 屏幕宽 402pt（16 Pro 标称值）
-    private let screenWidth: CGFloat = 402
-    /// 卡片底距屏幕底（图内 310px ÷ 2.196 ≈ 141，取 148 与真机观感对齐）
-    private let cardBottomGap: CGFloat = 148
-    /// 卡片左右留白：真机 30px ÷ 2.196 ≈ 14pt
-    private let cardSideInset: CGFloat = 14
-
-    private var cardWidth: CGFloat { screenWidth - cardSideInset * 2 }
-
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        GeometryReader { proxy in
-            let scale = max(proxy.size.width, 1) / designWidth
-
-            // 底部对齐：图片底 = 屏幕底，卡片按「距底 148pt」摆，高度交给内容
-            ZStack(alignment: .bottom) {
-                Image(MockupArt.name(.lock, scheme: colorScheme))
-                    .resizable()
-                    .frame(width: designWidth, height: designHeight)
-
-                content()
-                    .frame(width: cardWidth)
-                    .padding(.bottom, cardBottomGap)
-            }
-            .frame(width: designWidth, height: designHeight, alignment: .bottom)
-            // 整体等比缩放到可用宽度：内部所有相对关系都不变
-            .scaleEffect(scale, anchor: .topLeading)
-            .frame(width: designWidth * scale, height: designHeight * scale,
-                   alignment: .topLeading)
-        }
-        .aspectRatio(designWidth / designHeight, contentMode: .fit)
-    }
-}
-
-
 // MARK: - 预览页
 
 struct ActivityPreviewGallery: View {
@@ -424,6 +283,12 @@ struct ActivityPreviewGallery: View {
     /// 预览分页：0 展开 / 1 紧凑 / 2 锁屏。
     /// 🔴 2026-10-28 主人：三个机模做成**滑动切换**，底部一排按钮指示当前页
     /// （参考 Apple 官网那种轮播选择器的意思，不是照抄）。
+    /// 过渡时长。截图脚手架 `ACTIVITY_SLOWMO=1` 拉长到 4 秒 ——
+    /// 命令行点不到底部按钮、也没有帧抽取工具，只能把动画放慢再截图抓中间帧。
+    private var transitionDuration: Double {
+        ProcessInfo.processInfo.environment["ACTIVITY_SLOWMO"] == "1" ? 4.0 : 0.34
+    }
+
     /// 截图脚手架：`SIMCTL_CHILD_ACTIVITY_PAGE=1` 可直接落到指定页（默认 0）。
     @State private var previewPage = Int(ProcessInfo.processInfo.environment["ACTIVITY_PAGE"] ?? "") ?? 0
 
@@ -528,6 +393,25 @@ struct ActivityPreviewGallery: View {
         .navigationTitle("实时活动")
         .cloaksTabBar()
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear(perform: startAutoplayIfNeeded)
+    }
+
+    /// 截图脚手架：`ACTIVITY_AUTOPLAY=1` 每 2.4 秒自动翻一页。
+    ///
+    /// 只为了取证「切换是交叉淡入、不是左右滑」——本机没有触摸注入，
+    /// 也没装帧抽取工具，只能让页面自己动、再由外部定时截图抓中间帧。
+    private func startAutoplayIfNeeded() {
+        guard ProcessInfo.processInfo.environment["ACTIVITY_AUTOPLAY"] == "1" else { return }
+        Task { @MainActor in
+            // 放慢模式下把间隔也拉长，否则 4 秒的过渡与 2.4 秒的间隔会一直叠着走
+            let interval: UInt64 = transitionDuration > 1 ? 6_000_000_000 : 2_400_000_000
+            while true {
+                try? await Task.sleep(nanoseconds: interval)
+                withAnimation(.smooth(duration: transitionDuration)) {
+                    previewPage = (previewPage + 1) % max(pageMeta.count, 1)
+                }
+            }
+        }
     }
 
 
@@ -542,33 +426,21 @@ struct ActivityPreviewGallery: View {
         // 🔴 2026-10-28 主人：说明文字挪到**按钮下方**，上方只留标题。
         //    原因是说明长度随页面变化（一行 / 两行），若把说明放在机模上方，
         //    切换页面时机模会被推着上下跳 —— 位置不固定，看着晃。
-        //    现在「标题 → 机模 → 按钮」三段的顺序和尺寸都恒定，只有最下面的说明会变。
         VStack(alignment: .leading, spacing: 12) {
+            // 标题/说明**瞬时替换**：它们跟着过渡交叉淡入的话，两个不同的句子
+            // 会在中途叠印（慢放时看得很清楚）。机模要连贯、文字要干断。
             Text(currentPageTitle)
                 .font(.headline)
+                .transaction { $0.animation = nil }
 
-            TabView(selection: $previewPage) {
-                ForEach(Array(pages.enumerated()), id: \.offset) { index, page in
-                    // 🔴 每页必须撑满容器宽 —— 不给 `maxWidth: .infinity` 时页宽 = 内容宽，
-                    //    一页只有 205pt，滑动时相邻两页会同时露出来（截图里左右各半个手机）。
-                    page.content
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .tag(index)
-                }
-            }
-            // 分页样式、隐藏系统圆点（底部自绘一排按钮）
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            // 440：机模宽约 215pt（原来 400 → 195pt，放大一档）。
-            // 上方的提示行已删除，省下的高度让给了机模。
-            .frame(height: 440)
-            .frame(maxWidth: .infinity)
+            stage
 
             pagePicker
                 .frame(maxWidth: .infinity)
 
-            // 说明放在按钮下方：高度可变，但它在机模下面，不会推动机模位置。
             Text(currentPageNote)
                 .font(.caption)
+                .transaction { $0.animation = nil }
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -577,13 +449,206 @@ struct ActivityPreviewGallery: View {
         }
     }
 
+    // MARK: 舞台：一台机模 + 一个会变形的活动
+
+    /// 三个状态**共用同一台机模**，动的只有那块活动。
+    ///
+    /// 🔴 2026-10-30 主人的两轮口径合起来是：①不要左右滑动（那是翻页语汇）；
+    ///    ②也别整块交叉淡入（两个手机叠印，不优雅）。所以这里做成**一个连续动画**：
+    ///
+    ///    · 岛展开 ⇄ 岛收起：黑岛的 宽 / 高 / 圆角 连续插值
+    ///      （371×92×46 ⇄ 230×43×21.5），两套内容在同一个黑岛里交叉 ——
+    ///      看起来就是岛在长、在缩，而不是两张图对穿；
+    ///    · 岛 ⇄ 锁屏卡片：壁纸交叉 + 岛原地淡出 + 卡片从下方浮到锁屏位置，
+    ///      读作「这条活动落到了锁屏上」。
+    ///
+    /// 机身为什么允许整张交叉：两张机模是同一台 16 Pro 渲出来的，
+    /// 屏幕以外平均差 11/765（肉眼不可见），交叉时看到的只有壁纸在换。
+    private var stage: some View {
+        GeometryReader { proxy in
+            let scale = max(proxy.size.width, 1) / 450
+
+            ZStack(alignment: .top) {
+                mockupLayers
+                activityLayer
+            }
+            .frame(width: 450, height: 920, alignment: .top)
+            .scaleEffect(scale, anchor: .topLeading)
+            .frame(width: 450 * scale, height: 920 * scale, alignment: .topLeading)
+        }
+        // 450×920 与机模同比例：容器高 440 时宽约 215pt，与改造前一致
+        .aspectRatio(450.0 / 920.0, contentMode: .fit)
+        .frame(height: 440)
+        .frame(maxWidth: .infinity)
+        .animation(.smooth(duration: transitionDuration), value: previewPage)
+        .clipped()
+    }
+
+    // MARK: 舞台 · 壁纸
+
+    private var mockupLayers: some View {
+        ZStack {
+            Image(MockupArt.name(.home, scheme: colorScheme))
+                .resizable()
+                .frame(width: 450, height: 920)
+                .opacity(isLockState ? 0 : 1)
+
+            Image(MockupArt.name(.lock, scheme: colorScheme))
+                .resizable()
+                .frame(width: 450, height: 920)
+                .opacity(isLockState ? 1 : 0)
+        }
+    }
+
+    // MARK: 舞台 · 活动本体（岛 → 落向锁屏）
+
+    /// 三个状态是**同一块活动**，只是尺寸和位置不同：
+    ///
+    /// ```
+    /// 展开   371 × 92   圆角 46    顶在挖孔处（顶边 37.7pt）
+    /// 紧凑   230 × 43   圆角 21.5  顶在挖孔处
+    /// 锁屏   374 × 93   圆角 24    落到距屏底 148pt 的实时活动位置
+    /// ```
+    ///
+    /// 宽高只差几个点，所以「岛变卡片」主要是**一次垂直位移 + 圆角变化**，
+    /// 背景同时从黑岛淡成卡面材质 —— 这比两页交叉淡入连贯得多：
+    /// 眼睛跟的是同一个东西在动，而不是两张图在对穿。
+    private var activityLayer: some View {
+        ZStack {
+            // 底：黑岛 ⇄ 卡面材质（材质自己折射下层壁纸，正是液态玻璃的观感）
+            RoundedRectangle(cornerRadius: activityRadius, style: .continuous)
+                .fill(Color.black)
+                .opacity(isLockState ? 0 : 1)
+
+            RoundedRectangle(cornerRadius: activityRadius, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: activityRadius, style: .continuous)
+                        .fill(accent.opacity(0.16))
+                }
+                .opacity(isLockState ? 1 : 0)
+
+            // 内容三套，各自淡入淡出 —— 与真机上「岛换内容」是同一套观感
+            compactIslandContent
+                .opacity(isCompactState ? 1 : 0)
+
+            IslandExpandedContent(state: islandState)
+                .frame(width: 371, height: IslandExpandedMetrics.previewTotalHeight)
+                .opacity(currentState == .expanded ? 1 : 0)
+
+            ActivityLockScreenCard(state: multiState)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .frame(width: 374, height: 93)
+                .opacity(isLockState ? 1 : 0)
+        }
+        .frame(width: activityWidth, height: activityHeight)
+        .clipShape(.rect(cornerRadius: activityRadius, style: .continuous))
+        .overlay {
+            // 描边只属于岛；落到锁屏后卡片没有 keyline
+            RoundedRectangle(cornerRadius: activityRadius, style: .continuous)
+                .strokeBorder(islandKeyline, lineWidth: islandKeylineWidth)
+                .opacity(isLockState ? 0 : 1)
+        }
+        // 岛内恒为深色底，品牌色与文字取深色档（与真机一致）
+        .environment(\.colorScheme, .dark)
+        .position(x: 225, y: activityCenterY)
+    }
+
+    private var compactIslandContent: some View {
+        HStack(spacing: 0) {
+            IslandCompactLeading(state: islandState)
+            Spacer(minLength: 0)
+            IslandCompactTrailing(state: islandState)
+        }
+        .padding(.horizontal, 7)
+        .frame(width: 230, height: 43)
+    }
+
+    // MARK: 舞台 · 尺寸与状态
+
+    private enum PreviewState: Int, CaseIterable {
+        case expanded, compact, lock
+    }
+
+    private var states: [PreviewState] {
+        DeviceProfile.hasDynamicIsland ? [.expanded, .compact, .lock] : [.lock]
+    }
+
+    private var currentState: PreviewState {
+        states[min(max(previewPage, 0), states.count - 1)]
+    }
+
+    private var isCompactState: Bool { currentState == .compact }
+    private var isLockState: Bool { currentState == .lock }
+
+    /// 活动的几何：尺寸、圆角、落点全部在这三组值之间连续插值。
+    private var activityWidth: CGFloat {
+        switch currentState {
+        case .expanded: 371
+        case .compact: 230
+        case .lock: 374
+        }
+    }
+
+    /// 展开态比 `previewTotalHeight` 再高 1/4。
+    ///
+    /// 🔴 2026-10-30 主人对着真机比：预览里这块黑岛**自身的高度**偏矮（不是位置偏），
+    ///    差约四分之一。所以外壳高度 = 92 × 1.25 = **115**，内容仍按 92 布局、
+    ///    在壳里居中 —— 多出来的 23pt 均匀落在上下，取件码与地址的相对间距不变。
+    private var activityHeight: CGFloat {
+        switch currentState {
+        case .expanded: IslandExpandedMetrics.previewTotalHeight * 1.25
+        case .compact: 43
+        case .lock: 93
+        }
+    }
+
+    private var activityRadius: CGFloat {
+        switch currentState {
+        case .expanded: 46
+        case .compact: 21.5
+        case .lock: 24
+        }
+    }
+
+    /// 岛顶 37.7pt（与机模挖孔顶边等高）；锁屏卡片底距屏底 148pt（真机实测）。
+    private var activityCenterY: CGFloat {
+        switch currentState {
+        case .lock: 920 - 148 - activityHeight / 2
+        default: 37.7 + activityHeight / 2
+        }
+    }
+
+    // MARK: 文案
+
+    private var pageMeta: [(title: String, note: String)] {
+        states.map { state in
+            switch state {
+            case .expanded:
+                return (title: "灵动岛 · 展开",
+                        note: "长按或同时有两个活动时展开，可画面积最大；只画最近一条待办，条数看右上角")
+            case .compact:
+                return (title: "灵动岛 · 紧凑",
+                        note: "同时有两个活动时收成紧凑态：左 App 图标、右「待取 N」，三个以上只剩图标")
+            case .lock:
+                return (title: "锁屏卡片",
+                        note: "锁屏上多条待办时取最新一条，其余用「还有 N 条」交代")
+            }
+        }
+    }
+
+    private var currentPageTitle: String { pageMeta[pageIndex].title }
+    private var currentPageNote: String { pageMeta[pageIndex].note }
+    private var pageIndex: Int { min(max(previewPage, 0), pageMeta.count - 1) }
+
     /// 底部切换按钮：选中的拉成胶囊并填主色，未选中的是浅灰胶囊。
     private var pagePicker: some View {
         HStack(spacing: 10) {
-            ForEach(Array(pages.enumerated()), id: \.offset) { index, page in
-                let on = index == previewPage
+            ForEach(Array(pageMeta.enumerated()), id: \.offset) { index, page in
+                let on = index == pageIndex
                 Button {
-                    withAnimation(.snappy(duration: 0.28)) { previewPage = index }
+                    withAnimation(.smooth(duration: transitionDuration)) { previewPage = index }
                 } label: {
                     Text(page.title)
                         .font(.system(size: 13, weight: on ? .semibold : .regular))
@@ -604,82 +669,6 @@ struct ActivityPreviewGallery: View {
         }
     }
 
-    // MARK: 三页预览（全部由 App 真实渲染）
-
-    /// 每一页 = **机模 + 真实 View**。
-    ///
-    /// 🔴 2026-10-30 改口径：此前三页贴的是主人从真机截的整图（`RealExpanded` 等），
-    ///    真机效果虽权威，但那是**一张死图** —— 换一条待办不会变、深色下还是浅色壁纸、
-    ///    而且截图里的卡片是系统渲染的，与我们改过的版式会渐行渐远。
-    ///    现在反过来：**内容用与扩展同一份 View 实时渲染**，机模只负责机身与壁纸
-    ///    （浅色 / 深色各一张，见 `MockupArt`）。
-    private var pages: [(title: String, note: String, content: AnyView)] {
-        var list: [(String, String, AnyView)] = []
-        if DeviceProfile.hasDynamicIsland {
-            list.append(("灵动岛 · 展开",
-                         "长按或同时有两个活动时展开，可画面积最大；只画最近一条待办，条数看右上角",
-                         AnyView(islandExpandedPage)))
-            list.append(("灵动岛 · 紧凑",
-                         "同时有两个活动时收成紧凑态：左 App 图标、右「待取 N」，三个以上只剩图标",
-                         AnyView(islandCompactPage)))
-        }
-        list.append(("锁屏卡片",
-                     "锁屏上多条待办时取最新一条，其余用「还有 N 条」交代",
-                     AnyView(lockScreenPage)))
-        return list
-    }
-
-    /// 灵动岛 · 展开：黑色岛体 + `IslandExpandedContent`（与 `PickupLiveActivity` 同源）。
-    private var islandExpandedPage: some View {
-        PhoneTopShell {
-            IslandExpandedContent(state: islandState)
-                .frame(width: 371, height: IslandExpandedMetrics.previewTotalHeight)
-                .background(Color.black, in: .rect(cornerRadius: 46, style: .continuous))
-                .overlay {
-                    // 真机岛外圈有一道 `keylineTint`（= 取件码颜色），暗壁纸上是唯一的轮廓线索
-                    RoundedRectangle(cornerRadius: 46, style: .continuous)
-                        .strokeBorder(islandKeyline, lineWidth: islandKeylineWidth)
-                }
-                // 岛内恒为深色底，品牌色与文字取深色档（与真机一致）
-                .environment(\.colorScheme, .dark)
-        }
-    }
-
-    /// 灵动岛 · 紧凑：左 App 图标 + 右「待取 N」，中间是挖孔。
-    ///
-    /// 真机上紧凑态是**两块独立画布**（被挖孔隔开），但整岛仍是一块黑色胶囊 ——
-    /// 这里按整块黑胶囊画，内容两端对齐，中间本来就是黑的，看不出拼缝。
-    private var islandCompactPage: some View {
-        PhoneTopShell(islandWidth: 230, islandHeight: 43, islandTopLift: 4) {
-            HStack(spacing: 0) {
-                IslandCompactLeading(state: islandState)
-                Spacer(minLength: 0)
-                IslandCompactTrailing(state: islandState)
-            }
-            .padding(.horizontal, 7)
-            .frame(width: 230, height: 43)
-            .background(Color.black, in: .capsule)
-            .overlay { Capsule().strokeBorder(islandKeyline, lineWidth: islandKeylineWidth) }
-            .environment(\.colorScheme, .dark)
-        }
-    }
-
-    /// 锁屏卡片：`ActivityLockScreenCard` 摆在锁屏机模的实时活动位置。
-    private var lockScreenPage: some View {
-        LockScreenShell {
-            ActivityCardShell(tint: accent) {
-                ActivityLockScreenCard(state: multiState)
-            }
-        }
-    }
-
-    private var currentPageTitle: String {
-        pages[min(previewPage, pages.count - 1)].title
-    }
-
-    private var currentPageNote: String {
-        pages[min(previewPage, pages.count - 1)].note
-    }
 
     // MARK: 总开关
 
