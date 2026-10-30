@@ -106,11 +106,6 @@ struct SettingsView: View {
     /// 侧栏搜索词（2026-10-25 照 iPad 设置：侧栏顶部有搜索框）
     @State private var query = ""
 
-    /// 设备标识复制后的行内反馈（1.8s 自动复位）
-    @State private var copiedDeviceID = false
-    /// 复位任务 —— 连点时先取消上一轮，避免两次计时叠在一起提前熄灭
-    @State private var copyResetTask: Task<Void, Never>?
-
     /// 截图脚手架：`SIMCTL_CHILD_SETTINGS_PANE=courier|widget|…` 启动即选中该面板，
     /// 命令行点不到侧栏行，逐页验收底色/图标只能用这个入口。
     static var scaffoldPane: SettingsPane? {
@@ -124,55 +119,6 @@ struct SettingsView: View {
     private func filtered(_ items: [SettingsPane]) -> [SettingsPane] {
         guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return items }
         return items.filter { $0.title.localizedCaseInsensitiveContains(query) }
-    }
-
-    // MARK: 设备标识（反馈排障用）
-
-    /// 复制设备标识，并让行尾的「复制」变成「已复制」1.8 秒。
-    /// 取不到值时（极少数环境 `identifierForVendor` 为 nil）不做任何事 ——
-    /// 复制一个「—」给对方只会让人更困惑。
-    private func copyDeviceID() {
-        let value = DeviceIdentity.vendorID
-        guard value != DeviceIdentity.unavailable else { return }
-        UIPasteboard.general.string = value
-        withAnimation(.easeOut(duration: 0.15)) { copiedDeviceID = true }
-        copyResetTask?.cancel()
-        copyResetTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 1_800_000_000)
-            if !Task.isCancelled {
-                withAnimation(.easeOut(duration: 0.2)) { copiedDeviceID = false }
-            }
-        }
-    }
-
-    /// 「设备标识」行 —— 整行可点，点一下就复制完整值。
-    /// 屏上显示的是**掩码串**（首 8 + 末 5），复制的却是完整 `vendorID`。
-    private var deviceIDRow: some View {
-        Button {
-            copyDeviceID()
-        } label: {
-            SettingsRow(symbol: "iphone.gen3",
-                        title: "设备标识",
-                        subtitle: DeviceIdentity.masked(DeviceIdentity.vendorID),
-                        subtitleMonospaced: true,
-                        showsChevron: false,
-                        tint: AppTheme.sky,
-                        trailing: AnyView(copyBadge))
-        }
-        .buttonStyle(.plain)
-    }
-
-    /// 行尾「复制 / 已复制」。
-    /// 🔴 固定 58pt 宽：两种状态的文字宽度不同，不定宽会让整行跟着抖一下。
-    private var copyBadge: some View {
-        HStack(spacing: 4) {
-            Image(systemName: copiedDeviceID ? "checkmark.circle.fill" : "doc.on.doc")
-                .font(.system(size: 12, weight: .semibold))
-            Text(copiedDeviceID ? "已复制" : "复制")
-                .font(.system(size: 12, weight: .medium))
-        }
-        .foregroundStyle(copiedDeviceID ? AppTheme.doneTint : Color.secondary)
-        .frame(width: 58, alignment: .trailing)
     }
 
     var body: some View {
@@ -434,14 +380,10 @@ struct SettingsView: View {
                                     tint: AppTheme.doneTint)
                     }
                     .buttonStyle(.plain)
-
-                    SettingsDivider()
-
-                    deviceIDRow
                 }
                 .cardSurface()
 
-                Text("邮件会自动带上版本号。遇到识别问题时，点上面的「设备标识」复制，粘贴进邮件即可。")
+                Text("邮件会自动带上版本号，方便定位问题。")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -649,10 +591,6 @@ struct SettingsView: View {
                             subtitle: "无账号、无联网；取件数据全程只在本机",
                             showsChevron: false,
                             tint: AppTheme.doneTint)
-
-                SettingsDivider()
-
-                deviceIDRow
             }
             .cardSurface()
         }
@@ -744,40 +682,6 @@ enum AppVersion {
     }
 }
 
-// MARK: - 设备标识（反馈排障用）
-
-/// 反馈时可复制给开发者的设备标识。
-///
-/// 用 `identifierForVendor` 而不是自建 ID：这是 Apple 的标准口径，
-/// 不需要任何权限、不涉及账号，与拾码「不联网、不注册」的定位一致。
-///
-/// 🔴 系统规则要知道：**同一厂商名下的 App 全部删除后**再安装，这个值会重新生成。
-///    只删拾码一个再装，通常不变。若日后要求「重装也必须同一串」，
-///    得改成首次生成 UUID 存进 Keychain（卸载重装仍保留）——
-///    但那样就多了一处要维护的存储，目前按简单方案走。
-enum DeviceIdentity {
-    /// 取不到时的占位（不参与复制）
-    static let unavailable = "—"
-
-    static var vendorID: String {
-        UIDevice.current.identifierForVendor?.uuidString ?? unavailable
-    }
-
-    /// 设置页上**显示**的掩码串：保留首 8 位 + 末 5 位，中间一律遮掉。
-    ///
-    /// 两个目的（2026-10-30 主人定）：
-    ///   ① **一行放得下** —— 完整的 36 位在 11pt 等宽下约 259pt，比行内可用宽度还宽，
-    ///      硬塞会断成两行；掩码后 17 位约 122pt，绰绰有余。
-    ///   ② 不把完整标识明晃晃摆在屏幕上 —— 这行是给别人看的（要复制给对方排障），
-    ///      不是给自己读的。
-    ///
-    /// 🔴 复制拿到的**始终是完整的 `vendorID`**，不是这个掩码串。
-    static func masked(_ id: String) -> String {
-        guard id != unavailable, id.count > 16 else { return id }
-        return "\(id.prefix(8))••••\(id.suffix(5))"
-    }
-}
-
 // MARK: - 签名凭证（买断解锁）
 
 /// 输入凭证 → 本地验签 → 写入权益。全程离线，不联网、不涉及账号。
@@ -827,12 +731,24 @@ struct LicenseActivationView: View {
 
     // MARK: 当前状态
 
+    /// 顶部一句状态话。买断制口径 —— **不出现「会员 / 年费 / 月付」任何订阅词**。
+    /// 临时凭证按到期时间算剩余天数（凭证里签的是绝对时间，这里只是显示）。
+    private var statusTitle: String {
+        guard store.isPro else { return "免费档" }
+        if store.plan == .lifetime { return "已解锁 · 永久" }
+        if let expiry = EntitlementSnapshot.load().expiresAt {
+            let days = max(0, Calendar.current.dateComponents([.day], from: Date(), to: expiry).day ?? 0)
+            return "已解锁 · 临时（剩 \(days) 天）"
+        }
+        return "已解锁 · 临时"
+    }
+
     private var statusCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Image(systemName: store.isPro ? "checkmark.seal.fill" : "lock.fill")
                     .font(.system(size: 14, weight: .semibold))
-                Text(store.isPro ? "已解锁 · \(planWord(store.plan))" : "免费档")
+                Text(statusTitle)
                     .font(.system(size: 15, weight: .semibold))
                 Spacer(minLength: 0)
             }
@@ -1020,12 +936,11 @@ struct LicenseActivationView: View {
         }
     }
 
-    /// 档位的中文短名。**只说时长，不说价格** —— App 内出现价格是审核风险。
+    /// 档位的中文短名。**买断制：只说「临时 7 天 / 永久」，不出现会员、年费这类订阅词。**
     private func planWord(_ plan: MembershipPlan) -> String {
         switch plan {
         case .none:     return "未开通"
-        case .monthly:  return "一个月"
-        case .yearly:   return "一年"
+        case .trial:    return "临时 7 天"
         case .lifetime: return "永久"
         }
     }

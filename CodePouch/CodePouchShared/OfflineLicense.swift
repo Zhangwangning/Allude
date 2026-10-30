@@ -37,18 +37,31 @@ import CryptoKit
 
 // MARK: - 档位
 
-/// 凭证里卖的档位。与 App 内部的 `MembershipPlan` 是同一套东西的两种名字：
-/// 凭证侧只用 `monthly/yearly/lifetime` 三个（不会出现 `none`），
-/// 映射交给 `plan`，全 App 其余部分照旧只认 `MembershipPlan`。
+/// 凭证里卖的档位。
+///
+/// 🔴 2026-10-30 改为**买断制**（主人定）：
+///    · `lifetime` = 买断，凭证**不带到期字段**；
+///    · `trial`    = 临时凭证，到期时间 = 签发时间 + 7 天。
+///    原来那套 `monthly` / `yearly` 订阅档已删除 —— 不是年费制，
+///    所以凭证层也不再出现订阅语义。
 enum LicenseService: String, Codable, CaseIterable {
+    case trial
+    case lifetime
+    /// 🔴 历史订阅档（2026-09 那批发出的年费/月付凭证）。
+    ///
+    /// **只用于解码，不再签发** —— 留着是因为真机上确实还有生效中的旧凭证
+    /// （已售出的一张 `yearly` 有效期到 2027-10）。删掉这两个 case 的话，
+    /// 那些凭证会在 `JSONDecoder` 这一步解不出枚举，被判 `malformed`，
+    /// 用户当场掉回免费档 —— 那是"改版把人家买过的东西弄没了"，绝不能发生。
+    ///
+    /// 它们统一映射到 `.trial`：语义正好对（都是「带到期时间的凭证」），
+    /// 到期由 `verify` 里的 `expiresAt <= now` 自然降级，不需要额外逻辑。
     case monthly
     case yearly
-    case lifetime
 
     var plan: MembershipPlan {
         switch self {
-        case .monthly: return .monthly
-        case .yearly: return .yearly
+        case .trial, .monthly, .yearly: return .trial
         case .lifetime: return .lifetime
         }
     }
@@ -285,8 +298,7 @@ extension MembershipPlan {
     var rank: Int {
         switch self {
         case .none: return 0
-        case .monthly: return 1
-        case .yearly: return 2
+        case .trial: return 1
         case .lifetime: return 3
         }
     }

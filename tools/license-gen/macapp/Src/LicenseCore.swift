@@ -13,27 +13,28 @@ import CryptoKit
 // 本实现走 CryptoKit —— 与 iOS App 侧同一个框架，第 ④ 条天然对齐。
 // ============================================================================
 
+/// 凭证档位。2026-10-30 改买断制：只保留临时（7 天）与买断（永久）。
+/// 🔴 必须与 App 侧 `CodePouchShared/OfflineLicense.swift` 的 `LicenseService` 完全一致 ——
+///    多一个 case，签出来的凭证在 App 里会解不出枚举，直接判 `malformed`。
 enum LicenseService: String, CaseIterable {
-    case monthly, yearly, lifetime
+    case trial, lifetime
 
     var title: String {
         switch self {
-        case .monthly: return "月付"
-        case .yearly: return "年费"
-        case .lifetime: return "永久"
+        case .trial: return "临时"
+        case .lifetime: return "买断"
         }
     }
 
     var defaultDays: Int {
         switch self {
-        case .monthly: return 30
-        case .yearly: return 365
+        case .trial: return 7
         case .lifetime: return 0
         }
     }
 
     func ledgerTitle(days: Int) -> String {
-        self == .lifetime ? "永久" : "\(title)（\(days) 天）"
+        self == .lifetime ? "永久" : "临时（\(days) 天）"
     }
 }
 

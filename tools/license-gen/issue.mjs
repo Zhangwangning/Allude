@@ -4,9 +4,9 @@
 //
 // 用法：
 //   node issue.mjs --service lifetime --device 3F2A…（32 位十六进制）
-//   node issue.mjs --service yearly  --device 3F2A… --days 365 --note "订单尾号1234"
-//   node issue.mjs --service monthly --device 3F2A… --days 30
-//   node issue.mjs --device A,B,C --batch 3 --service yearly   # 三个买家各一张
+//   node issue.mjs --service trial    --device 3F2A…            # 临时，默认 7 天
+//   node issue.mjs --service lifetime --device 3F2A… --note "订单尾号1234"
+//   node issue.mjs --device A,B,C --batch 3 --service lifetime  # 三个买家各一张
 //   node issue.mjs --check "CLIP1.xxx.yyy"                     # 只校验，不签发
 //
 // 输出直接是一串凭证，整段复制发给买家即可。
@@ -49,7 +49,8 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PREFIX = 'CLIP1';
-const SERVICES = ['monthly', 'yearly', 'lifetime'];
+// 2026-10-30：买断制。trial = 临时（7 天），lifetime = 买断（永久，不带到期）。
+const SERVICES = ['trial', 'lifetime'];
 
 // ── 参数 ────────────────────────────────────────────────────────────────────
 
@@ -97,7 +98,7 @@ function requireValidDevice() {
     console.error('  凭证必须绑定买家设备的码，否则任何人都能用它解锁。');
     console.error('  让买家在 App 的「我的 › 解锁」页复制本机设备码发给你，然后：');
     console.error('');
-    console.error('    node issue.mjs --service yearly --device 3F2A1C…（32 位十六进制）');
+    console.error('    node issue.mjs --service lifetime --device 3F2A1C…（32 位十六进制）');
     console.error('');
     console.error('  提示：买家发来的码带连字符/空格没关系，这里会自动归一化。');
     process.exit(1);
@@ -184,9 +185,9 @@ if (!SERVICES.includes(service)) {
 
 requireValidDevice();
 
-// 周期默认值：月付 30 天、年费 365 天；永久档不设到期。
-// --days 可覆盖（买二送一、补发延期之类都用它）。
-const defaultDays = service === 'yearly' ? 365 : 30;
+// 周期默认值：临时档 7 天；买断档不设到期。
+// --days 可覆盖（补发延期之类都用它）。
+const defaultDays = service === 'trial' ? 7 : 0;
 const days = Number(arg('days', defaultDays));
 
 const issuedAt = new Date();

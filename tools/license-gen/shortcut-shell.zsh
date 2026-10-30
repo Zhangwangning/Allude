@@ -7,7 +7,7 @@
 #
 # 输入（两行）：
 #   第 1 行 = 买家设备码（大小写、连字符、空格都行，会自动归一化）
-#   第 2 行 = 档位：monthly（30 天）/ yearly（365 天）/ lifetime（永久）
+#   第 2 行 = 档位：trial（临时 7 天）/ lifetime（买断，永久）
 #
 # 输出：
 #   成功 → 一行凭证（237 字符，不带换行），直接进剪贴板发给买家
@@ -33,10 +33,9 @@ if [ ${#DEV} -ne 32 ]; then
 fi
 
 case "$SVC" in
-  monthly)  DAYS=30 ;;
-  yearly)   DAYS=365 ;;
+  trial)    DAYS=7 ;;
   lifetime) DAYS=0 ;;
-  *) print -- "ERR|档位必须是 monthly / yearly / lifetime"; exit 1 ;;
+  *) print -- "ERR|档位必须是 trial / lifetime"; exit 1 ;;
 esac
 
 I=$(date -u +%Y-%m-%dT%H:%M:%SZ)

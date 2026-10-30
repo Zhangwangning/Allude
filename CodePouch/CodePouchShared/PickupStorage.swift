@@ -289,8 +289,9 @@ struct WidgetSnapshot {
 enum MembershipPlan: String, Codable, CaseIterable, Identifiable {
     /// 未开通 = 免费版
     case none
-    case monthly
-    case yearly
+    /// 临时凭证（7 天有效，到期自动回落免费档）
+    case trial
+    /// 买断，永久
     case lifetime
 
     var id: String { rawValue }
@@ -298,13 +299,17 @@ enum MembershipPlan: String, Codable, CaseIterable, Identifiable {
     /// 是否已解锁全部能力（`none` 之外都算）
     var isActive: Bool { self != .none }
 
-    /// 设置行尾 / 徽章上的档位名
+    /// 设置行尾 / 徽章上的档位名。
+    ///
+    /// 🔴 2026-10-30：`monthly` / `yearly` 两个订阅档已删除，改为「临时 / 买断」。
+    ///    这是**买断制**，App 内不出现「会员」「年费」这类订阅话术。
+    ///    老快照里若存着 `monthly` / `yearly`，解码会失败 —— 但 `EntitlementSnapshot`
+    ///    的解码器对此有兜底（见 `init(from:)`），按 `isPro` 反推，不会把人打回免费。
     var title: String {
         switch self {
         case .none: return "未开通"
-        case .monthly: return "月付会员"
-        case .yearly: return "年费会员"
-        case .lifetime: return "永久会员"
+        case .trial: return "临时"
+        case .lifetime: return "永久"
         }
     }
 

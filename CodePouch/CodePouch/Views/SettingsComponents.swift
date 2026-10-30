@@ -60,10 +60,6 @@ struct SettingsRow: View {
     let symbol: String
     let title: String
     var subtitle: String? = nil
-    /// 副标题改用等宽字体（2026-10-30 加）。
-    /// 用于设备标识这类**需要逐字符核对**的串：比例字体下 0/O、1/l/I 看着一样，
-    /// 复制前想肉眼对一遍根本对不了。等宽 + 略小一号，36 位 UUID 在 iPhone 上刚好一行。
-    var subtitleMonospaced: Bool = false
     var detail: String? = nil
     var showsChevron: Bool = true
     var tint: Color = AppTheme.accent
@@ -112,9 +108,7 @@ struct SettingsRow: View {
 
             if let subtitle {
                 Text(subtitle)
-                    .font(subtitleMonospaced
-                          ? .system(size: 11, design: .monospaced)
-                          : .system(size: 12))
+                    .font(.system(size: 12))
                     .foregroundStyle(.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }

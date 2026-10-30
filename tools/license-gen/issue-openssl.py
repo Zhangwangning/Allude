@@ -11,14 +11,14 @@
 #   · `/usr/bin/python3` + `/usr/bin/openssl` 是 macOS 自带的，最稳。
 #
 # 用法（与 issue.mjs 一致）：
-#   python3 issue-openssl.py --service monthly --device <32位HEX>
-#   python3 issue-openssl.py --service yearly  --device <码> --days 400 --note "订单尾号1234"
+#   python3 issue-openssl.py --service trial    --device <32位HEX>        # 临时，默认 7 天
+#   python3 issue-openssl.py --service lifetime --device <码> --note "订单尾号1234"  # 买断，永久
 #   python3 issue-openssl.py --check "CLIP1.xxx.yyy"
 #
 # ── 凭证格式（四个字节细节，错一个就"签得出但验不过"）──────────────────
 #
 #   ① payload 是 JSON，字段**固定顺序** s / d / i / e / n，**无空格**
-#      例：{"s":"monthly","d":"5028…","i":"2026-09-24T14:13:26Z","e":"2026-10-24T14:13:26Z"}
+#      例：{"s":"trial","d":"5028…","i":"2026-09-24T14:13:26Z","e":"2026-10-01T14:13:26Z"}
 #      —— JSON 文本本身就是签名对象的一部分，多一个空格签名就不同。
 #   ② 该 JSON 的 UTF-8 字节做 **base64url**（`+`→`-`、`/`→`_`、**去掉 `=`**）
 #   ③ 签名对象是 **`CLIP1.<payloadB64>` 整段**（含前缀，挡版本重放）
@@ -41,7 +41,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 KEY_PATH = os.path.join(HERE, 'private-key.pem')
 
 PREFIX = 'CLIP1'
-SERVICES = ('monthly', 'yearly', 'lifetime')
+SERVICES = ('trial', 'lifetime')
 DEVICE_RE = re.compile(r'^[0-9A-F]{32}$')
 
 OPENSSL = '/usr/bin/openssl'
@@ -284,7 +284,7 @@ def main(argv) -> int:
         print('✗ --device 给了 %d 个码，但 --batch 是 %d。' % (len(devices), batch))
         return 1
 
-    default_days = 365 if service == 'yearly' else 30
+    default_days = 7 if service == 'trial' else 0
     days = int(opts['days']) if isinstance(opts.get('days'), str) else default_days
     note = opts.get('note')
 
