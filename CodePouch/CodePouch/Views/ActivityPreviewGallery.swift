@@ -288,6 +288,59 @@ enum MockupArt {
     static func name(_ kind: Kind, scheme: ColorScheme) -> String {
         scheme == .dark ? kind.dark : kind.light
     }
+
+    // MARK: 壁纸亮度（描边不透明度用）
+
+    /// 机模**灵动岛两侧壁纸**的平均亮度（0…1，Rec.709）。
+    ///
+    /// 只采岛体左右那两条窄带：那里就是描边贴着的背景，岛本身是黑的、不能算进去。
+    /// 结果按图名缓存 —— 每帧重解一张 1350×2760 的图会让滑动明显掉帧。
+    static func wallpaperBrightness(scheme: ColorScheme) -> CGFloat {
+        let key = name(.home, scheme: scheme)
+        if let cached = brightnessCache[key] { return cached }
+        let value = measureBrightness(imageName: key)
+        brightnessCache[key] = value
+        return value
+    }
+
+    private static var brightnessCache: [String: CGFloat] = [:]
+
+    /// 岛体在 450pt 设计宽里占 39.5…410.5，两侧留白各约 15pt。
+    private static let sampleStrips = [
+        CGRect(x: 24, y: 38, width: 15, height: 42),
+        CGRect(x: 411, y: 38, width: 15, height: 42),
+    ]
+
+    private static func measureBrightness(imageName: String) -> CGFloat {
+        guard let cg = UIImage(named: imageName)?.cgImage else { return 0.5 }
+        let scale = CGFloat(cg.width) / 450        // 1350px ↔ 450pt
+        var total: CGFloat = 0
+        var counted = 0
+        for strip in sampleStrips {
+            let px = CGRect(x: strip.minX * scale, y: strip.minY * scale,
+                            width: strip.width * scale, height: strip.height * scale)
+            guard let crop = cg.cropping(to: px) else { continue }
+            total += averageLuminance(of: crop)
+            counted += 1
+        }
+        return counted > 0 ? total / CGFloat(counted) : 0.5
+    }
+
+    /// 把整块缩小画进 1×1 像素 —— 逐像素平均最省事的写法。
+    private static func averageLuminance(of image: CGImage) -> CGFloat {
+        var pixel = [UInt8](repeating: 0, count: 4)
+        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+              let ctx = CGContext(data: &pixel, width: 1, height: 1,
+                                  bitsPerComponent: 8, bytesPerRow: 4, space: space,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { return 0.5 }
+        ctx.interpolationQuality = .medium
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        let r = CGFloat(pixel[0]) / 255
+        let g = CGFloat(pixel[1]) / 255
+        let b = CGFloat(pixel[2]) / 255
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    }
 }
 
 // MARK: - 锁屏机模
@@ -365,6 +418,8 @@ struct LockScreenShell<Content: View>: View {
 
 struct ActivityPreviewGallery: View {
     @EnvironmentObject private var store: PickupStore
+    /// 机模与描边强度都按外观分档，所以要读当前外观。
+    @Environment(\.colorScheme) private var colorScheme
 
     /// 预览分页：0 展开 / 1 紧凑 / 2 锁屏。
     /// 🔴 2026-10-28 主人：三个机模做成**滑动切换**，底部一排按钮指示当前页
@@ -442,9 +497,22 @@ struct ActivityPreviewGallery: View {
     /// 所以取色必须与岛内码走同一条路（`islandTint` 亮度插值），不能另取品牌原色 ——
     /// 顺丰那种纯黑在暗壁纸上描边会直接隐形。
     ///
-    /// 强度：1pt / 0.85 → **0.8pt / 0.6**。原值在浅色壁纸上是一圈很硬的金边，
-    /// 抢过了取件码本身；压到 0.6 后只在边缘留一层色晕，编码颜色仍然读得出来。
-    private var islandKeyline: Color { islandTint(islandState.item.tint).opacity(0.6) }
+    /// 强度随壁纸亮度自适应：**0.75 − 0.30 × 亮度**，夹在 0.45…0.75。
+    ///
+    /// 亮壁纸上一圈实色环会显脏、抢走取件码的注意力，所以压到 0.45 一带；
+    /// 暗壁纸上它是唯一的轮廓线索，要顶到 0.75 一带才看得见。
+    /// 亮度由 `MockupArt.wallpaperBrightness` 现场从机模图采样，不写死。
+    private var islandKeylineOpacity: Double {
+        let brightness = Double(MockupArt.wallpaperBrightness(scheme: colorScheme))
+        return min(0.75, max(0.45, 0.75 - 0.30 * brightness))
+    }
+
+    private var islandKeyline: Color {
+        islandTint(islandState.item.tint).opacity(islandKeylineOpacity)
+    }
+
+    /// 线宽固定 0.8pt：真机的 keyline 是「一根细线」而不是描边效果，
+    /// 线宽跟着亮度变会让它在深色下显得发糊。
     private let islandKeylineWidth: CGFloat = 0.8
 
     var body: some View {
