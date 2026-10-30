@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-码夹 CodeClip · App 图标生成器
+拾码 CodePouch · App 图标生成器
 ================================
 
 设计口径（2026-09-21 定稿）
@@ -48,7 +48,7 @@ N = BASE * SS               # 绘制画布边长
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APPICONSET = os.path.normpath(
-    os.path.join(HERE, "..", "CodeClip", "CodeClip", "Assets.xcassets", "AppIcon.appiconset")
+    os.path.join(HERE, "..", "CodePouch", "CodePouch", "Assets.xcassets", "AppIcon.appiconset")
 )
 
 # 几何比例全部以 1024 为基准书写，绘制时统一乘 SS

@@ -2,8 +2,8 @@
 //
 // 用法：
 //   swiftc -O -o /tmp/parser-regression \
-//     "/Volumes/ZWN/Downloads/Project/CodeClip/CodeClip/CodeClip/Models/PickupParser.swift" \
-//     /Volumes/ZWN/Downloads/Project/CodeClip/tools/parser-regression.swift
+//     "/Volumes/ZWN/Downloads/Project/CodePouch/CodePouch/CodePouch/Models/PickupParser.swift" \
+//     /Volumes/ZWN/Downloads/Project/CodePouch/tools/parser-regression.swift
 //   /tmp/parser-regression "/Volumes/ZWN/Downloads/Project/shortcuts-toolkit-master/快递取件码短信库.md"
 //
 // 说明：PickupParser 只依赖 Foundation，因此可与本文件单独编译，
@@ -25,6 +25,24 @@ enum PickupKind: String {
     }
 }
 
+// MARK: - 回归桩
+
+/// `PickupParser` 里会调用这个判断（把「3号货架」这种只描述货位的地址清空）。
+/// 真身在 `PickupRecord.addressIsShelfOnly`，但 PickupRecord 依赖 SwiftUI/Color，
+/// 无法与 PickupParser 单独编译 —— 回归只需**同义**实现，故在此复刻一份。
+/// ⚠️ 改了真身必须同步这里，否则回归会与线上口径漂移。
+enum PickupRecord {
+    static func addressIsShelfOnly(_ address: String, shelf: String?) -> Bool {
+        guard let shelf, !shelf.isEmpty else { return false }
+        let compact = address.replacingOccurrences(of: " ", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !compact.isEmpty else { return false }
+        let forms = ["\(shelf)号货架", "货架\(shelf)", "货架号\(shelf)",
+                     "货架号：\(shelf)", "货架号:\(shelf)"]
+        return forms.contains(compact)
+    }
+}
+
 // MARK: - 读语料
 
 let corpusPath = CommandLine.arguments.count > 1
@@ -39,30 +57,41 @@ guard let corpus = try? String(contentsOfFile: corpusPath, encoding: .utf8) else
 // 语料支持两种形态（2026-09-21 扩容后语料改为纯行）：
 //   ① 编号行 `12. 【xx】...`（历史格式）
 //   ② 纯文本行  `【xx】...`（现行格式）
-// 优先按编号解析；若一条都没解析到，退回「非空且非 Markdown 结构行」的纯行模式。
+//
+// 🔴 2026-10-28 修：两种形态**可能同时命中**。全量语料库（`短信语料库_v1.md`）
+// 的短信正文里本身就有「1.京东已安排服务工程师…」「2.关注"甘肃电信"公众号…」
+// 这种编号行，旧逻辑一看"有编号行"就只走编号模式，449 段只解析出 8 条，
+// 汇总全错。现在两种模式都收集，**取条数多的那一种**；纯行模式再把
+// 不以「【」开头的行当作上一条的续行合并（长短信导出时会被折成多行）。
 let numberedPattern = try! NSRegularExpression(pattern: #"^\s*\d+\.\s*(.+)$"#)
-var cases: [String] = []
+var numberedCases: [String] = []
+var lineCases: [String] = []
 for line in corpus.split(separator: "\n", omittingEmptySubsequences: false) {
     let text = String(line)
     let range = NSRange(text.startIndex..., in: text)
     if let m = numberedPattern.firstMatch(in: text, range: range),
        let r = Range(m.range(at: 1), in: text) {
-        cases.append(String(text[r]))
+        numberedCases.append(String(text[r]))
     }
+
+    // 纯行模式：跳过空行、标题行（#）、列表项（- / * / |）、引用（>）与代码围栏
+    let trimmed = text.trimmingCharacters(in: .whitespaces)
+    if trimmed.isEmpty { continue }
+    if trimmed.hasPrefix("#") || trimmed.hasPrefix("-") || trimmed.hasPrefix("*")
+        || trimmed.hasPrefix("|") || trimmed.hasPrefix(">") || trimmed.hasPrefix("```") {
+        continue
+    }
+    // ⚠️ 不要做「续行合并」：试过按「不以【开头就并回上一条」，结果把
+    // 「您有包裹已到达天誉店，取件码为T5-4-1368…」这种**没有【】发件人的独立短信**
+    // 也并了进去，精选库从 64 条缩成 63 条、少测一条。一行一条最安全，
+    // 极少数被折行的长短信最多让非快递段落多一条，不影响取件凭证命中数。
+    lineCases.append(trimmed)
 }
 
-if cases.isEmpty {
-    // 纯行模式：跳过空行、标题行（#）、列表项（- / * / |）与代码围栏
-    for line in corpus.split(separator: "\n", omittingEmptySubsequences: false) {
-        let text = line.trimmingCharacters(in: .whitespaces)
-        guard !text.isEmpty else { continue }
-        if text.hasPrefix("#") || text.hasPrefix("-") || text.hasPrefix("*")
-            || text.hasPrefix("|") || text.hasPrefix(">") || text.hasPrefix("```") {
-            continue
-        }
-        cases.append(text)
-    }
-}
+let cases = numberedCases.count >= lineCases.count ? numberedCases : lineCases
+print("语料形态：编号 \(numberedCases.count) 条 / 纯行 \(lineCases.count) 条 → 采用"
+      + (numberedCases.count >= lineCases.count ? "编号" : "纯行")
+      + "（\(cases.count) 条）")
 
 // MARK: - 校验正则全部可编译
 
@@ -91,12 +120,17 @@ print(compileFailures == 0 ? "  ✅ 9/9 公式均可被 ICU 编译" : "  ⚠️ 
 
 // MARK: - 逐条解析
 
-print("\n=== 51 条语料解析结果 ===")
+print("\n=== \(cases.count) 条语料解析结果 ===")
 var kindCount: [String: Int] = [:]
 var addressHit = 0
 var standaloneAddressHit = 0
+var courierHit = 0
+var lockerHit = 0
+var shelfHit = 0
 var unrecognized: [Int] = []
 var seenValues: [String: Int] = [:]
+/// 可疑项：原文里明明有线索，字段却是空的（供人工逐条核对）
+var suspects: [String] = []
 
 for (index, sms) in cases.enumerated() {
     let serial = index + 1
@@ -107,15 +141,43 @@ for (index, sms) in cases.enumerated() {
     }
     kindCount[result.kind.label, default: 0] += 1
     if !result.address.isEmpty { addressHit += 1 }
+    if !result.courier.isEmpty { courierHit += 1 }
+    if !result.locker.isEmpty { lockerHit += 1 }
+    if !result.shelf.isEmpty { shelfHit += 1 }
     seenValues[result.value, default: 0] += 1
 
     var extra: [String] = []
     if result.value.isEmpty { extra.append("⚠️值为空") }
     if result.address.isEmpty { extra.append("⚠️无地址") }
+    if result.courier.isEmpty { extra.append("· 无快递公司") }
     let flag = extra.isEmpty ? "" : "  " + extra.joined(separator: " ")
-    print(String(format: "%2d. [%@] %@  | %@  | %@%@",
+
+    // 2026-10-28：把 courier / 货架 / 柜位一起打出来 —— 这三个字段是后来加的，
+    // 之前回归只看 kind/value/company/address，等于没测。
+    print(String(format: "%2d. [%@] %@  | 平台: %@  | 公司: %@  | 地址: %@  | 柜: %@  | 架: %@%@",
                  serial, result.kind.label, result.value,
-                 result.company, result.address, flag))
+                 result.company.isEmpty ? "-" : result.company,
+                 result.courier.isEmpty ? "-" : result.courier,
+                 result.address.isEmpty ? "-" : result.address,
+                 result.locker.isEmpty ? "-" : result.locker,
+                 result.shelf.isEmpty ? "-" : result.shelf,
+                 flag))
+
+    // 线索在、字段空的组合 → 记进可疑清单
+    if result.locker.isEmpty, sms.contains("柜") {
+        suspects.append("#\(serial) 原文含「柜」但柜位为空")
+    }
+    if result.shelf.isEmpty, sms.contains("货架") {
+        suspects.append("#\(serial) 原文含「货架」但货架号为空")
+    }
+    if result.company.isEmpty {
+        suspects.append("#\(serial) 短信平台为空")
+    }
+}
+
+if !suspects.isEmpty {
+    print("\n=== 可疑项（原文有线索、字段为空）===")
+    for line in suspects { print("  " + line) }
 }
 
 // 独立地址字段单独统计（parser 内部已优先使用，这里单独跑一遍看覆盖率）
@@ -136,16 +198,42 @@ if !unrecognized.isEmpty {
 print("类型分布：" + kindCount.sorted { $0.key < $1.key }
         .map { "\($0.key) \($0.value)" }.joined(separator: " / "))
 print("地址提取：\(addressHit)/\(cases.count)（其中走独立「地址:」字段 \(standaloneAddressHit) 条）")
+print("快递公司：\(courierHit)/\(cases.count)")
+print("快递柜位：\(lockerHit)/\(cases.count)")
+print("驿站货架：\(shelfHit)/\(cases.count)")
 print("空值条数：\(seenValues[""] ?? 0)")
 
-// 与 V7.3.0 基线对照
-let baselineRecognized = 51
-let baselineAddress = 50
+// 与 V7.3.0 基线对照（2026-10-28 更新）
+//
+// 三套语料各有基线，按规模自动识别；自定义语料（比如临时从「信息」App 导出的
+// 一小批）不做回退判定，只打印数值 —— 否则会拿精选库的 64 去比 52 条，误报回退。
+//   · 449+ 条「手机短信全量副本」：识别 **192** / 地址 **189**
+//     （2026-10-28 把 macOS「信息」App 导出的 18 条增量并入后，从 175/173 升到 192/189）
+//   · 60–80 条「快递短信精选库」：识别 64 / 地址 60
+//   · 其他：只报数
+//
+// 地址数为什么是 60 而不是 61：`#57`「您的邮件 NH1575… 已他人签收」原先锚出
+// 地址「他人签收」—— 那是签收状态，不是地址，2026-10-28 改成整段弃用。
+// **掉 1 条是修对了**，基线同步下调。
+let baseline: (recognized: Int, address: Int, label: String)? = {
+    if cases.count >= 400 { return (192, 189, "全量库") }
+    if (60...80).contains(cases.count) { return (64, 60, "精选库") }
+    return nil
+}()
 let recognized = cases.count - unrecognized.count
-print("\n=== 与 V7.3.0 基线对照 ===")
-print("识别：\(recognized)/\(cases.count)（基线 \(baselineRecognized)/\(cases.count)）"
-      + (recognized >= baselineRecognized ? "  ✅ 无回退" : "  ❌ 回退"))
-print("地址：\(addressHit)/\(cases.count)（基线 \(baselineAddress)/\(cases.count)）"
-      + (addressHit >= baselineAddress ? "  ✅ 无回退" : "  ⚠️ 需核对"))
 
-exit(recognized >= baselineRecognized && compileFailures == 0 ? 0 : 2)
+guard let baseline else {
+    print("\n=== 基线对照 ===")
+    print("自定义语料（\(cases.count) 条）：识别 \(recognized)、地址 \(addressHit)"
+          + "、公司 \(courierHit)、柜位 \(lockerHit)")
+    print("不做回退判定 —— 只看逐条结果对不对。")
+    exit(compileFailures == 0 ? 0 : 2)
+}
+
+print("\n=== 与 V7.3.0 基线对照（\(baseline.label)）===")
+print("识别：\(recognized)/\(cases.count)（基线 \(baseline.recognized)/\(cases.count)）"
+      + (recognized >= baseline.recognized ? "  ✅ 无回退" : "  ❌ 回退"))
+print("地址：\(addressHit)/\(cases.count)（基线 \(baseline.address)/\(cases.count)）"
+      + (addressHit >= baseline.address ? "  ✅ 无回退" : "  ⚠️ 需核对"))
+
+exit(recognized >= baseline.recognized && compileFailures == 0 ? 0 : 2)

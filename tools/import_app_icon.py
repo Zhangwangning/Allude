@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-码夹 CodeClip · App 图标导入器
+拾码 CodePouch · App 图标导入器
 ================================
 
 把设计稿导出的图标（圆角方形 PNG、圆角外透明）规范化为 iOS 要求的
@@ -58,7 +58,7 @@ ROOT = os.path.dirname(HERE)
 
 DEFAULT_SOURCE = os.path.join(HERE, "appicon-source", "icon-source.png")
 APPICONSET = os.path.join(
-    ROOT, "CodeClip", "CodeClip", "Assets.xcassets", "AppIcon.appiconset"
+    ROOT, "CodePouch", "CodePouch", "Assets.xcassets", "AppIcon.appiconset"
 )
 
 TARGET = 1024          # iOS AppIcon 交付尺寸

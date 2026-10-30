@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# 码夹 CodeClip · 真机安装脚本（免费 Personal Team 自动签名路径）
+# 拾码 CodePouch · 真机安装脚本（免费 Personal Team 自动签名路径）
 #
 # 背景：免费 Apple ID 签名的描述文件只有 **7 天**有效期，到期后 App 图标点不开，
 #       重跑本脚本即可续签，无需打开 Xcode 图形界面。
@@ -25,23 +25,28 @@
 set -euo pipefail
 
 DEV_UDID="${DEV_UDID:-00008140-001138A92E01801C}"
-export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode-beta.app/Contents/Developer}"
+# 优先 Xcode 正式版；本机无 beta 时退回 Xcode.app（2026-10-30 修：原先硬编码 beta 路径会直接失败）
+if [[ -d /Applications/Xcode-beta.app ]]; then
+  export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode-beta.app/Contents/Developer}"
+else
+  export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJ_ROOT="$SCRIPT_DIR/../CodeClip"
-PROJ="$PROJ_ROOT/CodeClip.xcodeproj"
+PROJ_ROOT="$SCRIPT_DIR/../CodePouch"
+PROJ="$PROJ_ROOT/CodePouch.xcodeproj"
 CFG_DIR="$PROJ_ROOT/Config"
-DD="/tmp/codeclip-device"
+DD="/tmp/codepouch-device"
 BUNDLE_ID="com.jikezhang.codeclip"
-SCHEME="CodeClip"
+SCHEME="CodePouch"
 
 # 🔴 Xcode 27 beta 下 `xcrun` 不把 devicectl 暴露为可查找工具（xcrun --find 会报
 #    "unable to find utility"），但二进制实际存在于 Developer/usr/bin/。
 #    若直接 `xcrun devicectl` 会被 xcrun 当场判失败，安装步骤永远到不了。
 #    这里先 xcrun 探测，失败则回退到已知的 beta 完整路径。
 DEVICECTL="$(xcrun --find devicectl 2>/dev/null || true)"
-[[ -z "$DEVICECTL" ]] && DEVICECTL="$(ls /Applications/Xcode-beta.app/Contents/Developer/usr/bin/devicectl 2>/dev/null || true)"
-[[ -n "$DEVICECTL" ]] || die "找不到 devicectl（Xcode 27 下 xcrun 不暴露该工具，且 beta 路径缺失）"
+[[ -z "$DEVICECTL" ]] && DEVICECTL="$(ls "$DEVELOPER_DIR/usr/bin/devicectl" 2>/dev/null || true)"
+[[ -n "$DEVICECTL" ]] || die "找不到 devicectl（Xcode 27 下 xcrun 不暴露该工具，且 \$DEVELOPER_DIR 下缺失）"
 
 C_OK="\033[32m"; C_WARN="\033[33m"; C_ERR="\033[31m"; C_DIM="\033[2m"; C_OFF="\033[0m"
 say()  { printf "%b\n" "$1"; }
@@ -65,7 +70,7 @@ done
 # ── 1. 恢复 App Group ────────────────────────────────────────────────
 if [[ "$MODE" == "restore" ]]; then
   restored=0
-  for f in "$CFG_DIR"/CodeClip.entitlements "$CFG_DIR"/CodeClipWidget.entitlements; do
+  for f in "$CFG_DIR"/CodePouch.entitlements "$CFG_DIR"/CodePouchWidget.entitlements; do
     if [[ -f "$f.appgroup-backup" ]]; then
       mv -f "$f.appgroup-backup" "$f"
       ok "已恢复 $(basename "$f")"
@@ -80,7 +85,7 @@ fi
 
 # ── 2. 摘掉 App Group ────────────────────────────────────────────────
 if [[ "$MODE" == "no-appgroup" ]]; then
-  for f in "$CFG_DIR"/CodeClip.entitlements "$CFG_DIR"/CodeClipWidget.entitlements; do
+  for f in "$CFG_DIR"/CodePouch.entitlements "$CFG_DIR"/CodePouchWidget.entitlements; do
     [[ -f "$f.appgroup-backup" ]] || cp -p "$f" "$f.appgroup-backup"
     cat > "$f" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -127,8 +132,8 @@ if [[ -n "$TEAM" ]] && ! [[ "$TEAM" =~ ^[A-Z0-9]{10}$ ]]; then
 fi
 if [[ -z "$TEAM" ]]; then
   die "取不到 Team ID。请二选一：
-    A) 在 Xcode 里打开工程 → 选 CodeClip target → Signing & Capabilities
-       → Team 下拉选「<你的名字> (Personal Team)」，CodeClipWidget target 也选一遍；
+    A) 在 Xcode 里打开工程 → 选 CodePouch target → Signing & Capabilities
+       → Team 下拉选「<你的名字> (Personal Team)」，CodePouchWidget target 也选一遍；
     B) 重跑本脚本并加 --team XXXXXXXXXX（Team ID 可在 Xcode 账号页查到）。"
 fi
 ok "Team ID：$TEAM"
@@ -149,31 +154,40 @@ ok "已写入 DEVELOPMENT_TEAM（$cnt 处配置）"
 say ""
 say "── 构建（首次会联网生成证书与描述文件，稍慢）─────────"
 set +e
+# 🔴 必须带 OTHER_SWIFT_FLAGS="-disable-sandbox"：缺了这参数，宏插件服务
+#    （swift-plugin-server）在沙箱内起不来，会报 FoundationModelsMacros 找不到，
+#    并连带抛出一堆假错误（如 SwipeActionRow 'self' is immutable），
+#    与代码本身无关。2026-10-30 实测：同一份源码模拟器带该参数 0 error。
 xcodebuild -project "$PROJ" \
            -scheme "$SCHEME" \
            -configuration Debug \
            -destination "id=$DEV_UDID" \
            -derivedDataPath "$DD" \
            -allowProvisioningUpdates \
-           build 2>&1 | tee /tmp/codeclip-device-build.log | \
-  grep -E "error:|warning:|CodeSign|BUILD SUCCEEDED|BUILD FAILED|No profiles|doesn't include" || true
-rc=${PIPESTATUS[0]}
+           OTHER_SWIFT_FLAGS="-disable-sandbox" \
+           build > /tmp/codepouch-device-build.log 2>&1
+rc=$?
 set -e
+# 🔴 不要写成 `xcodebuild ... | tee log | grep ...` 再取 PIPESTATUS：
+#    `|| true` 会重置 PIPESTATUS，导致构建失败也拿到 rc=0，
+#    随后把空的 .app 目录当产物去安装（报 Info.plist missing）。2026-10-30 修。
+grep -E "error:|warning:|CodeSign|BUILD SUCCEEDED|BUILD FAILED|No profiles|doesn't include" \
+  /tmp/codepouch-device-build.log || true
 
 if [[ $rc -ne 0 ]]; then
   say ""
-  if grep -q "application-groups" /tmp/codeclip-device-build.log; then
+  if grep -q "application-groups" /tmp/codepouch-device-build.log; then
     warn "签名被 App Group 拦下 —— 这正是免费账号的已知限制。"
     say ""
     say "  解决办法：改用降级模式重装"
     say "    ${C_DIM}$0 --no-appgroup${C_OFF}"
     say ""
-  elif grep -qi "developer mode" /tmp/codeclip-device-build.log; then
+  elif grep -qi "developer mode" /tmp/codepouch-device-build.log; then
     warn "iPhone 尚未开启开发者模式。"
     say "  设置 → 隐私与安全性 → 开发者模式 → 打开 → 重启 → 确认"
     say ""
   else
-    warn "构建失败，完整日志：/tmp/codeclip-device-build.log"
+    warn "构建失败，完整日志：/tmp/codepouch-device-build.log"
     say "  常见原因：Apple ID 未登录 / 描述文件额度用尽（免费账号 7 天 10 个 App ID）"
     say ""
   fi
@@ -184,6 +198,9 @@ ok "构建成功"
 # ── 6. 安装到真机 ────────────────────────────────────────────────────
 APP="$(find "$DD/Build/Products/Debug-iphoneos" -maxdepth 1 -name "$SCHEME.app" | head -1)"
 [[ -n "$APP" ]] || die "找不到构建产物 $SCHEME.app"
+# 🔴 只判断目录存在不够：构建失败时 xcodebuild 会留下一个空壳 .app 目录，
+#    安装时才报 "Info.plist: missing"。这里前置校验，把问题挡在安装之前。
+[[ -f "$APP/Info.plist" ]] || die "产物不完整（缺 Info.plist）：$APP —— 构建实际失败，请查 /tmp/codepouch-device-build.log"
 
 say ""
 say "── 安装到 iPhone ────────────────────────────────"

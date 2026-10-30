@@ -2,8 +2,8 @@
 //
 // 用法：
 //   swiftc -O -o /tmp/brand-check \
-//     "/Volumes/ZWN/Downloads/Project/CodeClip/CodeClip/CodeClipShared/CourierBrand.swift" \
-//     /Volumes/ZWN/Downloads/Project/CodeClip/tools/brand-check/main.swift
+//     "/Volumes/ZWN/Downloads/Project/CodePouch/CodePouch/CodePouchShared/CourierBrand.swift" \
+//     /Volumes/ZWN/Downloads/Project/CodePouch/tools/brand-check/main.swift
 //   /tmp/brand-check
 //
 // 目的：关键词匹配优先级、官方图资源挂载、key 唯一性 —— 这三项是「图标挂错」
@@ -128,7 +128,10 @@ let projectRoot = URL(fileURLWithPath: #filePath)      // …/tools/brand-check/
     .deletingLastPathComponent()                        // …/tools/brand-check
     .deletingLastPathComponent()                        // …/tools
     .deletingLastPathComponent()                        // 工程根
-let brandsDir = projectRoot.appendingPathComponent("CodeClip/CodeClip/Assets.xcassets/Brands")
+// 🔴 projectRoot 是**仓库根**（main.swift 上溯三层：main.swift → brand-check → tools），
+//    所以路径第一段是工程根 `CodePouch/`，第二段必须是共享层 `CodePouchShared/`
+//    —— Brands 不在 App 自己的 Assets 里。2026-10-30 修（原写法指向 App 的 Assets，找不到目录）。
+let brandsDir = projectRoot.appendingPathComponent("CodePouch/CodePouchShared/Assets.xcassets/Brands")
 
 print("\n── 2b. 资源落盘校验 ──")
 print("目录：\(brandsDir.path)")

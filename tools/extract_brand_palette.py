@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-码夹 CodeClip · 品牌调色板提取器
+拾码 CodePouch · 品牌调色板提取器
 ==================================
 
-从各品牌的官方图标里提取主色，生成 `CodeClipShared/BrandPalette.swift`，
+从各品牌的官方图标里提取主色，生成 `CodePouchShared/BrandPalette.swift`，
 供详情页做「跟着品牌走的磨砂玻璃卡片」。
 
 为什么提取而不是手填
@@ -21,23 +21,24 @@
     直接 `convert("RGB")` 会让透明区变**黑**，黑色会被当成品牌色混进调色板；
   · 提取的对象与用户实际看到的那张图**完全同一张**，不存在两处口径。
 
-缩到 64×64 后走 PIL 的中位切分量化（MEDIANCUT），取占比最高的 3 色。
+缩到 64×64 后走 PIL 的中位切分量化（MEDIANCUT），取「面积最大的彩色簇」为首的 3 色。
 
-🔴 **近白永远沉底，不参与「主色」竞争**（2026-09-21 修订）
-------------------------------------------------------
-早先的口径是「白底图标就该得到浅色玻璃」（顺丰 / EMS / 丰巢），靠给近白按
-0.25 折算面积来让彩底浮上来。**这个口径是错的**：白底图标的识别色是**那个
-彩色的 LOGO**，不是纸白本身 —— 优速的白玻璃跟没上色一样，白瞎了品牌身份。
-现在改成：**排序时近白一律排到所有非白之后**（只在近白内部再按面积排）。
-顺丰 / EMS / 百世 / 优速 / 宅急送 这 5 个白底图标因此拿到各自的颜色，
-其余 41 个品牌的首色**一个都没变**。
+🔴 **排序口径 = 剔除白底后，取面积最大的一块**（2026-10-28 二次修订）
+---------------------------------------------------------------
+主人原话：「我们读图标的主题色……你把图标模糊掉，那个颜色一般就是了」。
+模糊的数学含义就是「按面积加权」，只是整图平均会被白底和黑字稀释
+（实测：丰巢 → `#D5C999` 米黄、顺丰 → `#8D8989` 灰，都不像品牌色）。
+所以这里**只去掉近白，再按面积取首色** —— 等价于「模糊掉白底之后的那一块」。
 
-⚠️ **近黑（≤ 30）不适用该规则**：抖音、得物、安能的主色就是黑，黑是它们的
-品牌色，不能被当成"没识别度"处理。
+⚠️ 为什么不按「饱和度优先」：试过，会被小面积点睛色带跑。
+   安能物流是黑底 + 白字 + 一个橙箭头（橙只占 2.4%），抖音是黑底 + 彩色音符，
+   按饱和优先会读成橙 / 粉红，可图标给人的第一印象明明是黑。
 
-灰度兜底：若沉底后浮上来的首色**仍是灰的**（饱和度 < 0.15 且非近黑），
-说明量化把彩色 LOGO 和底色混成了灰 —— 此时从候选中另挑第一个
-「非近黑且饱和度 ≥ 0.20」的色顶到最前（宅急送的绿猴就靠这一步拿到绿）。
+⚠️ **量化档数必须是 24 色、最小占比 0.5%**（2026-10-28 实测）：
+   旧参数是 8 色 / 2%，顺丰那个米粒大的红点会被并进黑档，整图读出来是
+   `#322222` 暗褐；提到 24 色 / 0.5% 后，安能橙、淘宝闪购橙、熊猫快收橙才浮得出来。
+   仍读不准的极少数（顺丰：黑环黑字 + 极小红点，红色才是识别色）走
+   `CourierBrand.manualColors` 人工覆盖 —— 那是**例外表**，不是常态。
 
 对比度交给 UI 侧控制（渐变色一律压到低透明度），不靠这里筛色。
 
@@ -58,18 +59,23 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 
-SOURCE_DIR = os.path.join(ROOT, "CodeClip", "CodeClipShared", "Assets.xcassets", "Brands")
-OUT = os.path.join(ROOT, "CodeClip", "CodeClipShared", "BrandPalette.swift")
+SOURCE_DIR = os.path.join(ROOT, "CodePouch", "CodePouchShared", "Assets.xcassets", "Brands")
+OUT = os.path.join(ROOT, "CodePouch", "CodePouchShared", "BrandPalette.swift")
 
 TOP_N = 3          # 每张图取几个色
 SAMPLES = 64       # 量化前先缩到多少像素
-MIN_SHARE = 0.02   # 占比低于此的碎色丢弃
+QUANT_COLORS = 24  # 量化档数：24 才保得住「米粒大的点睛色」（8 会把它并进黑档）
+MIN_SHARE = 0.005  # 占比低于此的碎色丢弃（0.5%，旧值 2% 会吃掉点睛色）
 DISTINCT = 40      # 与已选色差异小于此的视为重复色，丢弃
 
 NEAR_WHITE = 232   # 三通道都不低于此值 → 视为「近白」，排序时一律沉底
-NEAR_BLACK = 30    # 三通道都不高于此值 → 视为「近黑」，黑是它的品牌色，不受上述规则影响
-GRAY_SAT = 0.15    # 饱和度低于此视为「灰」（没有识别度）→ 触发灰度兜底
-PREFER_SAT = 0.20  # 灰度兜底时，替补色至少要有的饱和度
+NEAR_BLACK = 30    # 三通道都不高于此值 → 视为「近黑」，归入无彩档（黑也可能是品牌色）
+STRONG_SAT = 0.35  # 饱和度达到此值 → 品牌识别色（档 0）
+WEAK_SAT = 0.20    # 饱和度达到此值 → 弱彩（档 1）
+FILL_LUM = 170     # 亮度高于此且饱和度 < FILL_SAT → 视为「白/灰底切出来的浅色填充」，降级
+FILL_SAT = 0.40
+RESCUE_SAT = 0.30  # 降级后替补色至少要有的饱和度
+CANDIDATES = 6     # 内部多留几个候选，供降级时挑选（对外仍只输出 TOP_N）
 
 
 def _is_near_white(rgb: tuple[int, int, int]) -> bool:
@@ -93,12 +99,12 @@ def _diff(a: tuple[int, int, int], b: tuple[int, int, int]) -> int:
 def dominant_colors(path: str, n: int = TOP_N) -> list[tuple[int, tuple[int, int, int]]]:
     """返回 [(像素数, (r,g,b)), ...]，按「代表色」降序。
 
-    排序规则见模块文档：**近白永远沉底**（非白内部按面积降序），
-    近黑不受影响；若浮上来的首色仍是灰的，再走一次灰度兜底。
+    排序规则见模块文档：**彩色簇优先**（档 0 → 档 3），同档内按面积降序。
+    近白沉底、近黑并入无彩档 —— 黑只有在整张图没有任何彩簇时才会当主色。
     """
     im = Image.open(path).convert("RGB").resize((SAMPLES, SAMPLES), Image.LANCZOS)
-    # 多切几档再筛，避免「只有 3 档时把某个真实色切没」
-    quantized = im.quantize(colors=8, method=Image.Quantize.MEDIANCUT)
+    # 24 档：档数太少会把「点睛色」（顺丰红点、安能橙）并进黑档，整图读出来是脏灰
+    quantized = im.quantize(colors=QUANT_COLORS, method=Image.Quantize.MEDIANCUT)
 
     palette = quantized.getpalette() or []
     counts = quantized.getcolors() or []          # [(count, palette_index), ...]
@@ -112,25 +118,36 @@ def dominant_colors(path: str, n: int = TOP_N) -> list[tuple[int, tuple[int, int
         if len(rgb) == 3:
             candidates.append((count, rgb))       # type: ignore[arg-type]
 
-    # 近白沉底；同一档内面积大的在前
-    candidates.sort(key=lambda item: (_is_near_white(item[1]), -item[0]))
+    def tier(rgb: tuple[int, int, int]) -> int:
+        # 只剩一条排序纪律：**近白沉底，其余按面积**。
+        # 试过「彩色簇优先」，结果被小面积点睛色带跑：
+        # 安能是黑底 + 白字 + 一个橙箭头（橙仅 2.4%），抖音是黑底 + 彩色音符，
+        # 按饱和优先会把它们读成橙/粉，而图标给人的印象就是黑。
+        # 「模糊掉白底，剩下最大那块」才是主人说的那个印象色。
+        return 1 if _is_near_white(rgb) else 0
+
+    candidates.sort(key=lambda item: (tier(item[1]), -item[0]))
 
     out: list[tuple[int, tuple[int, int, int]]] = []
     for count, rgb in candidates:
         if any(_diff(rgb, kept) < DISTINCT for _, kept in out):
             continue
         out.append((count, rgb))
-        if len(out) >= n:
+        if len(out) >= max(n, CANDIDATES):
             break
 
-    # 灰度兜底：首色是灰（且不是"黑就是品牌色"那种黑）→ 换一个够饱和的顶上
-    if out and not _is_near_black(out[0][1]) and _saturation(out[0][1]) < GRAY_SAT:
-        swap = next((i for i, (_, rgb) in enumerate(out)
-                     if not _is_near_black(rgb) and _saturation(rgb) >= PREFER_SAT), None)
-        if swap is not None:
-            out.insert(0, out.pop(swap))
+    # 降级：首色是「白底/灰底切出来的浅色填充」（EMS 的浅蓝、宅急送的浅灰）
+    # 时，它不是品牌色，换成后面第一个够饱和的候选。
+    if out:
+        r, g, b = out[0][1]
+        lum = 0.299 * r + 0.587 * g + 0.114 * b
+        if lum > FILL_LUM and _saturation(out[0][1]) < FILL_SAT:
+            swap = next((i for i, (_, rgb) in enumerate(out)
+                         if _saturation(rgb) >= RESCUE_SAT and not _is_near_white(rgb)), None)
+            if swap is not None:
+                out.insert(0, out.pop(swap))
 
-    return out
+    return out[:n]
 
 
 def to_hex(rgb: tuple[int, int, int]) -> str:

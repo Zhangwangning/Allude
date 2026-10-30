@@ -4,7 +4,7 @@ import CryptoKit
 // ============================================================================
 // 凭证核心：签发 / 验签 / 台账
 //
-// 与 tools/license-gen/issue.mjs、CodeClipShared/OfflineLicense.swift 三者
+// 与 tools/license-gen/issue.mjs、CodePouchShared/OfflineLicense.swift 三者
 // **必须字节一致**，否则「卖家说签了、买家说验不过」。四处细节：
 //   ① payload JSON 字段顺序固定 s→d→i→e→n，中间不能有空格
 //   ② 载荷编码用 base64url（+→-  /→_  去掉 =）

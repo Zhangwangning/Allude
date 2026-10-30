@@ -2,8 +2,8 @@
 //
 // 用法：
 //   swiftc -O -o /tmp/notify-check \
-//     "/Volumes/ZWN/Downloads/Project/CodeClip/CodeClip/CodeClip/Models/PickupNotifier.swift" \
-//     /Volumes/ZWN/Downloads/Project/CodeClip/tools/notify-check/main.swift
+//     "/Volumes/ZWN/Downloads/Project/CodePouch/CodePouch/CodePouch/Models/PickupNotifier.swift" \
+//     /Volumes/ZWN/Downloads/Project/CodePouch/tools/notify-check/main.swift
 //   /tmp/notify-check
 //
 // 为什么需要这个脚本：通知是**唯一没法在模拟器里自动验证**的东西 ——
@@ -35,6 +35,16 @@ struct PickupRecord: Identifiable, Equatable {
     var code: String
     var kind: PickupKind
     var address: String
+    var isPickedUp = false
+    var receivedAt = Date()
+    // 2026-10-28：通知标题要接柜位/货架，桩里同步补上（真身是 Optional）
+    var locker: String? = nil
+    var shelf: String? = nil
+}
+
+/// `PickupNotifier` 的提醒重排会读全表；自检只测文案，给个空实现即可。
+enum PickupStorage {
+    static func load() -> [PickupRecord] { [] }
 }
 
 var failures = 0
@@ -43,9 +53,9 @@ func expect(_ condition: Bool, _ message: String) {
     if !condition { failures += 1 }
 }
 
-// MARK: - 1. 标题 = 类别 + 取件码；正文 = 平台 | 地址
+// MARK: - 1. 标题 = 取件码本身；正文 = 平台 | 地址
 
-print("── 1. 标题=取件码 / 正文=「平台 | 地址」 ──")
+print("── 1. 标题=码本身（不带类型字样）/ 正文=「平台 | 地址」 ──")
 
 let samples: [(PickupRecord, String)] = [
     (PickupRecord(company: "兔喜生活", code: "C-4082", kind: .code,
@@ -63,9 +73,28 @@ let samples: [(PickupRecord, String)] = [
 for (record, tag) in samples {
     let copy = PickupNotifier.notificationCopy(for: record)
     let expectedBody = "\(record.company)\(PickupNotifier.fieldSeparator)\(record.address)"
-    let ok = copy.title == "\(record.kind.label) \(record.code)" && copy.body == expectedBody
+    // 2026-10-28：标题 = 码（有柜位/货架就接在后面），不再拼任何类型前缀
+    let suffix = [record.locker, record.shelf]
+        .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .first { !$0.isEmpty } ?? ""
+    let expectedTitle = suffix.isEmpty ? record.code : "\(record.code) \(suffix)"
+    let ok = copy.title == expectedTitle && copy.body == expectedBody
     expect(ok, "[\(tag)] 标题「\(copy.title)」/ 正文「\(copy.body)」")
 }
+
+// 2026-10-28 主人：码后面有柜位就带上，没有就空着
+print("\n── 1b. 码 + 柜位（有就带，没有不占位） ──")
+var withLocker = PickupRecord(company: "丰巢", code: "8-2-4031", kind: .code,
+                              address: "甘州院子南门")
+withLocker.locker = "3号柜"
+let lockerCopy = PickupNotifier.notificationCopy(for: withLocker)
+expect(lockerCopy.title == "8-2-4031 3号柜", "带柜位：标题「\(lockerCopy.title)」")
+
+var withShelf = PickupRecord(company: "菜鸟驿站", code: "110-5-6178", kind: .code,
+                             address: "临沂大学")
+withShelf.shelf = "3-12"
+let shelfCopy = PickupNotifier.notificationCopy(for: withShelf)
+expect(shelfCopy.title == "110-5-6178 3-12", "带货架：标题「\(shelfCopy.title)」")
 
 // MARK: - 2. 分隔符必须是英文管道符
 
@@ -102,13 +131,24 @@ let longBody = PickupNotifier.notificationCopy(for: longest).body
 expect(longBody.hasSuffix(longest.address), "25 字长地址完整出现在正文末尾")
 expect(longBody.contains(longest.address), "长地址未被截断")
 
-// MARK: - 5. 空地址的兜底
+// MARK: - 5. 空地址：不显示地址（不留占位文案）
 
-print("\n── 5. 没有地址时不能出现空正文 ──")
+print("\n── 5. 没识别到地址 → 正文只留平台 ──")
 let noAddress = PickupRecord(company: "手动添加", code: "6602", kind: .code, address: "")
 let noAddressCopy = PickupNotifier.notificationCopy(for: noAddress)
-expect(!noAddressCopy.body.isEmpty, "空地址有兜底文案「\(noAddressCopy.body)」")
+expect(noAddressCopy.body == "手动添加", "空地址时正文 = 「\(noAddressCopy.body)」（不带分隔符、不带占位词）")
+expect(!noAddressCopy.body.contains("未识别"), "正文不含「未识别」这类占位文案")
 expect(noAddressCopy.title.contains("6602"), "空地址时标题仍以码为准「\(noAddressCopy.title)」")
+
+// 平台与地址都空 → 正文留空（只显示标题），不能崩也不能冒出分隔符
+let blank = PickupRecord(company: "", code: "6603", kind: .code, address: "")
+let blankCopy = PickupNotifier.notificationCopy(for: blank)
+expect(blankCopy.body.isEmpty, "平台与地址全空时正文为空「\(blankCopy.body)」")
+
+// 只有地址、没有平台 → 正文就是地址本身（前面不能挂分隔符）
+let addressOnly = PickupRecord(company: "", code: "6604", kind: .code, address: "甘州院子南门丰巢")
+let addressOnlyCopy = PickupNotifier.notificationCopy(for: addressOnly)
+expect(addressOnlyCopy.body == "甘州院子南门丰巢", "只有地址时正文 = 「\(addressOnlyCopy.body)」")
 
 // MARK: - 6. 一次多条时每条的码都是各自标题的主角
 

@@ -2,10 +2,10 @@
 //
 // 用法：
 //   swiftc -O -o /tmp/dedupe-check \
-//     "/Volumes/ZWN/Downloads/Project/CodeClip/CodeClip/CodeClipShared/PickupModels.swift" \
-//     "/Volumes/ZWN/Downloads/Project/CodeClip/CodeClip/CodeClipShared/CourierBrand.swift" \
-//     "/Volumes/ZWN/Downloads/Project/CodeClip/CodeClip/CodeClipShared/BrandPalette.swift" \
-//     "/Volumes/ZWN/Downloads/Project/CodeClip/tools/dedupe-check/main.swift"
+//     "/Volumes/ZWN/Downloads/Project/CodePouch/CodePouch/CodePouchShared/PickupModels.swift" \
+//     "/Volumes/ZWN/Downloads/Project/CodePouch/CodePouch/CodePouchShared/CourierBrand.swift" \
+//     "/Volumes/ZWN/Downloads/Project/CodePouch/CodePouch/CodePouchShared/BrandPalette.swift" \
+//     "/Volumes/ZWN/Downloads/Project/CodePouch/tools/dedupe-check/main.swift"
 //   /tmp/dedupe-check
 //
 // 断言的语义（2026-09-21 主人要求）：

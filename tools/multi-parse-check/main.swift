@@ -2,8 +2,8 @@
 //
 // 用法：
 //   swiftc -O -o /tmp/multi-parse \
-//     "…/CodeClip/Models/PickupParser.swift" \
-//     "…/CodeClipShared/CourierBrand.swift" \
+//     "…/CodePouch/Models/PickupParser.swift" \
+//     "…/CodePouchShared/CourierBrand.swift" \
 //     tools/multi-parse-check/main.swift
 //   /tmp/multi-parse
 //

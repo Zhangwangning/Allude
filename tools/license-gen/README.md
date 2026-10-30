@@ -16,7 +16,7 @@ App 的「我的 › VIP 模式 › 导入凭证」。
 - 不进 App 包
 - 换机器时手工拷过去；**丢了就再也签不出能被 App 接受的码**
 
-对应的公钥硬编码在 App 的 `CodeClipShared/OfflineLicense.swift`
+对应的公钥硬编码在 App 的 `CodePouchShared/OfflineLicense.swift`
 （`LicenseVerifier.publicKeysBase64`）。
 
 > 🔴 私钥泄露 = 任何人都能自造永久会员，且没有补救手段。

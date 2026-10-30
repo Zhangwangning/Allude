@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ============================================================================
-// 码夹 CodeClip · 离线凭证签发工具
+// 拾码 CodePouch · 离线凭证签发工具
 //
 // 用法：
 //   node issue.mjs --service lifetime --device 3F2A…（32 位十六进制）

@@ -24,8 +24,8 @@ set -uo pipefail
 
 DEVICE=${DEVICE:-C4C58A0C-6879-480E-A42F-7F8B1B1D9F5C}
 BUNDLE=${BUNDLE:-com.jikezhang.codeclip}
-APP=${APP:-/tmp/codeclip-dd/Build/Products/Debug-iphonesimulator/CodeClip.app}
-OUT=${OUT:-/Volumes/ZWN/Downloads/Project/CodeClip/Design-Snapshots}
+APP=${APP:-/tmp/codeclip-dd/Build/Products/Debug-iphonesimulator/CodePouch.app}
+OUT=${OUT:-/Volumes/ZWN/Downloads/Project/CodePouch/Design-Snapshots}
 PRO=${PRO:-1}
 
 if [ ! -d "$APP" ]; then
