@@ -436,6 +436,17 @@ struct ActivityPreviewGallery: View {
     //    / 岛的亮化口径一致；原始品牌色（顺丰纯黑）在暗色页面上全部隐形。
     private var accent: Color { islandTint(multiState.item.tint) }
 
+    /// 灵动岛外圈描边 = **取件码的颜色**（2026-10-30 主人口径）。
+    ///
+    /// 它不是装饰：真机的 `keylineTint` 就是让"这个岛和下面那个码是同一件事"的视觉线索，
+    /// 所以取色必须与岛内码走同一条路（`islandTint` 亮度插值），不能另取品牌原色 ——
+    /// 顺丰那种纯黑在暗壁纸上描边会直接隐形。
+    ///
+    /// 强度：1pt / 0.85 → **0.8pt / 0.6**。原值在浅色壁纸上是一圈很硬的金边，
+    /// 抢过了取件码本身；压到 0.6 后只在边缘留一层色晕，编码颜色仍然读得出来。
+    private var islandKeyline: Color { islandTint(islandState.item.tint).opacity(0.6) }
+    private let islandKeylineWidth: CGFloat = 0.8
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 26) {
@@ -557,9 +568,9 @@ struct ActivityPreviewGallery: View {
                 .frame(width: 371, height: IslandExpandedMetrics.previewTotalHeight)
                 .background(Color.black, in: .rect(cornerRadius: 46, style: .continuous))
                 .overlay {
-                    // 真机岛外圈有一道 `keylineTint`（品牌色细线），暗壁纸上是唯一的轮廓线索
+                    // 真机岛外圈有一道 `keylineTint`（= 取件码颜色），暗壁纸上是唯一的轮廓线索
                     RoundedRectangle(cornerRadius: 46, style: .continuous)
-                        .strokeBorder(accent.opacity(0.85), lineWidth: 1)
+                        .strokeBorder(islandKeyline, lineWidth: islandKeylineWidth)
                 }
                 // 岛内恒为深色底，品牌色与文字取深色档（与真机一致）
                 .environment(\.colorScheme, .dark)
@@ -580,7 +591,7 @@ struct ActivityPreviewGallery: View {
             .padding(.horizontal, 7)
             .frame(width: 230, height: 43)
             .background(Color.black, in: .capsule)
-            .overlay { Capsule().strokeBorder(accent.opacity(0.85), lineWidth: 1) }
+            .overlay { Capsule().strokeBorder(islandKeyline, lineWidth: islandKeylineWidth) }
             .environment(\.colorScheme, .dark)
         }
     }
