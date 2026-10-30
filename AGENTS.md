@@ -131,16 +131,26 @@ xcrun simctl io <UDID> screenshot /tmp/x.png
 ## 自检脚本
 
 ```bash
-# 短信解析回归（语料 64 条 / 61 地址基线）
+# 短信解析回归 —— **必须传语料路径**，省略会直接报「读不到语料文件」并 exit 1。
+# 精选库（64 条，基线：识别 64 / 地址 60），语料在**仓库外**，换机器可能不存在
 swiftc -O -o /tmp/parser-regression \
   CodePouch/CodePouch/Models/PickupParser.swift \
-  tools/parser-regression/main.swift && /tmp/parser-regression
+  tools/parser-regression/main.swift && \
+/tmp/parser-regression "/Volumes/ZWN/Downloads/Project/shortcuts-toolkit-master/快递取件码短信库.md"
+
+# 全量库（514 段，基线：识别 192 / 地址 189），语料就在仓库根，长期可用
+/tmp/parser-regression 短信语料库_v1.md
 
 # 品牌表 + 资源落盘自检（必须用绝对路径编译，它靠 #filePath 推仓库根）
 swiftc -O -o /tmp/brand-check \
   "$PWD/CodePouch/CodePouchShared/CourierBrand.swift" \
   "$PWD/CodePouch/CodePouchShared/BrandPalette.swift" \
   "$PWD/tools/brand-check/main.swift" && /tmp/brand-check
+# 这条目前会 exit 1。2 项失败是**既有业务差异**，不是回归，别去「修」：
+#   ① 「某某冷门驿站」期望映射到「快递驿站」；
+#   ② 品牌表多挂 5 个未登记资产（brand-duoduodaishou / miaozhan /
+#     shoujianbao / tiantian / yundakuaichaoshi）。
+# 除这两项外必须全 ✓；要让脚本变绿，改的是期望值，不是品牌表。
 
 # 签发 / 验签凭证
 python3 tools/license-gen/issue-openssl.py --service lifetime --device <32位HEX>
