@@ -704,6 +704,25 @@ struct LicenseActivationView: View {
         case unlocked(String)
         /// 激活失败：标题 + 下一步该怎么做
         case rejected(String, String)
+
+        /// 弹窗标题 / 正文。**结果必须由用户确认后才消失** ——
+        /// 原先是在列表下方长出一张结果卡：验签失败时那行字很容易被
+        /// 键盘或屏幕边缘挡掉，用户只看到"点了没反应"。
+        var alertTitle: String {
+            switch self {
+            case .unlocked: return "已激活"
+            case .rejected(let title, _): return title
+            }
+        }
+
+        var alertMessage: String {
+            switch self {
+            case .unlocked(let label):
+                return "凭证验证通过，全部功能已解锁（\(label)）。"
+            case .rejected(_, let message):
+                return message
+            }
+        }
     }
 
     private var deviceCode: String { LicenseDevice.current }
@@ -721,7 +740,6 @@ struct LicenseActivationView: View {
                 statusSection
                 deviceSection
                 activateSection
-                if let outcome { resultSection(outcome) }
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 14)
@@ -734,6 +752,17 @@ struct LicenseActivationView: View {
         .cloaksTabBar()
         .navigationBarTitleDisplayMode(.inline)
         .scrollDismissesKeyboard(.interactively)
+        .onAppear(perform: runLicenseScaffold)
+        // 验签结果走系统弹窗：必须点「确认」才消失，不给"没看清就滑走"的机会。
+        // 关闭（无论点确认还是点外部）就把 outcome 清掉，避免下次进页面又弹一次。
+        .alert(outcome?.alertTitle ?? "",
+               isPresented: Binding(get: { outcome != nil },
+                                    set: { if !$0 { outcome = nil } }),
+               presenting: outcome) { _ in
+            Button("确认", role: .cancel) { outcome = nil }
+        } message: { outcome in
+            Text(outcome.alertMessage)
+        }
     }
 
     // MARK: 当前状态
@@ -880,31 +909,22 @@ struct LicenseActivationView: View {
         .buttonStyle(.plain)
         .disabled(trimmed.isEmpty)
     }
-    // MARK: 结果
 
-    /// 激活结果：同样走「卡 + 卡外说明」。失败的原因是下一步该怎么做，
-    /// 属于说明文字而不是行内值 —— 放进卡里会把行撑成两行、每行都变高。
-    @ViewBuilder
-    private func resultSection(_ outcome: Outcome) -> some View {
-        switch outcome {
-        case .unlocked(let label):
-            SettingsGroup(title: "激活结果") {
-                SettingsPlainRow(title: "已激活") {
-                    Label(label, systemImage: "checkmark.seal.fill")
-                        .font(.system(size: 17))
-                        .foregroundStyle(AppTheme.doneTint)
-                        .labelStyle(.titleAndIcon)
-                }
-            }
+    // MARK: 截图脚手架
 
-        case .rejected(let title, let message):
-            SettingsGroup(title: "激活结果", note: message) {
-                SettingsPlainRow(title: title) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 16))
-                        .foregroundStyle(Color.red)
-                }
-            }
+    /// `LICENSE_VOUCHER=<凭证>` 注入一串凭证并自动点一次「激活」。
+    ///
+    /// 命令行点不到屏幕上的按钮（本机没有 idb / applesimutils，AppleScript 会被
+    /// 辅助功能权限拒绝），没有这个入口就拍不到结果弹窗 —— 而弹窗正是要验的东西。
+    /// 走真实 `activate()`，不是伪造 outcome，验签与写盘都会被真的执行。
+    private func runLicenseScaffold() {
+        guard let voucher = ProcessInfo.processInfo.environment["LICENSE_VOUCHER"],
+              !voucher.isEmpty else { return }
+        Task { @MainActor in
+            // 等导航转场落定再弹，否则 alert 会被转场动画吃掉。
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            text = voucher
+            activate()
         }
     }
 
