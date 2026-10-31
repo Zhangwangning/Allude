@@ -177,6 +177,14 @@ swiftc -O -o /tmp/parser-regression \
 # 全量库（514 段，基线：识别 192 / 地址 189），语料就在仓库根，长期可用
 /tmp/parser-regression 短信语料库_v1.md
 
+# 驿站匹配自检（63 条精选短信，逐条比对「这条应该判成哪个驿站」）
+swiftc -O -o /tmp/station-check \
+  CodePouch/CodePouchShared/CourierBrand.swift \
+  CodePouch/CodePouchShared/BrandPalette.swift \
+  tools/station-check/main.swift && /tmp/station-check
+# 退出码 0 = 全符合基线；1 = 有差异并逐条打印。
+# 🔴 改匹配规则时不要为了让它是绿的而改 expected.txt —— 先确认每处变化都符合预期。
+
 # 品牌表 + 资源落盘自检（必须用绝对路径编译，它靠 #filePath 推仓库根）
 swiftc -O -o /tmp/brand-check \
   "$PWD/CodePouch/CodePouchShared/CourierBrand.swift" \
