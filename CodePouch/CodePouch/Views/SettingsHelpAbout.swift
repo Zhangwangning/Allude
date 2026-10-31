@@ -88,18 +88,6 @@ struct HelpCenterView: View {
                 }
                 .cardSurface()
 
-                VStack(spacing: 0) {
-                    NavigationLink {
-                        VersionHistoryView()
-                    } label: {
-                        SettingsRow(symbol: "clock.arrow.circlepath", title: "版本记录",
-                                    detail: AppVersion.display,
-                                    tint: AppTheme.todayTint)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .cardSurface()
-
                 PageFooter()
             }
             .padding(.horizontal, AppTheme.hInset)
@@ -159,6 +147,7 @@ struct HelpCenterView: View {
 // MARK: - 关于
 
 struct AboutView: View {
+    @EnvironmentObject private var store: PickupStore
     @State private var copiedMail = false
 
     var body: some View {
@@ -180,6 +169,33 @@ struct AboutView: View {
                              document: .terms,
                              symbol: "doc.text.fill",
                              tint: AppTheme.sky)
+                }
+                .cardSurface()
+
+                VStack(spacing: 0) {
+                    SettingsRow(symbol: "internaldrive.fill", title: "已存记录",
+                                detail: "\(store.records.count) 条",
+                                showsChevron: false,
+                                tint: AppTheme.todayTint)
+
+                    SettingsDivider()
+
+                    SettingsRow(symbol: "doc.text.fill", title: "数据文件",
+                                detail: PickupStorage.fileSizeDescription,
+                                showsChevron: false,
+                                tint: AppTheme.doneTint)
+                }
+                .cardSurface()
+
+                VStack(spacing: 0) {
+                    NavigationLink {
+                        VersionHistoryView()
+                    } label: {
+                        SettingsRow(symbol: "clock.arrow.circlepath", title: "版本历史",
+                                    detail: AppVersion.display,
+                                    tint: AppTheme.amber)
+                    }
+                    .buttonStyle(.plain)
                 }
                 .cardSurface()
 
@@ -219,11 +235,12 @@ struct AboutView: View {
     /// 顶部标识：名称 + 版本号。参考图里这一块都是居中的图标 + 名字 + 版本。
     private var header: some View {
         VStack(spacing: 8) {
-            Image(systemName: "shippingbox.fill")
-                .font(.system(size: 34, weight: .semibold))
-                .foregroundStyle(AppTheme.champagneInk)
-                .frame(width: 76, height: 76)
-                .background(AppTheme.champagneLight, in: .rect(cornerRadius: 18, style: .continuous))
+            // 2026-10-31 主人：关于页顶部用 App 自己的 logo（已去掉白底）。
+            // 图标本身带圆角，这里不再叠圆角遮罩，免得边缘出现双重圆角。
+            Image("BrandLogo")
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 78, height: 78)
 
             Text("拾码 CodePouch")
                 .font(.system(size: 19, weight: .semibold))

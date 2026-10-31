@@ -48,7 +48,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .courier:      return "快递公司"
         case .station:      return "驿站管理"
         case .guide:        return "使用教程"
-        case .license:      return "完整版"
+        case .license:      return "拾码 Pro"
         case .activation:   return "激活"
         case .storage:      return "本机数据"
         case .feedback:     return "反馈"
@@ -162,7 +162,6 @@ struct SettingsView: View {
             VStack(spacing: 16) {
                 proBanner
                 settingsSection
-                dataSection
                 activationSection
                 aboutSection
                 footer
@@ -502,9 +501,7 @@ struct SettingsView: View {
                 } label: {
                     SettingsRow(symbol: "platter.filled.top.iphone",
                                 title: "实时活动",
-                                subtitle: DeviceProfile.hasDynamicIsland
-                                    ? "灵动岛常驻最新取件码，锁屏同显"
-                                    : "锁屏实时活动卡，取件前抬手即见",
+                                subtitle: activitySubtitle,
                                 tint: AppTheme.accent)
                 }
                 .buttonStyle(.plain)
@@ -534,11 +531,28 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
 
-                // 使用教程已移入「帮助与反馈」二级页（2026-10-31 重排：
-                // 根页只留高频入口，教程、法律文档这类低频内容下沉）。
+                SettingsDivider()
+
+                // 使用教程（2026-10-31 主人：放回「通用」最后一个）
+                NavigationLink {
+                    UsageGuideView()
+                } label: {
+                    SettingsRow(symbol: "book.fill", title: "使用教程",
+                                subtitle: "入门 · 短信自动化 · 截屏收件",
+                                tint: AppTheme.violet)
+                }
+                .buttonStyle(.plain)
             }
             .cardSurface()
         }
+    }
+
+    /// 实时活动那一行的副标题（2026-10-31 主人：它是付费功能，免费版要说清楚）。
+    private var activitySubtitle: String {
+        if !store.isPro { return "拾码 Pro 功能 · 解锁后可常驻灵动岛与锁屏" }
+        return DeviceProfile.hasDynamicIsland
+            ? "灵动岛常驻最新取件码，锁屏同显"
+            : "锁屏实时活动卡，取件前抬手即见"
     }
 
     // MARK: 顶部订阅横幅
@@ -569,7 +583,7 @@ struct SettingsView: View {
                     }
                     .foregroundStyle(AppTheme.champagneInk)
 
-                    Text(store.isPro ? "完整版已开通" : "查看订阅")
+                    Text(store.isPro ? "拾码 Pro 已开通" : "了解拾码 Pro")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(AppTheme.champagneInk.opacity(0.8))
                 }
@@ -598,35 +612,6 @@ struct SettingsView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: 本机数据
-
-    private var dataSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "本机数据")
-
-            VStack(spacing: 0) {
-                SettingsRow(symbol: "internaldrive.fill", title: "已存记录",
-                            detail: "\(store.records.count) 条",
-                            showsChevron: false,
-                            tint: AppTheme.todayTint)
-
-                SettingsDivider()
-
-                SettingsRow(symbol: "doc.text.fill", title: "数据文件",
-                            detail: PickupStorage.fileSizeDescription,
-                            showsChevron: false,
-                            tint: AppTheme.doneTint)
-            }
-            .cardSurface()
-
-            Text("数据只保存在这台设备上，不上传任何服务器。")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .padding(.horizontal, 4)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
     // MARK: 激活（设备码 / 签名凭证）
 
     /// 2026-10-31 主人要求：未上架期间用离线签名凭证激活，入口放设置里。
@@ -640,7 +625,7 @@ struct SettingsView: View {
                     ActivationView()
                 } label: {
                     SettingsRow(symbol: "key.horizontal.fill", title: "激活",
-                                subtitle: store.isPro ? "已解锁完整版" : "设备 UUID · 签名凭证",
+                                subtitle: store.isPro ? "拾码 Pro 已解锁" : "设备 UUID · 签名凭证",
                                 tint: AppTheme.indigo)
                 }
                 .buttonStyle(.plain)
@@ -870,7 +855,7 @@ struct SubscriptionUnavailablePane: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("完整版")
+        .navigationTitle("拾码 Pro")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -938,7 +923,7 @@ struct FullVersionView: View {
                 withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
             }
         }
-        .navigationTitle("完整版")
+        .navigationTitle("拾码 Pro")
         .navigationBarTitleDisplayMode(.inline)
         .cloaksTabBar()
         .onAppear {
@@ -1168,7 +1153,7 @@ struct FullVersionView: View {
                 .font(.system(size: 22, weight: .bold))
                 .foregroundStyle(AppTheme.champagneInk)
 
-            Text(store.plan == .lifetime ? "已买断 · 永久有效" : "完整版已开通")
+            Text(store.plan == .lifetime ? "已买断 · 永久有效" : "拾码 Pro 已开通")
                 .font(.system(size: 13))
                 .foregroundStyle(AppTheme.champagneInk.opacity(0.75))
         }

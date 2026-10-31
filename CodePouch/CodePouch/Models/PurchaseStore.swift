@@ -152,7 +152,7 @@ final class PurchaseStore: ObservableObject {
                 case .verified(let transaction):
                     await transaction.finish()
                     await refreshEntitlement()
-                    message = "已解锁完整版"
+                    message = "已解锁 拾码 Pro"
                 case .unverified:
                     message = "购买凭据校验失败，请稍后重试"
                 }

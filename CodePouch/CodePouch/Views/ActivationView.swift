@@ -143,7 +143,7 @@ struct ActivationView: View {
             SectionHeader(title: "当前状态")
 
             VStack(spacing: 0) {
-                SettingsPlainRow(title: "完整版") {
+                SettingsPlainRow(title: "拾码 Pro") {
                     Text(store.isPro ? "已解锁" : "未解锁")
                         .font(.system(size: 17))
                         .foregroundStyle(store.isPro ? AppTheme.doneTint : .secondary)
