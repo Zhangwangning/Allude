@@ -607,7 +607,7 @@ struct SettingsView: View {
                     ActivationView()
                 } label: {
                     SettingsRow(symbol: "key.horizontal.fill", title: "激活",
-                                subtitle: store.isPro ? "已解锁完整版" : "设备码 · 签名凭证",
+                                subtitle: store.isPro ? "已解锁完整版" : "设备 UUID · 签名凭证",
                                 tint: AppTheme.indigo)
                 }
                 .buttonStyle(.plain)

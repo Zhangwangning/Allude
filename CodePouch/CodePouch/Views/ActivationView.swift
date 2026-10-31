@@ -46,7 +46,7 @@ struct ActivationView: View {
 
     private var deviceSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "本机设备码")
+            SectionHeader(title: "设备 UUID")
 
             VStack(alignment: .leading, spacing: 12) {
                 // 打码显示（2026-10-31 主人：UUID 加密显示）。
@@ -65,7 +65,7 @@ struct ActivationView: View {
                         HStack(spacing: 5) {
                             Image(systemName: model.copiedDevice ? "checkmark" : "doc.on.doc")
                                 .font(.system(size: 11, weight: .semibold))
-                            Text(model.copiedDevice ? "已复制" : "复制设备码")
+                            Text(model.copiedDevice ? "已复制" : "复制")
                                 .font(.system(size: 13, weight: .medium))
                         }
                         .foregroundStyle(model.copiedDevice ? AppTheme.doneTint : AppTheme.accent)
@@ -83,7 +83,7 @@ struct ActivationView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .cardSurface()
 
-            Text("把设备码发给卖家换取签名凭证。设备码只存在本机，不上传。")
+            Text("把设备 UUID 发给卖家换取签名凭证。它只存在本机，不上传。")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 4)
