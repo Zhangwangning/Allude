@@ -253,13 +253,21 @@ enum LicenseActivation {
         //    `current` 会"读不到就生成并写缓存"，保证这次导入之后，
         //    App Group 里必定有一份与本机一致的设备码 —— 否则扩展侧
         //    下次校验时读到 nil，会把这刚导入的凭证当成不是本机的。
-        switch LicenseVerifier.verify(raw, device: LicenseDevice.current) {
+        // 🔴 2026-10-31：**激活也必须按水位判定**，否则"到期后把系统时间调回去、
+        //    再把同一张凭证粘一次"就能续命 —— 因为 `verify` 默认用 `Date()`，
+        //    而 `load()` 用的是 `max(Date(), 水位)`。两条路径口径不一致就是漏洞。
+        //
+        // 水位（`lastSeenAt`）只增不减：它是"这台设备曾经见过的最晚时间"，
+        // 已经用过的到期凭证，无论怎么调时间都过不去。
+        let current = EntitlementSnapshot.load()
+        let reference = max(Date(), current.lastSeenAt ?? .distantPast)
+
+        switch LicenseVerifier.verify(raw, now: reference, device: LicenseDevice.current) {
         case .failure(let error):
             return .failure(error)
 
         case .success(let payload):
             let incoming = payload.service.plan
-            let current = EntitlementSnapshot.load()
 
             // 🔴 「只升不降」只在当前权益**有有效凭证背书**时才成立（2026-09-24 修订）。
             //

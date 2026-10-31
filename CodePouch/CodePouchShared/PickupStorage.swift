@@ -571,12 +571,17 @@ struct EntitlementSnapshot: Codable, Equatable {
     /// 它写入的是"可被复核的授权"，而不是"一个本地开关"。
     @discardableResult
     static func activate(plan: MembershipPlan, expiresAt: Date?, license: String) -> Bool {
-        save(EntitlementSnapshot(isPro: plan.isActive,
-                                 plan: plan,
-                                 updatedAt: .now,
-                                 expiresAt: expiresAt,
-                                 lastSeenAt: Date(),
-                                 license: license))
+        // 🔴 水位**只增不减**：写入时取「当前时间」与「已有水位」的较大者。
+        //    原来这里直接写 `Date()`，用户把系统时间调回去再激活一次，
+        //    就能把水位一起拉回过去，到期凭证等于复活。
+        let previous = load()
+        let reference = max(Date(), previous.lastSeenAt ?? .distantPast)
+        return save(EntitlementSnapshot(isPro: plan.isActive,
+                                        plan: plan,
+                                        updatedAt: .now,
+                                        expiresAt: expiresAt,
+                                        lastSeenAt: reference,
+                                        license: license))
     }
 
     @discardableResult

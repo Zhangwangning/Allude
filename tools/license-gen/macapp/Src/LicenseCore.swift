@@ -238,9 +238,14 @@ final class LicenseCore {
     }
 
     private func writeKeyFile(_ pem: String) throws {
+        // 🔴 私钥落地必须是 0600、目录 0700（2026-10-31 审查修）。
+        //    默认 umask 会写成 0644 —— 同机任何账号都能读，等于没有保护。
         try FileManager.default.createDirectory(at: LicenseCore.workspaceDir,
-                                                withIntermediateDirectories: true)
+                                                withIntermediateDirectories: true,
+                                                attributes: [.posixPermissions: 0o700])
         try pem.write(to: keyURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600],
+                                              ofItemAtPath: keyURL.path)
         privateKey = nil
     }
 
