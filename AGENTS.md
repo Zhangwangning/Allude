@@ -181,6 +181,15 @@ xcrun simctl terminate UDID com.jikezhang.codeclip; sleep 4
 - 选择状态存 **App Group**（`codeclip.appIcon`）：灵动岛/锁屏由小组件进程渲染，
   读不到 App 偏好。三张图在 App 与 Widget **两个**资源目录里各有一份。
 - `AppMarkIcon`（灵动岛/锁屏）、关于页顶部都读同一份选择。
+- 🔴 **给灵动岛用的图片资源，`Contents.json` 必须写两样**，否则折叠态会渲染成
+  一个纯色方块（2026-11-01 真机修复）：
+  ```json
+  "properties": { "template-rendering-intent": "original" },
+  "images": [ 1x(60) / 2x(120) / 3x(180) 三档 ]
+  ```
+  WidgetKit 的 accented 渲染管线会把"没声明渲染意图的图"当模板涂成单色，
+  方形图标被涂完就是一个灰方块；只给 1x 一张也会踩到。旧的 `AppMark.imageset`
+  一直带着这两样，所以当年没暴露 —— 新加资源要照抄这个规格。
 - ⚠️ `setAlternateIconName` 在 `App.init()` 里调用太早（场景未连、连回调都不给），
   必须在视图出现之后调用。
 - 截图验收：`SCREEN=appicon` 看选择页，`APP_ICON=envelope|cards|hand` 强制切换；
