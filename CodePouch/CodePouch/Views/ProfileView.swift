@@ -549,12 +549,13 @@ struct SettingsView: View {
                 // 🔴 这里**故意不用**主题色（主题是蓝的）：横幅是营销面，
                 //    参照 Infuse 的高饱和橙来看更像"付费墙"，也更容易被注意到。
                 //    原来的 amber(#B45309) 起手偏褐，压到白底上像脏了。
-                LinearGradient(colors: [AppTheme.accentLight, AppTheme.accent],
+                LinearGradient(colors: [AppTheme.appleBlue,
+                                        AppTheme.appleBlue.opacity(0.82)],
                                startPoint: .topLeading,
                                endPoint: .bottomTrailing)
             }
             .clipShape(.rect(cornerRadius: AppTheme.cardRadius, style: .continuous))
-            .shadow(color: AppTheme.todayTint.opacity(0.25), radius: 12, y: 4)
+            .shadow(color: AppTheme.appleBlue.opacity(0.22), radius: 12, y: 4)
         }
         .buttonStyle(.plain)
     }
@@ -834,15 +835,14 @@ struct FullVersionView: View {
     // MARK: 页内标题
 
     private var titleBlock: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text("解锁完整版")
-                .font(.system(size: 26, weight: .bold))
-
-            Text("免费下载，按需解锁；不限条数，桌面小组件与实时活动全开。")
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+        // 两行标题（2026-10-31 主人指定文案）。断行位置按语义切：
+        // 「感谢」单独一行，「订阅 拾码 CodePouch Pro」整行 —— 与参考页同样的
+        // 大标题节奏，但不复制它的字句。
+        VStack(alignment: .leading, spacing: 2) {
+            Text("感谢")
+            Text("订阅 拾码 CodePouch Pro")
         }
+        .font(.system(size: 26, weight: .bold))
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -884,7 +884,7 @@ struct FullVersionView: View {
                 // 价格是这个卡片的主角：三档之间要比的是这个数
                 Text(price ?? "—")
                     .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(on ? AppTheme.accent : Color.primary)
+                    .foregroundStyle(on ? AppTheme.appleBlue : Color.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.55)
 
@@ -898,12 +898,12 @@ struct FullVersionView: View {
             .padding(.vertical, 16)
             .background {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(on ? AppTheme.accent.opacity(0.08)
+                    .fill(on ? AppTheme.appleBlue.opacity(0.08)
                               : Color(.secondarySystemGroupedBackground))
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(on ? AppTheme.accent : Color.clear, lineWidth: 2)
+                    .strokeBorder(on ? AppTheme.appleBlue : Color.clear, lineWidth: 2)
             }
             .overlay(alignment: .topTrailing) {
                 // 只靠描边颜色不够：截图、色弱、或渲染晚一帧都可能看错档位。
@@ -911,7 +911,7 @@ struct FullVersionView: View {
                 if on {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 15))
-                        .foregroundStyle(AppTheme.accent)
+                        .foregroundStyle(AppTheme.appleBlue)
                         .padding(7)
                 }
             }
@@ -921,7 +921,7 @@ struct FullVersionView: View {
                         .font(.system(size: 10, weight: .semibold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(AppTheme.accent, in: .capsule)
+                        .background(AppTheme.appleBlue, in: .capsule)
                         .foregroundStyle(.white)
                         .offset(y: -9)
                 }
@@ -982,7 +982,7 @@ struct FullVersionView: View {
                 .font(.system(size: 15, weight: .semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 13)
-                .background(canBuy ? AppTheme.accent : Color(.tertiarySystemFill), in: .capsule)
+                .background(canBuy ? AppTheme.appleBlue : Color(.tertiarySystemFill), in: .capsule)
                 .foregroundStyle(canBuy ? Color.white : Color.secondary)
         }
         .buttonStyle(.plain)
@@ -1010,9 +1010,9 @@ struct FullVersionView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 11)
                 .overlay {
-                    Capsule().strokeBorder(AppTheme.accent.opacity(0.55), lineWidth: 1.5)
+                    Capsule().strokeBorder(AppTheme.appleBlue.opacity(0.55), lineWidth: 1.5)
                 }
-                .foregroundStyle(AppTheme.accent)
+                .foregroundStyle(AppTheme.appleBlue)
         }
         .buttonStyle(.plain)
     }
@@ -1032,8 +1032,8 @@ struct FullVersionView: View {
             }
             .font(.system(size: 12))
             // 付费面上统一用橙，别让两条蓝色链接在整页里跳出来
-            .tint(AppTheme.accent)
-            .foregroundStyle(AppTheme.accent)
+            .tint(AppTheme.appleBlue)
+            .foregroundStyle(AppTheme.appleBlue)
         }
         .padding(.horizontal, 4)
         .id("bottom")
