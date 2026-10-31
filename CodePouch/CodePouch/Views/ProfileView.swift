@@ -747,7 +747,7 @@ final class FeedbackModel: ObservableObject {
 enum AppVersion {
     static var display: String {
         let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        return (short?.isEmpty == false) ? short! : "0.3.0"
+        return (short?.isEmpty == false) ? short! : "0.3.1"
     }
 }
 
