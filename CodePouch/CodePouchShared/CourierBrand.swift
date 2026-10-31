@@ -206,6 +206,12 @@ enum CourierBrand {
              asset: "brand-duoduodaishou"),
         Info(key: "绿驿", name: "绿驿生活", category: .station,
              from: 0x16A34A, to: 0x0E7433, glyph: .symbol("leaf.fill")),
+        // 2026-10-31 主人报的一条：短信以【欢猫驿站】开头，但表里没有这个品牌，
+        // 于是「驿站」只能靠地址里的另一家店命中。补进内置表后，
+        // 它作为**已知驿站品牌**参与匹配（配色/图标也随之统一）。
+        Info(key: "欢猫", name: "欢猫驿站", category: .station,
+             from: 0xFF7A45, to: 0xD94F1E, glyph: .symbol("storefront.fill"),
+             aliases: ["欢猫驿站"]),
         // 🔴 key 原来是「快递超市」这四个字 —— 太宽了：任何短信只要出现
         //    「某某快递超市」都会被认成韵达家的代收点（2026-10-31 主人报的
         //    「欢猫驿站」那条就是这么被误标的）。改成全名，只在真的写了
