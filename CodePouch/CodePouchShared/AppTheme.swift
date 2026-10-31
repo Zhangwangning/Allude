@@ -86,6 +86,16 @@ enum AppTheme {
     static let champagne      = Color(red: 0.85, green: 0.72, blue: 0.45)   // #D9B873
     /// 深金墨 —— 落在白底或浅金底上的**文字与图标**
     static let champagneInk   = Color(red: 0.44, green: 0.33, blue: 0.11)   // #70541C
+    /// 图标底色 —— 比 `champagneInk` 浅一档（2026-10-31 主人：图标太深了）。
+    ///
+    /// 图标是"实心金色方块 + 白色符号"，所以底色深浅由**白符号的对比度**决定：
+    /// ```
+    /// #70541C  7.06:1   ← 原值，偏深偏重
+    /// #8F6C2E  4.82:1   ← 现在这档，明显轻一档且仍清晰
+    /// #A8873F  3.39:1   ← 再浅就开始发虚，别越过这条
+    /// #D9B873  1.90:1   ← 白符号几乎看不见，不能用
+    /// ```
+    static let champagneIcon  = Color(red: 0.56, green: 0.42, blue: 0.18)   // #8F6C2E
 
     /// 付费面专用：**Apple 系统蓝**（保留，`champagne*` 是当前方案）
     static let appleBlue = Color(.systemBlue)

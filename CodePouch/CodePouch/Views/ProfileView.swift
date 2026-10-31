@@ -954,7 +954,7 @@ struct FullVersionView: View {
 
     private func featureRow(symbol: String, title: String, note: String) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            SettingsGlyph(symbol: symbol, tint: AppTheme.champagneInk, size: 26)
+            SettingsGlyph(symbol: symbol, tint: AppTheme.champagneIcon, size: 26)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
