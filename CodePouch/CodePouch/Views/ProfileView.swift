@@ -534,17 +534,8 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
 
-                SettingsDivider()
-
-                // 使用教程：合并原「自动化设置」+「引导教程」（2026-10-14 主人定稿）
-                NavigationLink {
-                    UsageGuideView()
-                } label: {
-                    SettingsRow(symbol: "book.fill", title: "使用教程",
-                                subtitle: "入门 · 短信自动化 · 截屏收件",
-                                tint: AppTheme.violet)
-                }
-                .buttonStyle(.plain)
+                // 使用教程已移入「帮助与反馈」二级页（2026-10-31 重排：
+                // 根页只留高频入口，教程、法律文档这类低频内容下沉）。
             }
             .cardSurface()
         }
@@ -668,47 +659,28 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "关于")
+            SectionHeader(title: "更多")
 
             VStack(spacing: 0) {
                 NavigationLink {
-                    VersionHistoryView()
+                    HelpCenterView()
                 } label: {
-                    SettingsRow(symbol: "info.circle.fill", title: "版本",
+                    SettingsRow(symbol: "questionmark.bubble.fill", title: "帮助与反馈",
+                                subtitle: "使用教程 · 咨询 · 导出诊断日志",
+                                tint: AppTheme.sky)
+                }
+                .buttonStyle(.plain)
+
+                SettingsDivider()
+
+                NavigationLink {
+                    AboutView()
+                } label: {
+                    SettingsRow(symbol: "info.circle.fill", title: "关于",
                                 detail: AppVersion.display,
                                 tint: AppTheme.todayTint)
                 }
                 .buttonStyle(.plain)
-
-                SettingsDivider()
-
-                // 反馈：邮件直达（2026-10-14 主人指定邮箱）
-                Button {
-                    DiagnosticsLog.record("feedback", "open")
-                    feedback.startMail(includeLog: feedback.includeLog)
-                } label: {
-                    SettingsRow(symbol: "envelope.fill", title: "反馈",
-                                subtitle: feedback.subtitle,
-                                showsChevron: false,
-                                tint: AppTheme.doneTint)
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
-
-                SettingsDivider()
-
-                // 法律文档（2026-10-31）：订阅类 App 必须能点到隐私政策与使用条款。
-                // 用系统浏览器打开 —— App 内嵌网页会在审核时被问"为什么不用 SF Safari"。
-                legalRow(symbol: "hand.raised.fill", title: "隐私政策",
-                         note: "无账号、无联网；取件数据只在本机", document: .privacy,
-                         tint: AppTheme.doneTint)
-
-                SettingsDivider()
-
-                legalRow(symbol: "doc.text.fill", title: "使用条款",
-                         note: "订阅、自动续期与退款规则", document: .terms,
-                         tint: AppTheme.sky)
             }
             .cardSurface()
         }

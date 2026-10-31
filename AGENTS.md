@@ -125,7 +125,8 @@ xcrun simctl io <UDID> screenshot /tmp/x.png
 常用 `SCREEN` 值：
 `settings`（设置页，配 `SETTINGS_ANCHOR=about` 滚到底）、`add`（添加面板，配 `SEED=<短信>`）、
 `license`（完整版/订阅页）、`scan` / `scanPhoto`、`share`、`pickedUp`、`stats`、
-`detail`、`detailPicked`、`notify`、`gallery`。
+`detail`、`detailPicked`、`notify`、`gallery`、`activation`（激活页）、
+`help`（帮助与反馈）、`about`（关于）、`legal`（隐私政策页）。
 
 🔴 **装完先核对版本号再截图**：`simctl install` 与 `terminate` 是异步的，
 旧进程没死就 `launch`，会**静默沿用旧进程**——截到的是上一版界面，
