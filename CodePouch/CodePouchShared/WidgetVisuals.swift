@@ -241,10 +241,12 @@ struct WidgetPagedContent: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    /// 头部：分类标题 + 真实总数 +（免费版提示 / 今日已取）+ 翻页控件。
+    /// 头部：分类标题 + 真实总数 +（Pro 截断提示 / 今日已取）+ 翻页控件。
     ///
-    /// 「免费版」与「今日已取」互斥显示：免费版被截断时说明「为什么只看到这几条」
+    /// 「Pro」与「今日已取」互斥显示：被截断时说明「为什么只看到这几条」
     /// 远比今天的成绩重要，两者同排会把头部挤到换行。
+    /// 🔴 文案不带「免费版」「付费版」—— 对外只有「拾码 CodePouch」与「拾码 Pro」
+    ///    （2026-11-01 主人）。组部件里空间紧，这里用最短的「Pro」。
     private var header: some View {
         HStack(spacing: 6) {
             Text("待取件")
@@ -275,7 +277,7 @@ struct WidgetPagedContent: View {
         HStack(spacing: 2.5) {
             Image(systemName: "lock.fill")
                 .font(.system(size: 8.5, weight: .bold))
-            Text("免费版")
+            Text("Pro")
                 .font(.system(size: 10, weight: .semibold))
         }
         .foregroundStyle(AppTheme.todayTint)
