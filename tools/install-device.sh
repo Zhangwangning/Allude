@@ -103,7 +103,11 @@ fi
 
 # ── 3. 体检 ──────────────────────────────────────────────────────────
 say "── 环境体检 ──────────────────────────────────────"
-xcodebuild -version 2>/dev/null | head -1 | sed 's/^/  Xcode：/'
+# 🔴 不要写成 `xcodebuild -version | head -1`：脚本开了 `set -o pipefail`，
+#    head 提前关管道 → xcodebuild 收到 SIGPIPE → 整条流水线返回 141 →
+#    脚本在打印完这一行后**立刻退出**，后面构建、装机一步都不跑。
+#    2026-10-31 实际踩到：日志只到「Xcode：27.2」，手机上的包还是旧 build。
+xcodebuild -version 2>/dev/null | awk 'NR == 1 { print "  Xcode：" $0 }'
 
 if [[ -z "$TEAM" ]]; then
   # 来源 1：工程里已经写好的值（例如主人在 Xcode 图形界面手动选过 Team）
