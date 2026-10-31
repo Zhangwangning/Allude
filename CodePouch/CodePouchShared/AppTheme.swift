@@ -75,10 +75,19 @@ enum AppTheme {
     ///
     /// 与主题蓝分开是刻意的：付费面要"热"、要跟内容区拉开距离；
     /// 而 App 内容区的主色仍是图标蓝，不能因为卖东西改成橙的。
-    /// 付费面专用：**Apple 系统蓝**（2026-10-31 主人：只认 Apple 那一只蓝，或黑）。
-    ///
-    /// 与主题蓝 `accent`(#0B63F3) 分开是因为主题蓝是本 App 自己的品牌色，
-    /// 而系统蓝是"系统级界面元素"的观感 —— 付费面借这个观感显得更原生。
+    // MARK: 付费面 · 香槟金（2026-10-31 主人定）
+    //
+    // 🔴 金色必须**成对用**：浅金只做底，文字一律用深金墨。
+    //    白字压在香槟金上对比度只有 2.3:1（远低于 4.5:1 的可读线），
+    //    看着像蒙了层雾。所以这里给三个档位，谁也不能单独拿去当文字色。
+    /// 香槟金浅档 —— 卡片底、横幅渐变起点
+    static let champagneLight = Color(red: 0.98, green: 0.92, blue: 0.79)   // #FAEBC9
+    /// 香槟金中档 —— 横幅渐变终点、选中描边、按钮底
+    static let champagne      = Color(red: 0.85, green: 0.72, blue: 0.45)   // #D9B873
+    /// 深金墨 —— 落在白底或浅金底上的**文字与图标**
+    static let champagneInk   = Color(red: 0.44, green: 0.33, blue: 0.11)   // #70541C
+
+    /// 付费面专用：**Apple 系统蓝**（保留，`champagne*` 是当前方案）
     static let appleBlue = Color(.systemBlue)
 
     static let proOrange      = Color(red: 0.94, green: 0.33, blue: 0.04)   // #F0540A
