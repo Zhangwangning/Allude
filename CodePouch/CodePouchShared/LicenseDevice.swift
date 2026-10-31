@@ -82,18 +82,14 @@ enum LicenseDevice {
         .joined(separator: "-")
     }
 
-    /// 全遮蔽展示：**一个字符都不露**，只保留 32 位的分组形状。
+    /// 全遮蔽展示：**一个字符都不露，也不带连字符**。
     ///
-    /// 2026-10-31 主人：设备 UUID 在界面上全部加密显示，不给用户明文查看的权限。
+    /// 2026-10-31 主人：设备 UUID 在界面上全部加密显示，不给用户明文查看的权限；
+    /// 并且**不要**显示 `-` 分隔符 —— 那串分隔符会让人以为界面里真有一个可读的码，
+    /// 去掉之后就是纯粹的一整块遮蔽，没有任何可读信息。
     /// 需要用时点「复制」拿完整值（走剪贴板，不经过屏幕）。
-    ///
-    /// 为什么保留分组形状而不是只写四个圆点：用户能看出"这是一串 32 位的码"，
-    /// 也知道复制出来应该长这样，少一层困惑。
     static func masked(_ code: String) -> String {
-        let normalized = normalize(code)
-        let dots = String(repeating: "•", count: 8)
-        guard normalized.count == 32 else { return dots }
-        return "\(dots)-\(dots)-\(dots)-\(dots)"
+        String(repeating: "•", count: 32)
     }
 
     /// 把用户可能贴回来的各种写法（小写、带连字符、带空格）归一成标准形态。
