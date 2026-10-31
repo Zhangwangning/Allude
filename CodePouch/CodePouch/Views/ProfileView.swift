@@ -787,15 +787,22 @@ struct FullVersionView: View {
                 // 系统大标题 34 之间，不与导航栏抢层级。
                 titleBlock
 
+                // 2026-10-31 主人：**已购后页面结构不变**，只把三张方案卡换成一张「谢谢您」，
+                // 解锁清单、恢复购买、条款链接都还在。不要另做一个"订阅成功页"。
                 if purchase.isOwned {
-                    ownedSection
+                    thanksCard
                 } else {
                     planList
-                    featureList
-                    primaryButton
-                    restoreButton
-                    finePrint
                 }
+
+                featureList
+
+                if !purchase.isOwned {
+                    primaryButton
+                }
+
+                restoreButton
+                finePrint
 
                 if let message = purchase.message, !purchase.isOwned {
                     Text(message)
@@ -1040,30 +1047,29 @@ struct FullVersionView: View {
 
     // MARK: 已开通
 
-    private var ownedSection: some View {
-        VStack(spacing: 10) {
-            SettingsGroup(title: "当前状态", note: "感谢支持。换机或重装后在原 Apple ID 下「恢复购买」即可找回。") {
-                SettingsPlainRow(title: "版本") {
-                    Text(store.plan == .lifetime ? "已买断" : "已订阅")
-                        .font(.system(size: 17))
-                        .foregroundStyle(AppTheme.doneTint)
-                        .fixedSize()
-                }
-            }
+    /// 已购状态的那张卡：与三张方案卡**同一位置、同一视觉语言**
+    /// （同样的圆角、浅金底、金色描边），只是内容换成一句道谢。
+    /// 这样买完之后页面不会"换一张脸"，只是卡片本身变了。
+    private var thanksCard: some View {
+        VStack(spacing: 6) {
+            Text("谢谢您")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(AppTheme.champagneInk)
 
-            Button {
-                Task { await purchase.restore() }
-            } label: {
-                Text("恢复购买")
-                    .font(.system(size: 15, weight: .medium))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .overlay { Capsule().strokeBorder(Color(.separator), lineWidth: 1.5) }
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-
-            finePrint
+            Text(store.plan == .lifetime ? "已买断 · 永久有效" : "完整版已开通")
+                .font(.system(size: 13))
+                .foregroundStyle(AppTheme.champagneInk.opacity(0.75))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .background {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(AppTheme.champagneLight.opacity(0.55))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(AppTheme.champagne, lineWidth: 2)
         }
     }
+
 }
