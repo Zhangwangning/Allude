@@ -87,7 +87,9 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     }
 
     /// 侧栏分组（顺序即显示顺序，与原来长页的分组一一对应）
-    static let generalGroup: [SettingsPane] = [.notification, .widget, .activity, .courier, .station, .guide, .license]
+    /// 2026-10-31 起 `license` 不再出现在任何分组里 —— 凭证入口改为版本历史页的
+    /// 隐藏手势（见 `VersionHistoryView`），日常界面上看不到。
+    static let generalGroup: [SettingsPane] = [.notification, .widget, .activity, .courier, .station, .guide]
     static let dataGroup: [SettingsPane] = [.storage]
     static let aboutGroup: [SettingsPane] = [.feedback, .version, .privacy]
 }
@@ -105,6 +107,9 @@ struct SettingsView: View {
 
     /// 侧栏搜索词（2026-10-25 照 iPad 设置：侧栏顶部有搜索框）
     @State private var query = ""
+
+    /// 关于页「设备 UUID」的复制反馈（1.6s 后自动复原）
+    @State private var copiedUUID = false
 
     /// 截图脚手架：`SIMCTL_CHILD_SETTINGS_PANE=courier|widget|…` 启动即选中该面板，
     /// 命令行点不到侧栏行，逐页验收底色/图标只能用这个入口。
@@ -137,7 +142,6 @@ struct SettingsView: View {
         ScrollView {
             VStack(spacing: 16) {
                 settingsSection
-                licenseSection
                 dataSection
                 aboutSection
                 footer
@@ -503,30 +507,6 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: 签名凭证（买断解锁）
-
-    /// 窄屏的「解锁」分组（宽屏走 `SettingsPane.license` 面板）。
-    private var licenseSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "凭证")
-
-            VStack(spacing: 0) {
-                NavigationLink {
-                    LicenseActivationView()
-                } label: {
-                    SettingsRow(symbol: "key.fill",
-                                title: "本机凭证",
-                                subtitle: store.isPro
-                                    ? "完整版 · \(store.plan.title)"
-                                    : "免费版 · 只显示 \(PickupStore.freeVisibleLimit) 条",
-                                tint: AppTheme.amber)
-                }
-                .buttonStyle(.plain)
-            }
-            .cardSurface()
-        }
-    }
-
     // MARK: 本机数据
 
     private var dataSection: some View {
@@ -587,12 +567,43 @@ struct SettingsView: View {
 
                 SettingsDivider()
 
+                // 设备 UUID（2026-10-31 主人）：与「反馈」同一套行式 ——
+                // 第一行标题、第二行打码值、右边一个复制按钮；点整行也复制。
+                // 打码是常态：这串是设备标识，截图/录屏时不该整串摊着；
+                // 但复制必须复制**完整值**，否则发去签发没法用。
+                SettingsRow(symbol: "number.square.fill",
+                            title: "设备 UUID",
+                            subtitle: LicenseDevice.masked(LicenseDevice.current),
+                            showsChevron: false,
+                            tint: AppTheme.indigo,
+                            trailing: AnyView(
+                                Button { copyDeviceUUID() } label: {
+                                    Text(copiedUUID ? "已复制" : "复制")
+                                        .font(.system(size: 16))
+                                        .foregroundStyle(copiedUUID ? AppTheme.doneTint : AppTheme.accent)
+                                }
+                                .buttonStyle(.plain)
+                            ))
+                .onTapGesture { copyDeviceUUID() }
+
+                SettingsDivider()
+
                 SettingsRow(symbol: "hand.raised.fill", title: "隐私",
                             subtitle: "无账号、无联网；取件数据全程只在本机",
                             showsChevron: false,
                             tint: AppTheme.doneTint)
             }
             .cardSurface()
+        }
+    }
+
+    /// 复制本机 UUID：**复制完整值**（界面上是打码的）
+    private func copyDeviceUUID() {
+        UIPasteboard.general.string = LicenseDevice.current
+        withAnimation(.easeOut(duration: 0.15)) { copiedUUID = true }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_600_000_000)
+            withAnimation(.easeOut(duration: 0.2)) { copiedUUID = false }
         }
     }
 
@@ -669,6 +680,7 @@ final class FeedbackModel: ObservableObject {
             if !Task.isCancelled { showFallback = false }
         }
     }
+
 }
 
 // MARK: - 版本号显示（单一真值）

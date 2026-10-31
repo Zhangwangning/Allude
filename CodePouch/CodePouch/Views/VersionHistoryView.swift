@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: ============================================================================
 // 版本历史（「我的 › 关于 › 版本」点开的二级页）
@@ -14,6 +15,17 @@ import SwiftUI
 //   · 不出现「主人」等对话称呼；
 //   · 不写内测阶段的功能许诺，只写已经落地的成果。
 // ============================================================================
+
+/// 发行渠道开关。
+///
+/// ⚠️ **App Store 的 2.3.1（Hidden Features）明文要求**：App 不得包含隐藏的、
+///    休眠的或没写进文档的功能，功能必须对用户与审核员可见。
+///    下面这条「连点 15 次出现凭证入口」正是那个定义。所以上架构建必须置 `false`：
+///    置 false 时整段手势不会挂上去，页面上也不存在任何入口。
+enum StoreChannel {
+    /// 隐藏的凭证入口（证书/密钥分发渠道用；App Store 构建必须为 false）
+    static let hiddenActivation = true
+}
 
 struct VersionHistoryView: View {
     private struct Entry: Identifiable {
@@ -174,6 +186,10 @@ struct VersionHistoryView: View {
         ]),
     ]
 
+    /// 页首卡片的连点计数。平时为 0，界面无任何痕迹。
+    @State private var tapCount = 0
+    @State private var showActivation = false
+
     var body: some View {
         // 🔴 2026-10-25：底色改用 ZStack 独立铺一层 ——
         // 原先 `.background(...)` 挂在 ScrollView 上，在分栏 detail 列里撑不满，
@@ -195,6 +211,15 @@ struct VersionHistoryView: View {
         .navigationTitle("版本历史")
         .navigationBarTitleDisplayMode(.inline)
         .cloaksTabBar()
+        // 隐藏入口：命中后推凭证页，返回即回到版本历史，不留任何标记
+        .navigationDestination(isPresented: $showActivation) {
+            LicenseActivationView()
+        }
+        // 截图脚手架：命令行点不到屏幕，`HIDDEN_TAPS=1` 直接跳过去验接线
+        .onAppear {
+            guard ProcessInfo.processInfo.environment["HIDDEN_TAPS"] == "1" else { return }
+            showActivation = true
+        }
     }
 
     // MARK: 页首
@@ -212,6 +237,26 @@ struct VersionHistoryView: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardSurface()
+        .contentShape(.rect)
+        .onTapGesture { registerHiddenTap() }
+    }
+
+    // MARK: 隐藏入口
+
+    /// 页首卡片连点 15 次 → 打开凭证页。
+    ///
+    /// 为什么给触觉反馈：纯静默手势在点到第 14 下时用户会怀疑「到底有没有在数」。
+    /// 第 10 下起每下轻震一次，是"有人在数"的唯一提示 —— 但屏幕上仍然什么都不显示。
+    private func registerHiddenTap() {
+        guard StoreChannel.hiddenActivation else { return }
+        tapCount += 1
+        if tapCount >= 10 {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }
+        if tapCount >= 15 {
+            tapCount = 0
+            showActivation = true
+        }
     }
 
     // MARK: 时间线
