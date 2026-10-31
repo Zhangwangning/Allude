@@ -485,7 +485,10 @@ final class PickupStore: ObservableObject {
     /// 都会逐条解析、逐条落库；识别不出取件信息的段直接跳过，不影响其它条。
     @discardableResult
     func ingest(_ text: String) -> IngestOutcome {
-        commitAll(PickupParser.parseAll(text, ocrSource: false))
+        let results = PickupParser.parseAll(text, ocrSource: false)
+        // 只记「发生了什么」：来源、原文长度、解析出几条。**不记内容**。
+        DiagnosticsLog.record("parse", "source=sms len=\(text.count) results=\(results.count)")
+        return commitAll(results)
     }
 
     /// OCR 来源的写入（相册识别 / 扫码 / 手动粘贴）。
@@ -495,7 +498,9 @@ final class PickupStore: ObservableObject {
     /// 必须先归一。切段规则两者相同（都以「【」起头为新的一条）。
     @discardableResult
     func ingestOCR(_ text: String) -> IngestOutcome {
-        commitAll(PickupParser.parseAll(text, ocrSource: true))
+        let results = PickupParser.parseAll(text, ocrSource: true)
+        DiagnosticsLog.record("parse", "source=ocr len=\(text.count) results=\(results.count)")
+        return commitAll(results)
     }
 
     /// 落库：所有入口共用同一套合并策略（`PickupMerge`）与存储上限。

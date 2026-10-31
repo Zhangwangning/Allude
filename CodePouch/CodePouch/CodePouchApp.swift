@@ -56,6 +56,10 @@ struct CodePouchApp: App {
         //    `LicenseActivation.activate` 的 backedByLicense 判定）。售后排障时
         //    这一项是第一手判据。
         let bootEntitlement = EntitlementSnapshot.load()
+        DiagnosticsLog.record("launch",
+                              "version=\(AppVersion.display) plan=\(bootEntitlement.plan.rawValue)"
+                              + " isPro=\(bootEntitlement.isPro)")
+
         print("[codeclip-verify] device=\(deviceCode) plan=\(bootEntitlement.plan.rawValue)"
               + " hasLicense=\(!(bootEntitlement.license ?? "").isEmpty)"
               + " isPro=\(bootEntitlement.isPro)"

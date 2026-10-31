@@ -145,6 +145,22 @@ xcrun simctl terminate UDID com.jikezhang.codeclip; sleep 4
 
 ---
 
+## 诊断日志（反馈用）
+
+`DiagnosticsLog` 在 `Application Support/Diagnostics/log.txt` 滚动记录（上限 256 KB，
+超过滚成 `log.1.txt`，只留一代）。用户点「反馈 › 发送邮件反馈」时，日志作为
+`codepouch-log.txt` **附件**随邮件发出（走 `MFMailComposeViewController`，
+`mailto:` 带不了附件）；用户可关闭「附带诊断日志」开关。
+
+🔴 **日志绝不记录用户内容**：不写短信原文、取件码、地址、电话、设备 UUID。
+只写"发生了什么"：版本、系统、解析长度与条数、错误码、耗时、权益档位。
+这是本 App 唯一会离开设备的数据，写日志前先问一句"这句能不能给外人看"。
+
+⚠️ 模拟器里 `canSendMail()` 为假，只能验证到"复制邮箱兜底"分支；
+带附件的编辑器必须在真机上验。
+
+---
+
 ## 数据安全红线
 
 `enforceStorageLimit()` **只在 `ingest()`（收到新短信解析入库）时触发**，

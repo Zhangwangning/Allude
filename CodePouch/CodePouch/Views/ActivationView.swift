@@ -213,6 +213,7 @@ struct ActivationView: View {
         let raw = model.voucher
         switch LicenseActivation.activate(raw) {
         case .success(let payload):
+            DiagnosticsLog.record("activate", "ok plan=\(payload.service.rawValue) days=\(payload.expiresAt.map { max(0, remainingDays(until: $0)) } ?? -1)")
             // 🔴 导入成功后必须重算一次，否则界面还停在免费档
             store.refreshEntitlement()
 
@@ -233,6 +234,7 @@ struct ActivationView: View {
             }
 
         case .failure(let error):
+            DiagnosticsLog.record("activate", "failed reason=\(error.message)")
             withAnimation {
                 model.isError = true
                 model.result = error.message

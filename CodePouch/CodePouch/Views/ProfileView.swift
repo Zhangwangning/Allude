@@ -1,4 +1,5 @@
 import SwiftUI
+import MessageUI
 import UIKit
 import PhotosUI
 
@@ -113,6 +114,9 @@ struct SettingsView: View {
     /// 关于页「设备 UUID」的复制反馈（1.6s 后自动复原）
     @State private var copiedUUID = false
 
+    /// 订阅入口的「暂不支持」提示（2026-10-31 主人：不让进二级页）
+    @State private var showSubscriptionNotice = false
+
     /// 截图脚手架：`SIMCTL_CHILD_SETTINGS_PANE=courier|widget|…` 启动即选中该面板，
     /// 命令行点不到侧栏行，逐页验收底色/图标只能用这个入口。
     static var scaffoldPane: SettingsPane? {
@@ -137,6 +141,19 @@ struct SettingsView: View {
             }
         }
         .overlay { feedbackToast }
+        // 订阅暂未开放：点了只弹提示，不进入二级页
+        .alert("暂不支持订阅", isPresented: $showSubscriptionNotice) {
+            Button("好", role: .cancel) {}
+        } message: {
+            Text("敬请期待……")
+        }
+        .sheet(isPresented: $feedback.showComposer) {
+            MailComposeView(subject: feedback.composerSubject,
+                            body: feedback.composerBody,
+                            attachment: feedback.composerAttachment) {
+                feedback.showComposer = false
+            }
+        }
     }
 
     /// 窄屏：原「一张长页」布局，保持不变。
@@ -173,6 +190,11 @@ struct SettingsView: View {
         .onAppear {
             // 设置是标签根页：兜底露出标签栏（其它标签返回同口径，见 RootView）
             TabBarCloak.shared.reveal()
+            // 截图脚手架：命令行点不到横幅，`SUBSCRIPTION_NOTICE=1` 直接弹出
+            // 「暂不支持订阅」提示，用来验收这条拦截。
+            if ProcessInfo.processInfo.environment["SUBSCRIPTION_NOTICE"] == "1" {
+                showSubscriptionNotice = true
+            }
         }
     }
 
@@ -332,7 +354,7 @@ struct SettingsView: View {
         case .courier:    CourierGalleryView(scope: .courier)
         case .station:    CourierGalleryView(scope: .station)
         case .guide:      UsageGuideView()
-        case .license:    FullVersionView()
+        case .license:    SubscriptionUnavailablePane()
         case .activation: ActivationView()
         case .version:    VersionHistoryView()
         case .storage:    dataDetailPane
@@ -381,7 +403,8 @@ struct SettingsView: View {
             VStack(spacing: 16) {
                 VStack(spacing: 0) {
                     Button {
-                        feedback.openMail()
+                        DiagnosticsLog.record("feedback", "open")
+                        feedback.startMail(includeLog: feedback.includeLog)
                     } label: {
                         SettingsRow(symbol: "envelope.fill", title: "发送邮件反馈",
                                     subtitle: FeedbackModel.mail,
@@ -389,10 +412,25 @@ struct SettingsView: View {
                                     tint: AppTheme.doneTint)
                     }
                     .buttonStyle(.plain)
+
+                    SettingsDivider()
+
+                    Toggle(isOn: $feedback.includeLog) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("附带诊断日志")
+                                .font(.system(size: 15))
+                            Text("版本、系统、最近的操作记录，不含短信内容")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .tint(AppTheme.accent)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
                 }
                 .cardSurface()
 
-                Text("邮件会自动带上版本号，方便定位问题。")
+                Text("日志只在本机滚动保存，只有你点发送并确认后才会随邮件发出。")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -520,8 +558,12 @@ struct SettingsView: View {
     /// 藏起来既不厚道，也会被审核按「付费功能没有明显入口」挑刺。
     /// 已购时同一块横幅改口径为「完整版已开通」，不摆第二次购买。
     private var proBanner: some View {
-        NavigationLink {
-            FullVersionView()
+        // 🔴 2026-10-31 主人：订阅尚未开放，点击只提示「暂不支持订阅，敬请期待」，
+        //    **不允许进入订阅二级页**（商品还没在 App Store Connect 建好，
+        //    进去只会看到「暂时取不到商品信息」，比不开放更糟）。
+        Button {
+            DiagnosticsLog.record("purchase", "entry-tapped · 未开放")
+            showSubscriptionNotice = true
         } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 5) {
@@ -642,7 +684,8 @@ struct SettingsView: View {
 
                 // 反馈：邮件直达（2026-10-14 主人指定邮箱）
                 Button {
-                    feedback.openMail()
+                    DiagnosticsLog.record("feedback", "open")
+                    feedback.startMail(includeLog: feedback.includeLog)
                 } label: {
                     SettingsRow(symbol: "envelope.fill", title: "反馈",
                                 subtitle: feedback.subtitle,
@@ -734,9 +777,49 @@ final class FeedbackModel: ObservableObject {
     static let mail = "zhang_wangning@126.com"
 
     @Published var showFallback = false
+    /// 是否附带诊断日志（默认开：出问题的人一般不知道该带什么）
+    @Published var includeLog = true
+    /// 系统邮件编辑器
+    @Published var showComposer = false
+    @Published var composerSubject = ""
+    @Published var composerBody = ""
+    @Published var composerAttachment: (name: String, data: Data)?
+
     private var hideTask: Task<Void, Never>?
 
     var subtitle: String { Self.mail }
+
+    /// 组织一封带诊断日志的反馈邮件（2026-10-31 主人：日志随反馈一起发过来）。
+    ///
+    /// 优先用系统邮件编辑器（能带附件）；设备没配邮件时退回复制邮箱的兜底，
+    /// 那种情况下把日志正文贴进剪贴板不合适（太长），所以只提示用户去配置邮件。
+    func startMail(includeLog: Bool) {
+        let version = AppVersion.display
+        composerSubject = "拾码反馈（\(version)）"
+        composerBody = """
+        请描述你遇到的问题（什么时候、做了什么、预期是什么）：
+
+
+
+        —— 以下由 App 自动填写 ——
+        版本：\(version)
+        系统：iOS \(UIDevice.current.systemVersion)
+        """
+
+        if includeLog {
+            let text = DiagnosticsLog.exportText()
+            composerAttachment = (name: "codepouch-log.txt", data: Data(text.utf8))
+        } else {
+            composerAttachment = nil
+        }
+
+        if MFMailComposeViewController.canSendMail() {
+            showComposer = true
+        } else {
+            // 没有邮件账号：不硬弹，复制邮箱兜底（日志留在本机，下次配好再发）
+            copyMailFallback()
+        }
+    }
 
     func openMail() {
         // 主题带上版本号，定位问题更快
@@ -797,6 +880,29 @@ enum AppVersion {
 /// 刻意与 Infuse 的订阅页不同构（那边是三张并排卡 + 橙色线稿图标 + 直接点卡即买）：
 /// 信息结构可以参考，视觉签名不能照搬 —— 并排卡＋线稿图标是它最显眼的识别点。
 /// 这里用一个可选方案列表 + 一枚主按钮，买之前先明确"我要买哪一档"。
+/// 订阅面板占位（宽屏分栏用）。
+///
+/// 2026-10-31 主人：订阅未开放，不允许进入二级页 —— 分栏布局里点侧栏
+/// 「完整版」不该出现定价页，这里给一张说明卡。
+struct SubscriptionUnavailablePane: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "hourglass")
+                .font(.system(size: 34, weight: .light))
+                .foregroundStyle(.tertiary)
+            Text("暂不支持订阅")
+                .font(.system(size: 17, weight: .semibold))
+            Text("敬请期待……")
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("完整版")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
 struct FullVersionView: View {
     @EnvironmentObject private var store: PickupStore
     @ObservedObject private var purchase = PurchaseStore.shared
