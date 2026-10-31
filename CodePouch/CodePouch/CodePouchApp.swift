@@ -548,6 +548,10 @@ struct CodePouchApp: App {
                     PickedUpView()
                 case "notify":
                     NavigationStack { NotificationSettingsView() }
+                case "activation":
+                    // 激活页（设备码 + 凭证输入）。设置里那一行命令行点不到，
+                    // 逐页验收靠这个入口直渲。
+                    NavigationStack { ActivationView() }
                 case "legal":
                     // 法律文档页（隐私政策）。App 内 WebView 读打包的 HTML，
                     // 命令行点不到设置里的行，逐页验收只能靠这个入口。

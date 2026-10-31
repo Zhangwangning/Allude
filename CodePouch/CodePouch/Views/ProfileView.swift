@@ -31,6 +31,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     case station
     case guide
     case license
+    case activation
     case storage
     case feedback
     case version
@@ -47,6 +48,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .station:      return "驿站管理"
         case .guide:        return "使用教程"
         case .license:      return "完整版"
+        case .activation:   return "激活"
         case .storage:      return "本机数据"
         case .feedback:     return "反馈"
         case .version:      return "版本"
@@ -63,6 +65,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .station:      return "storefront.fill"
         case .guide:        return "book.fill"
         case .license:      return "sparkles"
+        case .activation:   return "key.horizontal.fill"
         case .storage:      return "internaldrive.fill"
         case .feedback:     return "envelope.fill"
         case .version:      return "info.circle.fill"
@@ -79,6 +82,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .station:      return AppTheme.violet
         case .guide:        return AppTheme.sky
         case .license:      return AppTheme.amber
+        case .activation:   return AppTheme.indigo
         case .storage:      return AppTheme.todayTint
         case .feedback:     return AppTheme.doneTint
         case .version:      return AppTheme.todayTint
@@ -87,7 +91,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     }
 
     /// 侧栏分组（顺序即显示顺序，与原来长页的分组一一对应）
-    static let generalGroup: [SettingsPane] = [.notification, .widget, .activity, .courier, .station, .guide, .license]
+    static let generalGroup: [SettingsPane] = [.notification, .widget, .activity, .courier, .station, .guide, .license, .activation]
     static let dataGroup: [SettingsPane] = [.storage]
     static let aboutGroup: [SettingsPane] = [.feedback, .version, .privacy]
 }
@@ -142,6 +146,7 @@ struct SettingsView: View {
                 proBanner
                 settingsSection
                 dataSection
+                activationSection
                 aboutSection
                 footer
             }
@@ -328,6 +333,7 @@ struct SettingsView: View {
         case .station:    CourierGalleryView(scope: .station)
         case .guide:      UsageGuideView()
         case .license:    FullVersionView()
+        case .activation: ActivationView()
         case .version:    VersionHistoryView()
         case .storage:    dataDetailPane
         case .feedback:   feedbackPane
@@ -581,6 +587,34 @@ struct SettingsView: View {
             .cardSurface()
 
             Text("数据只保存在这台设备上，不上传任何服务器。")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 4)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: 激活（设备码 / 签名凭证）
+
+    /// 2026-10-31 主人要求：未上架期间用离线签名凭证激活，入口放设置里。
+    /// ⚠️ 上架前必须处理掉（改用内购或隐藏），否则是 App Review 3.1.1 的靶子。
+    private var activationSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "激活")
+
+            VStack(spacing: 0) {
+                NavigationLink {
+                    ActivationView()
+                } label: {
+                    SettingsRow(symbol: "key.horizontal.fill", title: "激活",
+                                subtitle: store.isPro ? "已解锁完整版" : "设备码 · 签名凭证",
+                                tint: AppTheme.indigo)
+                }
+                .buttonStyle(.plain)
+            }
+            .cardSurface()
+
+            Text("离线验签，不联网。正式上架后此入口会移除。")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 4)

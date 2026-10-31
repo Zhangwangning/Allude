@@ -17,6 +17,10 @@ SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 > 地址集中写在 `CodePouch/Models/LegalLinks.swift`。这三个 URL 已经要填进
 > App Store Connect 的审核表单 —— **不要改**，确需更换必须先让旧地址 301 过去。
 
+> ⚠️ **未上架期间的激活入口**：设置 › 激活（`ActivationView`）。设备码打码显示、可复制；
+> 凭证由 `tools/license-gen` 签发，绑定设备码，本机离线验签。
+> 🔴 **正式上架前必须移除或改成内购** —— 用 license key 解锁完整功能是 App Review 3.1.1 的靶子。
+
 > 旧的「离线签名凭证 / 绑定设备」体系已于 2026-10-31 停用（从未对外售卖）。
 > `LicenseVerifier` / `license-gen` 工具**仍在**，只为读得懂老快照里的 `license` 字段；
 > 界面上已经没有粘贴凭证的入口，别再把它加回来（那是 App Store 3.1.1 的靶子）。
