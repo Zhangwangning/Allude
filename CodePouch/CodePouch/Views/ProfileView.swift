@@ -778,9 +778,10 @@ struct FullVersionView: View {
     var body: some View {
         ScrollViewReader { proxy in
         ScrollView {
-            VStack(alignment: .leading, spacing: 26) {
-                header
-
+            // 2026-10-31 主人：**一屏放得下，不要翻页**。
+            // 所以去掉了页首的大标题块，版式与其它设置页同口径：
+            // 分组标题 13pt、行标题 17pt、说明 11–12pt，靠紧凑间距压进一屏。
+            VStack(alignment: .leading, spacing: 16) {
                 if purchase.isOwned {
                     ownedSection
                 } else {
@@ -801,8 +802,8 @@ struct FullVersionView: View {
                 }
             }
             .padding(.horizontal, AppTheme.hInset)
-            .padding(.top, 10)
-            .padding(.bottom, 60)
+            .padding(.top, 6)
+            .padding(.bottom, 20)
             .frame(maxWidth: AppTheme.contentMaxWidth)
             .frame(maxWidth: .infinity)
         }
@@ -825,35 +826,13 @@ struct FullVersionView: View {
         }
     }
 
-    // MARK: 页首
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("拾码")
-                    .font(.system(size: 34, weight: .heavy))
-                Text("PRO")
-                    .font(.system(size: 15, weight: .heavy))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(AppTheme.proOrange, in: .rect(cornerRadius: 7))
-                    .foregroundStyle(.white)
-            }
-
-            Text("免费下载。解锁后不限条数，桌面小组件与实时活动一并完整。")
-                .font(.system(size: 15))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
     // MARK: 方案（竖排单选）
 
     private var planList: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             SectionHeader(title: "选择方案")
 
-            VStack(spacing: 10) {
+            VStack(spacing: 8) {
                 ForEach(PurchaseStore.Plan.allCases) { plan in
                     planCard(plan)
                 }
@@ -907,12 +886,12 @@ struct FullVersionView: View {
                 Spacer(minLength: 8)
 
                 Text(price ?? "—")
-                    .font(.system(size: 19, weight: .bold))
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(on ? AppTheme.proOrange : Color.primary)
                     .fixedSize()
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 15)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
             .frame(maxWidth: .infinity)
             .background(Color(.secondarySystemGroupedBackground),
                         in: .rect(cornerRadius: 18, style: .continuous))
@@ -927,7 +906,7 @@ struct FullVersionView: View {
     // MARK: 功能清单
 
     private var featureList: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             SectionHeader(title: "解锁什么")
 
             VStack(spacing: 0) {
@@ -949,21 +928,21 @@ struct FullVersionView: View {
 
     private func featureRow(symbol: String, title: String, note: String) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            SettingsGlyph(symbol: symbol, tint: AppTheme.proOrange, size: 30)
+            SettingsGlyph(symbol: symbol, tint: AppTheme.proOrange, size: 26)
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: 15, weight: .medium))
                 Text(note)
-                    .font(.system(size: 12))
+                    .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 13)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
     }
 
     // MARK: 主行动
@@ -973,9 +952,9 @@ struct FullVersionView: View {
             Task { await purchase.purchase(selected) }
         } label: {
             Text(primaryTitle)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 15)
+                .padding(.vertical, 13)
                 .background(canBuy ? AppTheme.proOrange : Color(.tertiarySystemFill), in: .capsule)
                 .foregroundStyle(canBuy ? Color.white : Color.secondary)
         }
@@ -1000,9 +979,9 @@ struct FullVersionView: View {
             Task { await purchase.restore() }
         } label: {
             Text("恢复购买")
-                .font(.system(size: 16, weight: .medium))
+                .font(.system(size: 15, weight: .medium))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
+                .padding(.vertical, 11)
                 .overlay {
                     Capsule().strokeBorder(AppTheme.proOrange.opacity(0.55), lineWidth: 1.5)
                 }
@@ -1013,7 +992,7 @@ struct FullVersionView: View {
 
     /// 自动续期说明 + 隐私政策 / 使用条款（App Review 3.1.2 要求在订阅页能点到）
     private var finePrint: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 6) {
             Text("订阅会自动续期：确认购买后从 Apple ID 扣款，当前周期结束前 24 小时内自动续费；随时可在「设置 › Apple ID › 订阅」中取消。买断档不自动续期。")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
@@ -1024,7 +1003,7 @@ struct FullVersionView: View {
                 Text("·").foregroundStyle(.tertiary)
                 Link("使用条款", destination: LegalLinks.terms)
             }
-            .font(.caption)
+            .font(.system(size: 12))
             // 付费面上统一用橙，别让两条蓝色链接在整页里跳出来
             .tint(AppTheme.proOrange)
             .foregroundStyle(AppTheme.proOrange)
@@ -1050,9 +1029,9 @@ struct FullVersionView: View {
                 Task { await purchase.restore() }
             } label: {
                 Text("恢复购买")
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: 15, weight: .medium))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
+                    .padding(.vertical, 11)
                     .overlay { Capsule().strokeBorder(Color(.separator), lineWidth: 1.5) }
                     .foregroundStyle(.secondary)
             }
