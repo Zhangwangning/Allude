@@ -206,7 +206,11 @@ enum CourierBrand {
              asset: "brand-duoduodaishou"),
         Info(key: "绿驿", name: "绿驿生活", category: .station,
              from: 0x16A34A, to: 0x0E7433, glyph: .symbol("leaf.fill")),
-        Info(key: "快递超市", name: "韵达快递超市", category: .station,
+        // 🔴 key 原来是「快递超市」这四个字 —— 太宽了：任何短信只要出现
+        //    「某某快递超市」都会被认成韵达家的代收点（2026-10-31 主人报的
+        //    「欢猫驿站」那条就是这么被误标的）。改成全名，只在真的写了
+        //    「韵达快递超市」时才命中。
+        Info(key: "韵达快递超市", name: "韵达快递超市", category: .station,
              from: 0xF5B400, to: 0xBF8500, glyph: .symbol("storefront.fill"),
              asset: "brand-yundakuaichaoshi"),
         // ⚠️ 2026-10-28 主人：删掉「快递代收点」与「快递驿站」两条。

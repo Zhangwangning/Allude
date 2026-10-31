@@ -52,6 +52,8 @@ struct RecordDetailView: View {
     /// 订阅它，自定义驿站改名/删图后本行同帧刷新（与列表卡片同款）。
     @ObservedObject private var stationDirectory = StationDirectory.shared
     @StateObject private var feedback = CopyFeedbackModel()
+    /// 原始短信的复制反馈（与取件码那条分开，避免两个按钮互相闪）
+    @StateObject private var rawFeedback = CopyFeedbackModel()
     /// 分享预览面板的开关。工程约定：CLI 链路下 `@State` 宏编不过，
     /// 局部状态一律 ObservableObject 承载（见 DesignSystem.swift 顶部）。
     @StateObject private var share = DetailShareModel()
@@ -127,13 +129,8 @@ struct RecordDetailView: View {
             VStack(spacing: 16) {
                 codeCard
 
-                // 取件地址地图卡（2026-10-14 方案 B）：MapKit 迷你预览 +
-                // 点按跳 Apple 地图步行导航。
-                // 🔴 地址为空时**不再整卡隐藏**（2026-10-25 改）：直接消失会让用户
-                // 以为「导航功能没了」，尤其从一条地址被误解析成「3号货架」的记录
-                // 点进来时更莫名其妙。现在由 `AddressMapCard` 自己渲染
-                // 「未填写取件地址 · 点右上「编辑」补充」的形态。
-                AddressMapCard(address: record.address)
+                // 地图导航卡已下线（2026-10-31 主人：卡片里的地图没有意义）。
+                // 取件地址本身仍在下方 `infoCard` 里，可长按选中、可点「导航」按钮走系统地图。
 
                 infoCard
                 rawMessageCard
@@ -714,6 +711,22 @@ struct RecordDetailView: View {
                 Text("原始短信")
                     .font(.footnote.weight(.semibold))
                 Spacer()
+
+                // 复制整条原文（2026-10-31 主人）：售后排查、转发给快递公司都用得上。
+                // 与取件码复制分开一个 feedback，否则点这里会把上面的码按钮也闪一下。
+                Button {
+                    UIPasteboard.general.string = record.rawMessage
+                    rawFeedback.flash()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: rawFeedback.copied ? "checkmark" : "doc.on.doc")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text(rawFeedback.copied ? "已复制" : "复制")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundStyle(rawFeedback.copied ? AppTheme.doneTint : AppTheme.accent)
+                }
+                .buttonStyle(.plain)
             }
             .foregroundStyle(.secondary)
 
