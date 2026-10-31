@@ -71,6 +71,13 @@ enum AppTheme {
     static let cardRadius: CGFloat = 22
     static let heroRadius: CGFloat = 26
     static let heroNumber: CGFloat = 46
+    /// 付费面专用橙（2026-10-31 · 订阅页与设置页 PRO 横幅共用）。
+    ///
+    /// 与主题蓝分开是刻意的：付费面要"热"、要跟内容区拉开距离；
+    /// 而 App 内容区的主色仍是图标蓝，不能因为卖东西改成橙的。
+    static let proOrange      = Color(red: 0.94, green: 0.33, blue: 0.04)   // #F0540A
+    static let proOrangeLight = Color(red: 1.00, green: 0.63, blue: 0.16)   // #FFA029
+
     static let innerRadius: CGFloat = 14
     /// 「最大圆角」—— 胶囊形提示条专用（2026-10-30 主人定：提示类形状圆角给满）。
     ///
