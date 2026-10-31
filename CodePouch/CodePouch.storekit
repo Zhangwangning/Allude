@@ -5,23 +5,23 @@
   ],
   "products" : [
     {
-      "displayPrice" : "18.00",
+      "displayPrice" : "28.00",
       "familyShareable" : false,
       "internalID" : "9F3A21C7",
       "localizations" : [
         {
-          "description" : "解锁完整版：不限条数，桌面小组件与实时活动同时解锁。",
-          "displayName" : "完整版",
+          "description" : "一次买断，永久使用完整版。",
+          "displayName" : "终身",
           "locale" : "zh_CN"
         },
         {
-          "description" : "Unlock the full version: unlimited records, plus widgets and Live Activities.",
-          "displayName" : "Full Version",
+          "description" : "One-time purchase, lifetime access.",
+          "displayName" : "Lifetime",
           "locale" : "en_US"
         }
       ],
-      "productID" : "com.jikezhang.codeclip.pro",
-      "referenceName" : "完整版（买断）",
+      "productID" : "com.jikezhang.codeclip.pro.lifetime",
+      "referenceName" : "终身（买断）",
       "type" : "NonConsumable"
     }
   ],
@@ -37,7 +37,75 @@
     ]
   },
   "subscriptionGroups" : [
+    {
+      "id" : "4E7C1B90-2D33-4A61-8F0E-6C5B7A9D2E11",
+      "localizations" : [
 
+      ],
+      "name" : "完整版",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "1.00",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "A1B2C3D4",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "按月订阅完整版，自动续期。",
+              "displayName" : "每月",
+              "locale" : "zh_CN"
+            },
+            {
+              "description" : "Monthly subscription with automatic renewal.",
+              "displayName" : "Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.jikezhang.codeclip.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "每月",
+          "subscriptionGroupID" : "4E7C1B90-2D33-4A61-8F0E-6C5B7A9D2E11",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "9.00",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "E5F6A7B8",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "按年订阅完整版，自动续期。",
+              "displayName" : "每年",
+              "locale" : "zh_CN"
+            },
+            {
+              "description" : "Yearly subscription with automatic renewal.",
+              "displayName" : "Yearly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.jikezhang.codeclip.pro.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "每年",
+          "subscriptionGroupID" : "4E7C1B90-2D33-4A61-8F0E-6C5B7A9D2E11",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
   ],
   "version" : {
     "major" : 4,

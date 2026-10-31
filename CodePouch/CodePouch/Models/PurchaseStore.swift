@@ -2,35 +2,72 @@ import Foundation
 import StoreKit
 
 // MARK: ============================================================================
-// 内购（StoreKit 2）
+// 内购（StoreKit 2）· 免费下载 + 订阅解锁
 //
-// 2026-10-31 主人定：买断制从「粘凭证」改成 **App 内购买**（App Store 3.1.1 要求）。
-// 老凭证体系**不删**：已经买过的人继续用凭证验签，改版不能让他们掉权限
-// （与 `MembershipPlan` 只增不删是同一条纪律）。
+// 2026-10-31 主人定（参考 Infuse）：App 免费下载，三档可选
+//   · 每月  ¥1   自动续期订阅
+//   · 每年  ¥9   自动续期订阅（比月付划算，主推）
+//   · 终身  ¥28  非消耗型，一次买断
 //
-// 产品形态：**非消耗型**（一次买断，永久有效，换机用「恢复购买」）。
-// 产品 ID 必须与 App Store Connect 里建的一致，否则取不到商品。
+// 三档解锁的是同一件事，所以权益判定 = **任意一档有效即算完整版**。
 //
-// ⚠️ 调试方式：本地用 `CodePouch.storekit` 配置（Scheme → Run → StoreKit
-//    Configuration 已挂上），模拟器里能走完整购买流程，不需要真实账号。
-//    真机 + 免费 Personal Team 时取不到商品（没有 App Store Connect 记录），
-//    这是预期现象，不是 bug。
+// 🔴 订阅会过期，权益**必须带到期时间**写进快照：
+//    小组件进程不联网、也不该去问 StoreKit，它只读 `entitlement.json`。
+//    没有 `expiresAt` 的话，订阅过期后小组件会一直按完整版渲染，
+//    直到用户恰好打开一次主 App —— 那是"过期了还在用"的口子。
+//
+// ⚠️ 调试：本地用 `CodePouch.storekit` 配置（Scheme → Run 已挂上），
+//    只能在 Xcode 里跑通，`simctl launch` 不会注入该配置。
 // ============================================================================
 
 @MainActor
 final class PurchaseStore: ObservableObject {
 
+    // MARK: 商品
+
+    /// 三档商品。`rawValue` 拼进 product ID —— 改名字等于换商品，已购用户会丢权益。
+    enum Plan: String, CaseIterable, Identifiable {
+        case monthly, yearly, lifetime
+
+        var id: String { rawValue }
+
+        /// 必须与 App Store Connect 里建的 ID 完全一致
+        var productID: String { "com.jikezhang.codeclip.pro." + rawValue }
+
+        var title: String {
+            switch self {
+            case .monthly: "每月"
+            case .yearly: "每年"
+            case .lifetime: "终身"
+            }
+        }
+
+        /// 周期说明（买断没有周期）
+        var period: String {
+            switch self {
+            case .monthly: "按月自动续期"
+            case .yearly: "按年自动续期"
+            case .lifetime: "一次买断"
+            }
+        }
+
+        /// 界面上的推荐位（年付是主推档）
+        var isRecommended: Bool { self == .yearly }
+    }
+
     static let shared = PurchaseStore()
 
-    /// 非消耗型「完整版」。改 ID 等于换商品，已购用户会全部丢权益 —— 别改。
-    static let productID = "com.jikezhang.codeclip.pro"
+    static var allProductIDs: [String] { Plan.allCases.map(\.productID) }
 
-    @Published private(set) var product: Product?
-    /// 当前是否已购买（来自 `Transaction.currentEntitlements`，已验签）
+    // MARK: 状态
+
+    /// 已取到的商品（按 product ID 索引）。取不到时为空，界面据此禁用购买键。
+    @Published private(set) var products: [String: Product] = [:]
+    /// 当前是否已解锁（来自 `Transaction.currentEntitlements`，已验签）
     @Published private(set) var isOwned = false
     @Published private(set) var isLoading = false
-    @Published private(set) var isPurchasing = false
-    /// 给界面看的一句话错误（取商品失败 / 用户取消不含在内）
+    @Published private(set) var purchasingPlan: Plan?
+    /// 给界面看的一句话提示（取商品失败 / 购买成功等）
     @Published private(set) var message: String?
 
     private var updatesTask: Task<Void, Never>?
@@ -38,18 +75,21 @@ final class PurchaseStore: ObservableObject {
 
     private init() {}
 
-    /// 显示用的价格。**拿不到商品时返回 nil**，界面据此禁用购买键 ——
-    /// 不能写死「¥18」，那会和 App Store 上的实际定价对不上（价格由商店配置）。
-    var priceText: String? { product?.displayPrice }
+    /// 某档的商店价格；取不到就是 nil，界面显示「—」并禁用按钮。
+    /// **不要写死价格**：定价在 App Store Connect 改，代码里写死就对不上。
+    func price(for plan: Plan) -> String? {
+        products[plan.productID]?.displayPrice
+    }
+
+    var canPurchase: Bool { !products.isEmpty }
 
     // MARK: 启动
 
-    /// 冷启动调用一次：拉起交易监听、取商品、刷新权益。
     func start() {
         guard !started else { return }
         started = true
 
-        // 交易更新要**一直**听着：Ask to Buy 批准、跨设备购买、退款都会从这里来
+        // 交易更新要一直听着：续期、Ask to Buy 批准、跨设备购买、退款都从这里来
         updatesTask = Task { [weak self] in
             for await update in Transaction.updates {
                 guard let self else { return }
@@ -61,21 +101,21 @@ final class PurchaseStore: ObservableObject {
         }
 
         Task {
-            await loadProduct()
+            await loadProducts()
             await refreshEntitlement()
         }
     }
 
-    // MARK: 取商品
-
-    func loadProduct() async {
+    func loadProducts() async {
         isLoading = true
         defer { isLoading = false }
         do {
-            let products = try await Product.products(for: [Self.productID])
-            product = products.first
-            if product == nil {
+            let list = try await Product.products(for: Self.allProductIDs)
+            products = Dictionary(uniqueKeysWithValues: list.map { ($0.id, $0) })
+            if products.isEmpty {
                 message = "暂时取不到商品信息，请稍后再试"
+            } else {
+                message = nil
             }
         } catch {
             message = "取商品失败：\(error.localizedDescription)"
@@ -84,14 +124,14 @@ final class PurchaseStore: ObservableObject {
 
     // MARK: 购买 / 恢复
 
-    func purchase() async {
-        guard let product else {
+    func purchase(_ plan: Plan) async {
+        guard let product = products[plan.productID] else {
             message = "商品还没加载好，请稍后重试"
             return
         }
-        isPurchasing = true
+        purchasingPlan = plan
         message = nil
-        defer { isPurchasing = false }
+        defer { purchasingPlan = nil }
 
         do {
             let result = try await product.purchase()
@@ -101,12 +141,12 @@ final class PurchaseStore: ObservableObject {
                 case .verified(let transaction):
                     await transaction.finish()
                     await refreshEntitlement()
+                    message = "已解锁完整版"
                 case .unverified:
-                    // 走到这里说明收据没通过系统校验 —— 不放行
                     message = "购买凭据校验失败，请稍后重试"
                 }
             case .userCancelled:
-                break                       // 用户自己取消，不该弹错误
+                break                       // 用户自己取消，不弹错误
             case .pending:
                 message = "购买待确认，完成后会自动生效"
             @unknown default:
@@ -118,47 +158,58 @@ final class PurchaseStore: ObservableObject {
     }
 
     func restore() async {
-        isPurchasing = true
+        isLoading = true
         message = nil
-        defer { isPurchasing = false }
+        defer { isLoading = false }
         do {
             try await AppStore.sync()       // 会要求输入 Apple ID 密码
-            // 同步之后仍为空 = 这个 Apple ID 确实没买过，此时降级是可信的
+            // 同步之后仍为空 = 这个 Apple ID 确实没有有效权益，此时降级是可信的
             await refreshEntitlement(allowDowngrade: true)
-            if !isOwned { message = "这个 Apple ID 下没有找到已购买的记录" }
+            if !isOwned { message = "这个 Apple ID 下没有找到有效订阅或购买记录" }
         } catch {
             message = "恢复失败：\(error.localizedDescription)"
         }
     }
 
-    // MARK: 权益刷新
+    // MARK: 权益
 
-    /// 以**商店返回的已购列表**为准，写进 App Group 快照供小组件读取。
+    /// 扫一遍已购列表，算出「是否解锁」与「最晚到期时间」。
     ///
-    /// 🔴 `allowDowngrade` 的默认值是 **false**，这是刻意的：
-    ///    `Transaction.currentEntitlements` 读的是**本机收据**，刚重装、离线、
-    ///    或商店暂时不可用时，它会返回空 —— 但用户明明买过。
-    ///    若无条件照空集合降级，用户会在换机/断网时莫名其妙变回免费版，
-    ///    而且连报错都没有。所以这里只「升级」；**只有用户主动点「恢复购买」**
-    ///    （`AppStore.sync()` 之后）才承认"确实没有"并降级。
+    /// `currentEntitlements` 对订阅只返回**仍然有效**的那些，所以到期自然消失；
+    /// 非消耗型则一直返回。两者混在一起取 max：有终身就是 nil（永不过期）。
+    ///
+    /// 🔴 `allowDowngrade` 默认 **false**：这个集合读的是本机收据，
+    ///    刚重装 / 离线 / 商店暂时不可用时会返回空 —— 但用户明明买过。
+    ///    无条件照空集合降级 = 换机断网就掉权益，而且没有报错。
+    ///    只有用户主动「恢复购买」（`AppStore.sync()` 之后）才承认"确实没有"。
     func refreshEntitlement(allowDowngrade: Bool = false) async {
         var owned = false
+        var latestExpiry: Date?
+
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result else { continue }
-            guard transaction.productID == Self.productID else { continue }
+            guard Self.allProductIDs.contains(transaction.productID) else { continue }
             guard transaction.revocationDate == nil else { continue }
+            guard let expiry = transaction.expirationDate else {
+                // 非消耗型：没有到期时间 = 永久
+                owned = true
+                latestExpiry = nil
+                break
+            }
+            guard expiry > Date() else { continue }
             owned = true
+            latestExpiry = max(latestExpiry ?? .distantPast, expiry)
         }
 
         if owned {
             isOwned = true
-            EntitlementSnapshot.markStoreOwned(true)
+            EntitlementSnapshot.markStoreOwned(true, expiresAt: latestExpiry)
         } else if allowDowngrade {
             isOwned = false
-            EntitlementSnapshot.markStoreOwned(false)
+            EntitlementSnapshot.markStoreOwned(false, expiresAt: nil)
         } else {
-            // 商店没给出结论：沿用快照里已有的状态，别把用户降级
-            isOwned = EntitlementSnapshot.load().storeOwned == true
+            // 商店没给出结论：沿用快照（快照自己会按 expiresAt 判过期）
+            isOwned = EntitlementSnapshot.licensedPro
         }
         PickupStore.shared.refreshEntitlement()
     }

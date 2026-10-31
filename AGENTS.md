@@ -3,8 +3,10 @@
 iOS 取件码收纳 App。核心承诺：**数据只在本机，不联网、不上传、不需要注册**。
 SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 
-商业模式：**买断制 · App Store 内购**。非消耗型商品 `com.jikezhang.codeclip.pro`
-（一次买断、不订阅），走 StoreKit 2；价格一律取 `Product.displayPrice`。
+商业模式：**免费下载 + 订阅解锁**（参照 Infuse），三档同一权益：
+`com.jikezhang.codeclip.pro.monthly`（¥1/月）、`.yearly`（¥9/年，主推）、
+`.lifetime`（¥28，非消耗型买断）。走 StoreKit 2，价格一律取 `Product.displayPrice`。
+订阅会过期 → 权益快照必须写 `expiresAt`，否则小组件会一直按完整版渲染。
 
 > 旧的「离线签名凭证 / 绑定设备」体系已于 2026-10-31 停用（从未对外售卖）。
 > `LicenseVerifier` / `license-gen` 工具**仍在**，只为读得懂老快照里的 `license` 字段；
@@ -58,7 +60,7 @@ SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 
 - **clean build 必须 0 warning**，弃用 API 当场迁移，不留 `@available` 兜底。
 - **不要提交构建产物**：`build/`、`build-sim/`、`DerivedData/` 已忽略。
-- **价格只能来自 StoreKit**：内购（`PurchaseStore`，非消耗型）必须展示
+- **价格只能来自 StoreKit**：内购（`PurchaseStore`，订阅 + 买断三档）必须展示
   `Product.displayPrice`，不要写死「¥18」—— 上架定价改了代码就对不上。
   除此之外不做销售催促、不做防盗宣示。
 
@@ -109,7 +111,7 @@ xcrun simctl io <UDID> screenshot /tmp/x.png
 
 常用 `SCREEN` 值：
 `settings`（设置页，配 `SETTINGS_ANCHOR=about` 滚到底）、`add`（添加面板，配 `SEED=<短信>`）、
-`license`（签名凭证页）、`scan` / `scanPhoto`、`share`、`pickedUp`、`stats`、
+`license`（完整版/订阅页）、`scan` / `scanPhoto`、`share`、`pickedUp`、`stats`、
 `detail`、`detailPicked`、`notify`、`gallery`。
 
 环境变量必须带 **`SIMCTL_CHILD_`** 前缀。截图建议同时注入

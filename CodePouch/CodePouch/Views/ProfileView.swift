@@ -46,7 +46,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .courier:      return "快递公司"
         case .station:      return "驿站管理"
         case .guide:        return "使用教程"
-        case .license:      return "凭证"
+        case .license:      return "完整版"
         case .storage:      return "本机数据"
         case .feedback:     return "反馈"
         case .version:      return "版本"
@@ -62,7 +62,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .courier:      return "shippingbox.fill"
         case .station:      return "storefront.fill"
         case .guide:        return "book.fill"
-        case .license:      return "key.fill"
+        case .license:      return "sparkles"
         case .storage:      return "internaldrive.fill"
         case .feedback:     return "envelope.fill"
         case .version:      return "info.circle.fill"
@@ -139,8 +139,8 @@ struct SettingsView: View {
     private var stackedSettings: some View {
         ScrollView {
             VStack(spacing: 16) {
+                proBanner
                 settingsSection
-                fullVersionSection
                 dataSection
                 aboutSection
                 footer
@@ -506,31 +506,60 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: 完整版
+    // MARK: 顶部订阅横幅
 
-    /// 内购入口。
+    /// 设置页顶部那条 PRO 横幅（2026-10-31 主人参照 Infuse 定）。
     ///
-    /// 🔴 **必须可见**：App Store 要求付费功能有明显的购买入口，
-    /// 之前「连点 15 次才出现」那套已随凭证体系一起删除。
-    private var fullVersionSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "完整版")
+    /// 为什么放到最顶上：App 免费下载、靠订阅解锁，**入口必须显眼**；
+    /// 藏起来既不厚道，也会被审核按「付费功能没有明显入口」挑刺。
+    /// 已购时同一块横幅改口径为「完整版已开通」，不摆第二次购买。
+    private var proBanner: some View {
+        NavigationLink {
+            FullVersionView()
+        } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 8) {
+                        Text("拾码")
+                            .font(.system(size: 23, weight: .bold))
+                        Text("PRO")
+                            .font(.system(size: 12, weight: .heavy))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(.white.opacity(0.24), in: .rect(cornerRadius: 6))
+                    }
+                    .foregroundStyle(.white)
 
-            VStack(spacing: 0) {
-                NavigationLink {
-                    FullVersionView()
-                } label: {
-                    SettingsRow(symbol: "sparkles",
-                                title: "完整版",
-                                subtitle: store.isPro
-                                    ? "已购买 · 感谢支持"
-                                    : "一次买断 · 不限条数",
-                                tint: AppTheme.amber)
+                    Text(store.isPro ? "完整版已开通" : "查看订阅")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.92))
                 }
-                .buttonStyle(.plain)
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.9))
             }
-            .cardSurface()
+            .padding(.horizontal, 18)
+            .padding(.vertical, 17)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                // 橙色渐变：整页唯一的彩色块。
+                // 🔴 这里**故意不用**主题色（主题是蓝的）：横幅是营销面，
+                //    参照 Infuse 的高饱和橙来看更像"付费墙"，也更容易被注意到。
+                //    原来的 amber(#B45309) 起手偏褐，压到白底上像脏了。
+                LinearGradient(
+                    colors: [Color(red: 1.00, green: 0.63, blue: 0.16),   // #FFA029
+                             Color(red: 0.94, green: 0.33, blue: 0.04)],  // #F0540A
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+            .clipShape(.rect(cornerRadius: AppTheme.cardRadius, style: .continuous))
+            .shadow(color: AppTheme.todayTint.opacity(0.25), radius: 12, y: 4)
         }
+        .buttonStyle(.plain)
     }
 
     // MARK: 本机数据
@@ -592,26 +621,6 @@ struct SettingsView: View {
                 .buttonStyle(.plain)
 
                 SettingsDivider()
-
-                // 设备 UUID（2026-10-31 主人）：与「反馈」同一套行式 ——
-                // 第一行标题、第二行打码值、右边一个复制按钮；点整行也复制。
-                // 打码是常态：这串是设备标识，截图/录屏时不该整串摊着；
-                // 但复制必须复制**完整值**，否则发去签发没法用。
-                SettingsRow(symbol: "number.square.fill",
-                            title: "设备 UUID",
-                            subtitle: LicenseDevice.masked(LicenseDevice.current),
-                            subtitleOneLine: true,
-                            showsChevron: false,
-                            tint: AppTheme.indigo,
-                            trailing: AnyView(
-                                Button { copyDeviceUUID() } label: {
-                                    Text(copiedUUID ? "已复制" : "复制")
-                                        .font(.system(size: 16))
-                                        .foregroundStyle(copiedUUID ? AppTheme.doneTint : AppTheme.accent)
-                                }
-                                .buttonStyle(.plain)
-                            ))
-                .onTapGesture { copyDeviceUUID() }
 
                 SettingsDivider()
 
@@ -760,7 +769,7 @@ struct FullVersionView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             // 冷启动那次取商品可能刚巧网络没好，进页面时补一次
-            if purchase.product == nil { Task { await purchase.loadProduct() } }
+            if purchase.canPurchase == false { Task { await purchase.loadProducts() } }
         }
     }
 
@@ -772,7 +781,7 @@ struct FullVersionView: View {
                         ? "完整版已生效：不限条数，桌面小组件与实时活动同时解锁。"
                         : "免费版同屏显示 \(PickupStore.freeVisibleLimit) 条，最多存 \(PickupStore.freeStorageLimit) 条；超出后自动移除最旧的。") {
             SettingsPlainRow(title: "版本") {
-                Text(store.isPro ? "已购买" : "免费版")
+                Text(store.isPro ? (store.plan == .lifetime ? "已买断" : "已订阅") : "免费版")
                     .font(.system(size: 17))
                     .foregroundStyle(store.isPro ? AppTheme.doneTint : Color.secondary)
                     .fixedSize()
@@ -780,90 +789,107 @@ struct FullVersionView: View {
         }
     }
 
-    // MARK: 购买
+    // MARK: 三档价格
 
-    /// 价格一律取 `Product.displayPrice`：App Store 要求展示商店返回的本地化价格，
-    /// 写死「¥18」会与实际上架定价对不上，价格变了也没人改代码。
+    /// 免费下载 + 三档解锁（2026-10-31 主人定：月 ¥1 / 年 ¥9 / 终身 ¥28）。
+    ///
+    /// 价格**只从 StoreKit 取**，取不到就是「—」并禁用：写死数字一旦和
+    /// App Store Connect 上的定价不一致，用户看到的价格就是假的。
     private var purchaseSection: some View {
-        VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 24) {
             if purchase.isOwned {
-                // 已购：不再摆价格、恢复、失败提示 —— 那些只对"还没买"的人有意义
                 SettingsGroup(title: "完整版",
-                              note: "已购买，感谢支持。换机或重装后可在原 Apple ID 下恢复。") {
-                    SettingsPlainRow(title: "不限条数") {
-                        Text("已启用")
+                              note: "已开通，感谢支持。换机或重装后可在原 Apple ID 下「恢复购买」。") {
+                    SettingsPlainRow(title: "状态") {
+                        Text("已开通")
                             .font(.system(size: 17))
                             .foregroundStyle(AppTheme.doneTint)
                             .fixedSize()
                     }
                 }
             } else {
-                buyableSection
-            }
-        }
-    }
-
-    /// 未购状态下的购买区块
-    private var buyableSection: some View {
-        VStack(spacing: 12) {
-            SettingsGroup(title: "完整版",
-                          note: "一次买断、永久有效；不订阅、不自动续费。换机或重装后点「恢复购买」即可找回。") {
-                SettingsPlainRow(title: "不限条数") {
-                    if let price = purchase.priceText {
-                        Text(price)
-                            .font(.system(size: 17))
-                            .foregroundStyle(.secondary)
-                            .fixedSize()
-                    } else if purchase.isLoading {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Text("—").font(.system(size: 17)).foregroundStyle(.tertiary)
-                    }
+                SettingsGroup(title: "订阅",
+                              note: "自动续期，可随时在「设置 › Apple ID › 订阅」里取消。") {
+                    planRow(.monthly)
+                    SettingsDivider(style: .plain)
+                    planRow(.yearly)
                 }
 
-                if !purchase.isOwned {
-                    SettingsDivider(style: .plain)
+                SettingsGroup(title: "买断", note: "一次付费、永久使用，不自动续期。") {
+                    planRow(.lifetime)
+                }
+
+                SettingsGroup(title: "已购买过？") {
                     actionRow(title: "恢复购买", systemImage: "arrow.clockwise") {
                         Task { await purchase.restore() }
                     }
                 }
-            }
 
-            buyButton
-
-            if let message = purchase.message {
-                Text(message)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .multilineTextAlignment(.center)
+                // Apple 要求订阅类 App 在购买处交代续期规则
+                Text("订阅会自动续期：确认购买后从 Apple ID 扣款，当前周期结束前 24 小时内自动续费；随时可在「设置 › Apple ID › 订阅」中取消。")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 4)
+
+                if let message = purchase.message {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 4)
+                }
             }
         }
     }
 
-    private var buyButton: some View {
-        Button {
-            Task { await purchase.purchase() }
+    private func planRow(_ plan: PurchaseStore.Plan) -> some View {
+        let price = purchase.price(for: plan)
+        let busy = purchase.purchasingPlan == plan
+
+        return Button {
+            Task { await purchase.purchase(plan) }
         } label: {
-            Text(buyTitle)
-                .font(.system(size: 15, weight: .semibold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 13)
-                .background(canBuy ? AppTheme.accent : Color(.tertiarySystemFill), in: .capsule)
-                .foregroundStyle(canBuy ? Color.white : Color.secondary)
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(plan.title)
+                            .font(.system(size: 17))
+                            .foregroundStyle(.primary)
+
+                        if plan.isRecommended {
+                            Text("推荐")
+                                .font(.system(size: 11, weight: .semibold))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(AppTheme.accent.opacity(0.14), in: .rect(cornerRadius: 4))
+                                .foregroundStyle(AppTheme.accent)
+                        }
+                    }
+
+                    Text(plan.period)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.tertiary)
+                }
+
+                Spacer(minLength: 8)
+
+                Text(price ?? "—")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(price == nil ? Color.secondary : AppTheme.accent)
+                    .fixedSize()
+
+                if busy { ProgressView().controlSize(.small) }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(minHeight: 56)
+            .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .disabled(!canBuy || purchase.isPurchasing)
-    }
-
-    private var canBuy: Bool { purchase.product != nil && !purchase.isPurchasing }
-
-    private var buyTitle: String {
-        if purchase.isPurchasing { return "处理中…" }
-        guard let price = purchase.priceText else { return "购买完整版" }
-        return "购买完整版 · \(price)"
+        .disabled(price == nil || purchase.purchasingPlan != nil)
     }
 
     /// 设置页形态的动作行：整行可点，标题强调色，右侧配一个弱化符号。

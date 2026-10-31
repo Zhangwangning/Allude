@@ -405,7 +405,10 @@ struct EntitlementSnapshot: Codable, Equatable {
         let backed = !(snapshot.license ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .isEmpty
+        // 订阅会过期：`expiresAt == nil` 表示永久（买断），否则必须还没到点。
+        // 这一步必须在**读侧**做 —— 小组件不联网、不跑 StoreKit，只信这份快照。
         let storeOwned = snapshot.storeOwned == true
+            && (snapshot.expiresAt.map { $0 > Date() } ?? true)
         return snapshot.isPro && (backed || storeOwned)
     }
 
@@ -413,11 +416,17 @@ struct EntitlementSnapshot: Codable, Equatable {
     ///
     /// 只改这一个来源：**不会**动 `license` —— 老凭证买家的权益由验签决定，
     /// 内购退款/撤销不该把他们的凭证一起抹掉。
-    static func markStoreOwned(_ owned: Bool) {
+    /// - Parameter expiresAt: 订阅到期时间；`nil` = 永久（买断）
+    static func markStoreOwned(_ owned: Bool, expiresAt: Date?) {
         var snapshot = load()
-        guard (snapshot.storeOwned ?? false) != owned else { return }
+        let expiryChanged = owned && snapshot.expiresAt != expiresAt
+        guard (snapshot.storeOwned ?? false) != owned || expiryChanged else { return }
 
         snapshot.storeOwned = owned
+        // 有老凭证时不动它的到期时间：那份到期时间由凭证签名决定，不归内购管
+        if (snapshot.license ?? "").isEmpty {
+            snapshot.expiresAt = owned ? expiresAt : nil
+        }
         if owned {
             snapshot.isPro = true
             snapshot.plan = .lifetime
