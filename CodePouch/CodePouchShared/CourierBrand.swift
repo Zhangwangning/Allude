@@ -427,6 +427,14 @@ enum CourierBrand {
     /// 与 `matchedInfo` 共用同一张 `table`，因此图标、分类、颜色永远一致 ——
     /// 不会出现「图标画 A、分类判 B」的漂移。返回 `(name, length)` 供上层
     /// （`StationDirectory.matchedName`）叠加自定义名时按最长优先比较。
+    /// 位置是否落在开头那段【…】里（短信发送方签名）。
+    private static func isInsideLeadingBracket(_ text: String, at position: Int) -> Bool {
+        guard text.hasPrefix("【") else { return false }
+        guard let close = text.firstIndex(of: "】") else { return false }
+        let closeOffset = text.distance(from: text.startIndex, to: close)
+        return position <= closeOffset
+    }
+
     static func stationMatch(in texts: [String]) -> (name: String, length: Int)? {
         let haystacks = texts.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
@@ -445,11 +453,38 @@ enum CourierBrand {
         }
         stationCacheLock.unlock()
 
-        var best: (name: String, length: Int)?
+        // 🔴 2026-10-31 判定顺序修正：**正文里的名字优先于开头【】里的发送方**。
+        //
+        // 起因：短信「【多多代收点】…在仙田百米驿站取…兔喜生活」被判成了「多多代收点」——
+        // 那是发送方平台名，而取件点在正文里。原来的规则只比词长，谁长谁赢，
+        // 于是平台名一长就盖掉真正的取件点。
+        //
+        // 现在的排序（依次比较）：
+        //   ① 是否落在开头【…】之外 —— 正文里写的才是取件点；
+        //   ② 词更长 —— 同是正文时，「兔喜生活」优先于「兔喜」；
+        //   ③ 出现更早 —— 同一句里先说到的更可能是主取件点。
+        var best: (name: String, length: Int, outside: Bool, position: Int)?
         for item in table where item.category == .station || item.category == .locker {
             for word in [item.name, item.key] + item.aliases {
-                guard haystacks.contains(where: { $0.localizedCaseInsensitiveContains(word) }) else { continue }
-                if best == nil || word.count > best!.length { best = (item.name, word.count) }
+                for haystack in haystacks {
+                    guard let range = haystack.range(of: word, options: .caseInsensitive) else { continue }
+                    let position = haystack.distance(from: haystack.startIndex, to: range.lowerBound)
+                    let outside = !Self.isInsideLeadingBracket(haystack, at: position)
+
+                    guard let current = best else {
+                        best = (item.name, word.count, outside, position)
+                        continue
+                    }
+                    let better: Bool
+                    if current.outside != outside {
+                        better = outside                      // ① 正文优先
+                    } else if word.count != current.length {
+                        better = word.count > current.length  // ② 长词优先
+                    } else {
+                        better = position < current.position  // ③ 靠前优先
+                    }
+                    if better { best = (item.name, word.count, outside, position) }
+                }
             }
         }
 
@@ -458,7 +493,7 @@ enum CourierBrand {
         if stationCache.count > 512 { stationCache.removeAll(keepingCapacity: true) }
         stationCache[cacheKey] = encoded
         stationCacheLock.unlock()
-        return best
+        return best.map { (name: $0.name, length: $0.length) }
     }
 
     /// `stationMatch` 的结果缓存（空串 = 没有命中）
