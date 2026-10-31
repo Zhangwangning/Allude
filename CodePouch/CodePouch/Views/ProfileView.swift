@@ -46,7 +46,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .courier:      return "快递公司"
         case .station:      return "驿站管理"
         case .guide:        return "使用教程"
-        case .license:      return "签名凭证"
+        case .license:      return "凭证"
         case .storage:      return "本机数据"
         case .feedback:     return "反馈"
         case .version:      return "版本"
@@ -508,17 +508,17 @@ struct SettingsView: View {
     /// 窄屏的「解锁」分组（宽屏走 `SettingsPane.license` 面板）。
     private var licenseSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "解锁")
+            SectionHeader(title: "凭证")
 
             VStack(spacing: 0) {
                 NavigationLink {
                     LicenseActivationView()
                 } label: {
                     SettingsRow(symbol: "key.fill",
-                                title: "签名凭证",
+                                title: "本机凭证",
                                 subtitle: store.isPro
-                                    ? "已解锁 · \(store.plan.title)"
-                                    : "未激活 · 免费档 \(PickupStore.freeVisibleLimit) 条",
+                                    ? "完整版 · \(store.plan.title)"
+                                    : "免费版 · 只显示 \(PickupStore.freeVisibleLimit) 条",
                                 tint: AppTheme.amber)
                 }
                 .buttonStyle(.plain)
@@ -697,6 +697,8 @@ struct LicenseActivationView: View {
     @State private var text = ""
     @State private var outcome: Outcome?
     @State private var copiedDevice = false
+    /// 本机标识默认打码，点「显示」才展开
+    @State private var revealed = false
     @State private var copyResetTask: Task<Void, Never>?
 
     private enum Outcome: Equatable {
@@ -710,7 +712,7 @@ struct LicenseActivationView: View {
         /// 键盘或屏幕边缘挡掉，用户只看到"点了没反应"。
         var alertTitle: String {
             switch self {
-            case .unlocked: return "已激活"
+            case .unlocked: return "凭证有效"
             case .rejected(let title, _): return title
             }
         }
@@ -718,7 +720,7 @@ struct LicenseActivationView: View {
         var alertMessage: String {
             switch self {
             case .unlocked(let label):
-                return "凭证验证通过，全部功能已解锁（\(label)）。"
+                return "校验通过，已切换为完整版（\(label)）。"
             case .rejected(_, let message):
                 return message
             }
@@ -748,7 +750,7 @@ struct LicenseActivationView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("签名凭证")
+        .navigationTitle("凭证")
         .cloaksTabBar()
         .navigationBarTitleDisplayMode(.inline)
         .scrollDismissesKeyboard(.interactively)
@@ -770,8 +772,8 @@ struct LicenseActivationView: View {
     /// 行尾的档位文字。买断制口径 —— **不出现「会员 / 年费 / 月付」任何订阅词**。
     /// 临时凭证按到期时间算剩余天数（凭证里签的是绝对时间，这里只是显示）。
     private var planValue: String {
-        guard store.isPro else { return "免费档" }
-        if store.plan == .lifetime { return "已解锁 · 永久" }
+        guard store.isPro else { return "免费版" }
+        if store.plan == .lifetime { return "完整版 · 永久" }
         if let expiry = EntitlementSnapshot.load().expiresAt {
             let days = max(0, Calendar.current.dateComponents([.day], from: Date(), to: expiry).day ?? 0)
             return "临时 · 剩 \(days) 天"
@@ -780,11 +782,14 @@ struct LicenseActivationView: View {
     }
 
     private var statusSection: some View {
-        SettingsGroup(title: "授权状态",
+        // 🔴 2026-10-31 主人：**不出现「授权 / 解锁 / 激活」**这类词。
+        //    App 内越像"卖东西"，审核越容易按 3.1.1（内购）挑刺；
+        //    这里的口径改成描述「本机是什么版本」，而不是「你买了没」。
+        SettingsGroup(title: "当前状态",
                       note: store.isPro
-                        ? "全部功能已解锁。凭证只在本机校验，不联网、不上传。"
+                        ? "功能全部可用。凭证只在本机校验，不联网、不上传。"
                         : "同屏显示 \(PickupStore.freeVisibleLimit) 条，最多存 \(PickupStore.freeStorageLimit) 条；超出后自动移除最旧的。") {
-            SettingsPlainRow(title: "当前档位") {
+            SettingsPlainRow(title: "版本") {
                 Text(planValue)
                     .font(.system(size: 17))
                     .foregroundStyle(store.isPro ? AppTheme.doneTint : Color.secondary)
@@ -793,25 +798,38 @@ struct LicenseActivationView: View {
         }
     }
 
-    // MARK: 本机设备码
+    // MARK: 本机标识
 
     private var deviceSection: some View {
-        SettingsGroup(title: "本机设备码",
+        SettingsGroup(title: "本机标识",
                       note: "凭证与本机绑定，这一串就是绑定依据。更换设备后需按新设备重新签发。") {
-            SettingsPlainRow(title: "设备码") {
-                Button { copyDevice() } label: {
-                    Text(copiedDevice ? "已复制" : "复制")
-                        .font(.system(size: 17))
-                        .foregroundStyle(copiedDevice ? AppTheme.doneTint : AppTheme.accent)
+            SettingsPlainRow(title: "标识") {
+                HStack(spacing: 14) {
+                    Button {
+                        withAnimation(.easeOut(duration: 0.15)) { revealed = !revealed }
+                    } label: {
+                        Text(revealed ? "隐藏" : "显示")
+                            .font(.system(size: 17))
+                            .foregroundStyle(AppTheme.accent)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button { copyDevice() } label: {
+                        Text(copiedDevice ? "已复制" : "复制")
+                            .font(.system(size: 17))
+                            .foregroundStyle(copiedDevice ? AppTheme.doneTint : AppTheme.accent)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
 
             SettingsDivider(style: .plain)
 
             // 35 个字符（32 位十六进制分四组）放不进行尾：17pt 标题已占去半行，
             // 挤在右边只剩 ~250pt，必然折行。整串单独占一行，15pt 等宽。
-            Text(LicenseDevice.display(deviceCode))
+            // 默认打码（首尾各 8 位），点「显示」才展开 —— 复制永远复制完整值。
+            Text(revealed ? LicenseDevice.display(deviceCode)
+                          : LicenseDevice.masked(deviceCode))
                 .font(.system(size: 15, weight: .semibold, design: .monospaced))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
@@ -826,8 +844,8 @@ struct LicenseActivationView: View {
 
     private var activateSection: some View {
         VStack(spacing: 12) {
-            SettingsGroup(title: "激活凭证",
-                          note: "验签只在本机进行，不联网。凭证与设备码一一对应，换机需重新签发。") {
+            SettingsGroup(title: "凭证",
+                          note: "校验只在本机进行，不联网。凭证与本机标识一一对应，换机需重新签发。") {
                 editor
                 SettingsDivider(style: .plain)
                 actionRow(title: "从剪贴板粘贴", systemImage: "doc.on.clipboard") { pasteCredential() }
@@ -898,7 +916,7 @@ struct LicenseActivationView: View {
     /// 主操作：与「添加」页的提交键同一口径（胶囊实心主色）。
     private var activateButton: some View {
         Button { activate() } label: {
-            Text("激活")
+            Text("验证")
                 .font(.system(size: 15, weight: .semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 13)

@@ -82,6 +82,17 @@ enum LicenseDevice {
         .joined(separator: "-")
     }
 
+    /// 打码展示：首尾各 8 位保留，中间 16 位用圆点遮住。
+    ///
+    /// 2026-10-31 主人要求「UUID 默认加密显示」——这句话本身是设备标识，
+    /// 截图、录屏、给人看界面时不该整串摊在外面。要复制时仍复制**完整**值。
+    static func masked(_ code: String) -> String {
+        let normalized = normalize(code)
+        guard normalized.count == 32 else { return display(code) }
+        let dots = String(repeating: "•", count: 8)
+        return "\(normalized.prefix(8))-\(dots)-\(dots)-\(normalized.suffix(8))"
+    }
+
     /// 把用户可能贴回来的各种写法（小写、带连字符、带空格）归一成标准形态。
     /// 发码工具与 App 两侧都必须走它，否则"大小写差一个字母导致验不过"
     /// 会变成最常见的售后。
