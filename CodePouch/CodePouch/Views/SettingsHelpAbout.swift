@@ -237,10 +237,13 @@ struct AboutView: View {
         VStack(spacing: 8) {
             // 2026-10-31 主人：关于页顶部用 App 自己的 logo（已去掉白底）。
             // 图标本身带圆角，这里不再叠圆角遮罩，免得边缘出现双重圆角。
+            // 图标资源是 1024 的满幅方图（App Store 要求无透明、无自带圆角），
+            // App 内要模仿系统图标的样子，这里按 iOS 的比例裁连续圆角：22.37%。
             Image("BrandLogo")
                 .resizable()
                 .interpolation(.high)
                 .frame(width: 78, height: 78)
+                .clipShape(.rect(cornerRadius: 78 * 0.2237, style: .continuous))
 
             Text("拾码 CodePouch")
                 .font(.system(size: 19, weight: .semibold))
