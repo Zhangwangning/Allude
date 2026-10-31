@@ -166,16 +166,23 @@ struct WidgetGalleryContent: View {
     /// 示例快照：8 条，跨两页 —— 只有超过一页才看得出翻页控件对不对。
     private var snapshot: WidgetSnapshot { .preview() }
 
-    /// **按设备 + 档位过滤**：
-    ///  · iPad 超大（690pt 宽）只存在于 iPad 的桌面，iPhone 上渲染它等于展示一个加不出来的尺寸；
-    ///  · 免费版只注册了小 / 中两个尺寸（`WidgetPageSize.supportedFamilies`），
-    ///    预览里再铺大尺寸，用户到系统图库里根本找不到 —— 会以为是自己没找到。
+    /// **只按设备过滤，不按档位裁剪**（2026-11-01 主人）。
+    ///
+    /// 原来免费版会把大尺寸整块藏掉，理由是不想让人到系统图库里找不到；
+    /// 但主人的口径是：**这里就应该把所有尺寸都摆出来**，
+    /// 免费版/拾码 Pro 的差别是"能不能用"，不是"看不看得到"。
+    /// 所以现在全部渲染，付费档才有的尺寸挂一个「拾码 Pro」标记并说明。
+    ///
+    /// 仍保留设备过滤：iPad 超大只存在于 iPad 桌面，iPhone 上渲染它等于展示一个加不出来的尺寸。
     private var styles: [WidgetCanvas.Style] {
-        let allowed = WidgetPageSize.supportedFamilies
-        let deviceFiltered = UIDevice.current.userInterfaceIdiom == .pad
+        UIDevice.current.userInterfaceIdiom == .pad
             ? WidgetCanvas.Style.allCases
             : WidgetCanvas.Style.allCases.filter { $0 != .extraLarge }
-        return deviceFiltered.filter { allowed.contains($0.family) }
+    }
+
+    /// 该尺寸在当前档位能不能用。免费版只有小 / 中（`WidgetPageSize.supportedFamilies`）。
+    private func isLocked(_ style: WidgetCanvas.Style) -> Bool {
+        !WidgetPageSize.supportedFamilies.contains(style.family)
     }
 
     var body: some View {
@@ -184,9 +191,21 @@ struct WidgetGalleryContent: View {
                 .font(.headline)
                 .padding(.top, 2)
 
+            // 档位说明（2026-11-01 主人）：这里展示**全部尺寸**，
+            // 免费版与拾码 Pro 的差别只是"能不能加到桌面"，不是"看不看得到"。
+            tierNote
+
             ForEach(styles, id: \.rawValue) { style in
                 block(title: style.title) {
-                    canvas(style: style, snapshot: snapshot)
+                    ZStack(alignment: .topTrailing) {
+                        canvas(style: style, snapshot: snapshot)
+                            .opacity(isLocked(style) ? 0.55 : 1)
+
+                        if isLocked(style) {
+                            proBadge
+                                .padding(8)
+                        }
+                    }
                 }
             }
 
@@ -239,6 +258,40 @@ struct WidgetGalleryContent: View {
                                familyKey: style.pageKey,
                                options: effectiveOptions)
         }
+    }
+
+    /// 档位说明。命名按主人定的：免费版 = 拾码 CodePouch，付费版 = 拾码 Pro。
+    private var tierNote: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(AppTheme.sky)
+                Text("全部尺寸都在这里预览")
+                    .font(AppTheme.TypeScale.rowSubtitle.weight(.semibold))
+            }
+
+            Text("免费版《拾码 CodePouch》可用**小、中**两种尺寸；**拾码 Pro** 解锁全部尺寸（含大尺寸与竖版超大）。这里把每种尺寸都画出来，方便你判断要不要解锁——标着「拾码 Pro」的那些，免费版在系统图库里加不出来。")
+                .font(AppTheme.TypeScale.note)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppTheme.sky.opacity(0.08), in: .rect(cornerRadius: 12, style: .continuous))
+    }
+
+    private var proBadge: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 9, weight: .bold))
+            Text("拾码 Pro")
+                .font(AppTheme.TypeScale.badge)
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(AppTheme.amber, in: .capsule)
     }
 
     private func block<Content: View>(title: String,
