@@ -478,7 +478,6 @@ struct SettingsView: View {
                     NotificationSettingsView()
                 } label: {
                     SettingsRow(symbol: "bell.badge.fill", title: "通知提醒",
-                                subtitle: "入库通知 · 定期与不定期取件提醒",
                                 tint: AppTheme.pendingTint)
                 }
                 .buttonStyle(.plain)
@@ -489,7 +488,6 @@ struct SettingsView: View {
                     WidgetSettingsView()
                 } label: {
                     SettingsRow(symbol: "square.text.square.fill", title: "桌面小组件",
-                                subtitle: "显示内容 · 效果预览 · 添加指引",
                                 tint: AppTheme.sky)
                 }
                 .buttonStyle(.plain)
@@ -501,8 +499,8 @@ struct SettingsView: View {
                 } label: {
                     SettingsRow(symbol: "platter.filled.top.iphone",
                                 title: "实时活动",
-                                subtitle: activitySubtitle,
-                                tint: AppTheme.accent)
+                                tint: AppTheme.accent,
+                                locked: !store.isPro)
                 }
                 .buttonStyle(.plain)
 
@@ -515,7 +513,6 @@ struct SettingsView: View {
                     CourierGalleryView(scope: .courier)
                 } label: {
                     SettingsRow(symbol: "shippingbox.fill", title: "快递公司",
-                                subtitle: "承运方品牌图标 · 未收录的按名称自绘",
                                 tint: AppTheme.indigo)
                 }
                 .buttonStyle(.plain)
@@ -526,7 +523,6 @@ struct SettingsView: View {
                     CourierGalleryView(scope: .station)
                 } label: {
                     SettingsRow(symbol: "storefront.fill", title: "驿站管理",
-                                subtitle: "驿站 / 快递柜名称可自定义",
                                 tint: AppTheme.violet)
                 }
                 .buttonStyle(.plain)
@@ -538,7 +534,6 @@ struct SettingsView: View {
                     UsageGuideView()
                 } label: {
                     SettingsRow(symbol: "book.fill", title: "使用教程",
-                                subtitle: "入门 · 短信自动化 · 截屏收件",
                                 tint: AppTheme.violet)
                 }
                 .buttonStyle(.plain)
@@ -550,21 +545,13 @@ struct SettingsView: View {
                     AppIconSettingsView()
                 } label: {
                     SettingsRow(symbol: "app.badge.fill", title: "App 图标",
-                                subtitle: AppIconStore.current.title,
+                                detail: AppIconStore.current.title,
                                 tint: AppTheme.doneTint)
                 }
                 .buttonStyle(.plain)
             }
             .cardSurface()
         }
-    }
-
-    /// 实时活动那一行的副标题（2026-10-31 主人：它是付费功能，免费版要说清楚）。
-    private var activitySubtitle: String {
-        if !store.isPro { return "拾码 Pro 功能 · 解锁后可常驻灵动岛与锁屏" }
-        return DeviceProfile.hasDynamicIsland
-            ? "灵动岛常驻最新取件码，锁屏同显"
-            : "锁屏实时活动卡，取件前抬手即见"
     }
 
     // MARK: 顶部订阅横幅
@@ -637,7 +624,6 @@ struct SettingsView: View {
                     ActivationView()
                 } label: {
                     SettingsRow(symbol: "key.horizontal.fill", title: "激活",
-                                subtitle: store.isPro ? "拾码 Pro 已解锁" : "设备 UUID · 签名凭证",
                                 tint: AppTheme.indigo)
                 }
                 .buttonStyle(.plain)
@@ -663,7 +649,6 @@ struct SettingsView: View {
                     HelpCenterView()
                 } label: {
                     SettingsRow(symbol: "questionmark.bubble.fill", title: "帮助与反馈",
-                                subtitle: "使用教程 · 咨询 · 导出诊断日志",
                                 tint: AppTheme.sky)
                 }
                 .buttonStyle(.plain)
@@ -828,7 +813,7 @@ final class FeedbackModel: ObservableObject {
 enum AppVersion {
     static var display: String {
         let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        return (short?.isEmpty == false) ? short! : "0.3.1"
+        return (short?.isEmpty == false) ? short! : "0.3.2"
     }
 }
 
