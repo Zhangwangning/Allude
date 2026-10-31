@@ -244,8 +244,12 @@ enum CourierBrand {
         Info(key: "近邻宝", name: "近邻宝", category: .locker,
              from: 0x5B5BD6, to: 0x3E3EA8, glyph: .symbol("cabinet.fill"),
              asset: "brand-jinlinbao"),
+        // alias 里补「格格爽存」：那是格格家的柜，短信里写的是「【格格爽存】凭取件码…」。
+        // 原来靠 key「格格」两字扫正文才命中的；key 退出自由文本匹配后，
+        // 这类真实变体要**逐个**补成 alias，而不是把 key 放回去全局放水。
         Info(key: "格格", name: "格格货栈", category: .locker,
-             from: 0x8B5CF6, to: 0x6234C4, glyph: .symbol("square.grid.3x3.fill")),
+             from: 0x8B5CF6, to: 0x6234C4, glyph: .symbol("square.grid.3x3.fill"),
+             aliases: ["格格爽存"]),
         // ⚠️ key 必须是**完整品牌名**：`info(for:)` 取「命中关键词最长」的那条，
         //    「心甜智能柜」同时含「心甜」(2) 与「智能柜」(3)。用短 key 时会被
         //    更长的通用词抢走、图标挂成通用柜子。加「心甜」作别名即可两全。
@@ -465,7 +469,13 @@ enum CourierBrand {
         //   ③ 出现更早 —— 同一句里先说到的更可能是主取件点。
         var best: (name: String, length: Int, outside: Bool, position: Int)?
         for item in table where item.category == .station || item.category == .locker {
-            for word in [item.name, item.key] + item.aliases {
+            // 🔴 2026-10-31：**不再用 key 扫正文**。key 是给"用户改名归一化"用的短名
+            // （中邮 / 菜鸟 / 兔喜 / 熊猫…），拿去扫自由文本会把「中邮大厦」「熊猫便利超市」
+            // 「邻里便利店」一律判成驿站。自由文本只认 name 与 aliases：
+            // 短信里真正会写的是「中邮驿站」「菜鸟驿站」「兔喜生活」这些完整写法。
+            // 若某条短信确实只写短名（例如只写「兔喜」），把它补成该条目的 alias，
+            // 而不是把 key 放回这个循环 —— 补 alias 是一次有意决定，放回 key 是全局放水。
+            for word in [item.name] + item.aliases {
                 for haystack in haystacks {
                     guard let range = haystack.range(of: word, options: .caseInsensitive) else { continue }
                     let position = haystack.distance(from: haystack.startIndex, to: range.lowerBound)

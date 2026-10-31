@@ -49,32 +49,50 @@ func readLines(_ url: URL) -> [String] {
         .filter { !$0.isEmpty }
 }
 
-let cases = readLines(casesURL)
-let expected = readLines(expectedURL)
-
-guard cases.count == expected.count else {
-    print("❌ 语料与基线行数不一致：cases \(cases.count) / expected \(expected.count)")
-    exit(2)
-}
-
-var mismatches: [(index: Int, text: String, want: String, got: String)] = []
-for (i, text) in cases.enumerated() {
-    let got = CourierBrand.stationMatch(in: [text])?.name ?? "-"
-    if got != expected[i] {
-        mismatches.append((i + 1, text, expected[i], got))
+/// 跑一组「语料 ↔ 期望」对拍，返回不一致条目数。
+func runSuite(name: String, cases: URL, expected: URL) -> Int {
+    let cases = readLines(cases)
+    let expectedNames = readLines(expected)
+    guard cases.count == expectedNames.count else {
+        print("❌ \(name)：语料 \(cases.count) 行 / 基线 \(expectedNames.count) 行，不一致")
+        return -1
     }
+
+    var mismatches: [(index: Int, text: String, want: String, got: String)] = []
+    for (i, text) in cases.enumerated() {
+        let got = CourierBrand.stationMatch(in: [text])?.name ?? "-"
+        if got != expectedNames[i] {
+            mismatches.append((i + 1, text, expectedNames[i], got))
+        }
+    }
+
+    if mismatches.isEmpty {
+        print("✅ \(name)：\(cases.count) 条全部符合基线")
+        return 0
+    }
+
+    print("❌ \(name)：\(mismatches.count)/\(cases.count) 条不符")
+    for m in mismatches {
+        print("  #\(m.index)  期望 \(m.want)  实际 \(m.got)")
+        print("        \(m.text.prefix(56))")
+    }
+    return mismatches.count
 }
 
-print("驿站匹配自检 · \(cases.count) 条")
-if mismatches.isEmpty {
-    print("✅ 全部符合基线")
+let normal = runSuite(name: "精选短信",
+                      cases: here.appendingPathComponent("cases.txt"),
+                      expected: here.appendingPathComponent("expected.txt"))
+
+// 对抗样本：专门喂"含品牌字样但不是驿站"的短信，防止两字 key 之类的规则再次放水。
+// 已知歧义一条：品牌名本身就是常用两字词（如「蓝店」），与「蓝店咖啡馆」无法区分，
+// 该条按当前实现记入基线，不作修复。
+let adversarial = runSuite(name: "对抗样本",
+                           cases: here.appendingPathComponent("adversarial-cases.txt"),
+                           expected: here.appendingPathComponent("adversarial-expected.txt"))
+
+if normal == 0 && adversarial == 0 {
+    print("✅ 驿站匹配自检通过")
     exit(0)
 }
-
-print("❌ \(mismatches.count) 条与基线不符：")
-for m in mismatches {
-    print("  #\(m.index)  期望 \(m.want)  实际 \(m.got)")
-    print("        \(m.text.prefix(60))")
-}
-print("\n若改动是有意的：逐条确认后用新结果更新 expected.txt（别偷偷改基线）。")
+print("\n若改动是有意的：逐条确认后用新结果更新对应基线（别偷偷改基线）。")
 exit(1)

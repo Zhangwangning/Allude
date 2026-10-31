@@ -177,13 +177,18 @@ swiftc -O -o /tmp/parser-regression \
 # 全量库（514 段，基线：识别 192 / 地址 189），语料就在仓库根，长期可用
 /tmp/parser-regression 短信语料库_v1.md
 
-# 驿站匹配自检（63 条精选短信，逐条比对「这条应该判成哪个驿站」）
+# 驿站匹配自检（精选 63 条 + 对抗样本 14 条，逐条比对「这条应该判成哪个驿站」）
+# ⚠️ 必须用**绝对路径**编译：工具靠 #filePath 推自己的目录找语料，
+#    用相对路径编译后换工作目录运行会报「读不到 cases.txt」。
 swiftc -O -o /tmp/station-check \
-  CodePouch/CodePouchShared/CourierBrand.swift \
-  CodePouch/CodePouchShared/BrandPalette.swift \
-  tools/station-check/main.swift && /tmp/station-check
+  "$PWD/CodePouch/CodePouchShared/CourierBrand.swift" \
+  "$PWD/CodePouch/CodePouchShared/BrandPalette.swift" \
+  "$PWD/tools/station-check/main.swift" && /tmp/station-check
 # 退出码 0 = 全符合基线；1 = 有差异并逐条打印。
-# 🔴 改匹配规则时不要为了让它是绿的而改 expected.txt —— 先确认每处变化都符合预期。
+# 🔴 改匹配规则时不要为了让它是绿的而改基线文件 —— 先确认每处变化都符合预期。
+# 🔴 自由文本匹配**只用 name + aliases，不用 key**：key 是给用户改名归一化用的短名
+#    （中邮/菜鸟/兔喜…），拿去扫正文会把「中邮大厦」「熊猫便利超市」判成驿站。
+#    某条短信确实只写短名时，把那个写法补成该条目的 alias，不要放 key 回循环。
 
 # 品牌表 + 资源落盘自检（必须用绝对路径编译，它靠 #filePath 推仓库根）
 swiftc -O -o /tmp/brand-check \
