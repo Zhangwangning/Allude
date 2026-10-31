@@ -172,6 +172,8 @@ enum PickupActivityController {
     }
 
     private static func converge(to pending: [PickupRecord]) async {
+        Logger(subsystem: "com.jikezhang.codeclip", category: "liveActivity")
+            .notice("converge pending=\(pending.count, privacy: .public) enabled=\(LiveActivitySetting.isEnabled, privacy: .public) pro=\(EntitlementSnapshot.load().isPro, privacy: .public) auth=\(ActivityAuthorizationInfo().areActivitiesEnabled, privacy: .public)")
         // 🔴 第 0 道门 = **用户自己的总开关**（设置 → 实时活动）。
         //    放在 VIP 判定之前：这是用户意志，优先级高于会员权益 ——
         //    一个主动关掉实时活动的年费会员，不该因为"他是会员"又被起一张卡。
@@ -275,9 +277,11 @@ enum PickupActivityController {
         // 一个都没有 → 起一个（本 App 的语义就是「一个取件码待办清单」，
         // 全系统只允许存在一个活动）
         do {
-            _ = try Activity.request(attributes: PickupActivityAttributes(),
-                                     content: ActivityContent(state: state, staleDate: nil),
-                                     pushType: nil)
+            let activity = try Activity.request(attributes: PickupActivityAttributes(),
+                                                content: ActivityContent(state: state, staleDate: nil),
+                                                pushType: nil)
+            Logger(subsystem: "com.jikezhang.codeclip", category: "liveActivity")
+                .notice("requested id=\(activity.id.prefix(8), privacy: .public)")
             await enforceSingle(preferring: state)
         } catch {
             // 起不来不该影响主流程（数据已落库、通知已发），只记一笔。
@@ -288,6 +292,8 @@ enum PickupActivityController {
             //      log stream --predicate 'subsystem == "com.jikezhang.codeclip"'
             Logger(subsystem: "com.jikezhang.codeclip", category: "liveActivity")
                 .error("live activity request failed: \(error, privacy: .public)")
+            Logger(subsystem: "com.jikezhang.codeclip", category: "liveActivity")
+                .error("request-failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 }

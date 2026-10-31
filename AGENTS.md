@@ -197,6 +197,28 @@ xcrun simctl terminate UDID com.jikezhang.codeclip; sleep 4
 
 ---
 
+---
+
+## 模拟器里看不到灵动岛（已知环境限制）
+
+实时活动**能起来**，但**灵动岛不显示**——这是模拟器 SpringBoard 的行为，不是 App 的问题。
+2026-11-01 实测取证（iPhone 16 Pro / iOS 27 模拟器）：
+
+- App 侧三道门全过，`Activity.request` 成功：
+  `converge pending=34 enabled=true pro=true auth=true` → `requested id=...`
+- SpringBoard 也登记了这张活动，并创建了 compact 布局断言：
+  `<activity:…com.apple.chrono.WidgetRenderer-Activities>` / `preferredLayoutMode: compact`
+- 随后整个 SystemAperture 被压掉：
+  `invalidation reason: SBSystemApertureCoordinator suppressionForSuppressSystemApertureCompletely`
+
+排查过：把 App 切后台、激活 Simulator 窗口、换全新 iPhone 18 Pro Max 模拟器、
+写 `SBSystemApertureSuppressCompletely` / `SBSuppressSystemApertureCompletely` 默认值 —— 均无效。
+
+✅ 所以灵动岛相关的验收走两条路：
+1. **版式/着色**：设置 › 实时活动页里的灵动岛预览（`SCREEN=activity`，配
+   `ACTIVITY_PAGE=1` 落到折叠态），它用**同一套视图**渲染，能看到图标、描边、计数；
+2. **真实呈现**：以真机为准（2026-11-01 主人已确认折叠态图标正常）。
+
 ## 诊断日志（反馈用）
 
 `DiagnosticsLog` 在 `Application Support/Diagnostics/log.txt` 滚动记录（上限 256 KB，
