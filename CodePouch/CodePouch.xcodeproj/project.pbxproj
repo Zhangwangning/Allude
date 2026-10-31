@@ -12,6 +12,8 @@
 		AA0000000000000000000031 /* CourierBrand.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000021 /* CourierBrand.swift */; };
 		AA0000000000000000000032 /* PickupModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000022 /* PickupModels.swift */; };
 		AA0000000000000000000033 /* PickupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000023 /* PickupStorage.swift */; };
+		AA0000000000000000000063 /* AppIconChoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000062 /* AppIconChoice.swift */; };
+		AA0000000000000000000064 /* AppIconChoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000062 /* AppIconChoice.swift */; };
 		AA0000000000000000000034 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000020 /* AppTheme.swift */; };
 		AA0000000000000000000035 /* CourierBrand.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000021 /* CourierBrand.swift */; };
 		AA0000000000000000000036 /* PickupModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000022 /* PickupModels.swift */; };
@@ -68,6 +70,7 @@
 		AA0000000000000000000020 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		AA0000000000000000000021 /* CourierBrand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourierBrand.swift; sourceTree = "<group>"; };
 		AA0000000000000000000022 /* PickupModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickupModels.swift; sourceTree = "<group>"; };
+		AA0000000000000000000062 /* AppIconChoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconChoice.swift; sourceTree = "<group>"; };
 		AA0000000000000000000023 /* PickupStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickupStorage.swift; sourceTree = "<group>"; };
 		AA0000000000000000000024 /* CodePouchWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodePouchWidgetBundle.swift; sourceTree = "<group>"; };
 		AA0000000000000000000060 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -140,6 +143,7 @@
 				AA0000000000000000000021 /* CourierBrand.swift */,
 				AA0000000000000000000022 /* PickupModels.swift */,
 				AA0000000000000000000023 /* PickupStorage.swift */,
+				AA0000000000000000000062 /* AppIconChoice.swift */,
 				AA000000000000000000003D /* WidgetVisuals.swift */,
 				AA000000000000000000003F /* BrandPalette.swift */,
 				AA0000000000000000000044 /* PickupActivityAttributes.swift */,
@@ -289,6 +293,7 @@
 				AA0000000000000000000031 /* CourierBrand.swift in Sources */,
 				AA0000000000000000000032 /* PickupModels.swift in Sources */,
 				AA0000000000000000000033 /* PickupStorage.swift in Sources */,
+				AA0000000000000000000063 /* AppIconChoice.swift in Sources */,
 				AA000000000000000000003C /* WidgetVisuals.swift in Sources */,
 				AA0000000000000000000040 /* BrandPalette.swift in Sources */,
 				AA0000000000000000000042 /* PickupActivityAttributes.swift in Sources */,
@@ -306,6 +311,7 @@
 				AA0000000000000000000035 /* CourierBrand.swift in Sources */,
 				AA0000000000000000000036 /* PickupModels.swift in Sources */,
 				AA0000000000000000000037 /* PickupStorage.swift in Sources */,
+				AA0000000000000000000064 /* AppIconChoice.swift in Sources */,
 				AA000000000000000000003E /* WidgetVisuals.swift in Sources */,
 				AA0000000000000000000041 /* BrandPalette.swift in Sources */,
 				AA0000000000000000000038 /* CodePouchWidgetBundle.swift in Sources */,
@@ -459,9 +465,10 @@
 				CODE_SIGN_ENTITLEMENTS = Config/CodePouch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = SW725KU49U;
-				CURRENT_PROJECT_VERSION = 31;
+				CURRENT_PROJECT_VERSION = 32;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "拾码";
 				INFOPLIST_KEY_NSCameraUsageDescription = "用于扫描取件码二维码与快递面单条码，识别后自动填入待取件列表。";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "保存分享图到相册时使用。";
@@ -491,9 +498,10 @@
 				CODE_SIGN_ENTITLEMENTS = Config/CodePouch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = SW725KU49U;
-				CURRENT_PROJECT_VERSION = 31;
+				CURRENT_PROJECT_VERSION = 32;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "拾码";
 				INFOPLIST_KEY_NSCameraUsageDescription = "用于扫描取件码二维码与快递面单条码，识别后自动填入待取件列表。";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "保存分享图到相册时使用。";
@@ -524,7 +532,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/CodePouchWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = SW725KU49U;
-				CURRENT_PROJECT_VERSION = 31;
+				CURRENT_PROJECT_VERSION = 32;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CodePouchWidget/Info.plist;
@@ -553,7 +561,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/CodePouchWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = SW725KU49U;
-				CURRENT_PROJECT_VERSION = 31;
+				CURRENT_PROJECT_VERSION = 32;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CodePouchWidget/Info.plist;

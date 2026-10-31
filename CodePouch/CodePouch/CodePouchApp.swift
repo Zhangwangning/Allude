@@ -56,6 +56,14 @@ struct CodePouchApp: App {
         //    `LicenseActivation.activate` 的 backedByLicense 判定）。售后排障时
         //    这一项是第一手判据。
         let bootEntitlement = EntitlementSnapshot.load()
+        // 2026-11-01：启动时对齐"已存的选择"与"系统当前图标"。
+        // 重装、或从备份恢复时，偏好还在但系统图标可能已回主图标，这里补一次。
+        if UIApplication.shared.supportsAlternateIcons,
+           UIApplication.shared.alternateIconName != AppIconStore.current.alternateName {
+            let name = AppIconStore.current.alternateName
+            UIApplication.shared.setAlternateIconName(name) { _ in }
+        }
+
         DiagnosticsLog.record("launch",
                               "version=\(AppVersion.display) plan=\(bootEntitlement.plan.rawValue)"
                               + " isPro=\(bootEntitlement.isPro)")
@@ -552,6 +560,8 @@ struct CodePouchApp: App {
                     PickedUpView()
                 case "notify":
                     NavigationStack { NotificationSettingsView() }
+                case "appicon":
+                    NavigationStack { AppIconSettingsView() }
                 case "help":
                     NavigationStack { HelpCenterView() }
                 case "about":

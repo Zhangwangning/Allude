@@ -542,6 +542,18 @@ struct SettingsView: View {
                                 tint: AppTheme.violet)
                 }
                 .buttonStyle(.plain)
+
+                SettingsDivider()
+
+                // App 图标（2026-11-01 主人：三套内置图标可切换）
+                NavigationLink {
+                    AppIconSettingsView()
+                } label: {
+                    SettingsRow(symbol: "app.badge.fill", title: "App 图标",
+                                subtitle: AppIconStore.current.title,
+                                tint: AppTheme.doneTint)
+                }
+                .buttonStyle(.plain)
             }
             .cardSurface()
         }

@@ -239,7 +239,7 @@ struct AboutView: View {
             // 图标本身带圆角，这里不再叠圆角遮罩，免得边缘出现双重圆角。
             // 图标资源是 1024 的满幅方图（App Store 要求无透明、无自带圆角），
             // App 内要模仿系统图标的样子，这里按 iOS 的比例裁连续圆角：22.37%。
-            Image("BrandLogo")
+            Image(AppIconStore.current.assetName)
                 .resizable()
                 .interpolation(.high)
                 .frame(width: 78, height: 78)

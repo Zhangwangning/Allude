@@ -340,7 +340,10 @@ struct AppMarkIcon: View {
         //    `widgetAccentedRenderingMode` 返回 `some View` —— **必须放在
         //    resizable 之后、其余 View 修饰符之前**。顺序错了就是
         //    "value of type 'some View' has no member 'xxx'"（2026-09-23 实测）。
-        Image("AppMark")
+        // 2026-11-01 主人：灵动岛也要跟着 App 图标的选择走。
+        // 小组件进程读不到 App 的偏好，所以用 App Group 里的那份选择；
+        // 三套图在小组件的资源目录里也各有一份（App 与 Widget 是两套 bundle）。
+        Image(AppIconStore.current.assetName)
             .renderingMode(.original)
             .resizable()
             .widgetAccentedRenderingMode(.fullColor)

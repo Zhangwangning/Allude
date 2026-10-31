@@ -146,6 +146,26 @@ xcrun simctl terminate UDID com.jikezhang.codeclip; sleep 4
 
 ---
 
+## App 图标切换
+
+三套内置图标（经典 / 信封 / 卡券），设置 › App 图标可切换。
+
+- 主图标：`Assets.xcassets/AppIcon.appiconset`（1024，**不能有透明通道、不能自带圆角**）。
+- 另外两套是 alternate icon，由 **真实 `CodePouch/Info.plist`** 里的
+  `CFBundleAlternateIcons` 声明（`IconEnvelope` / `IconCards`），
+  文件是 bundle 根目录的 `IconEnvelope@2x.png`(120) / `@3x.png`(180)。
+  ⚠️ 工程已改为 `GENERATE_INFOPLIST_FILE = NO` + `INFOPLIST_FILE = Info.plist`，
+  增删 Info.plist 键要改那个真实文件，`INFOPLIST_KEY_*` 不再生效。
+- 选择状态存 **App Group**（`codeclip.appIcon`）：灵动岛/锁屏由小组件进程渲染，
+  读不到 App 偏好。三张图在 App 与 Widget **两个**资源目录里各有一份。
+- `AppMarkIcon`（灵动岛/锁屏）、关于页顶部都读同一份选择。
+- ⚠️ `setAlternateIconName` 在 `App.init()` 里调用太早（场景未连、连回调都不给），
+  必须在视图出现之后调用。
+- 截图验收：`SCREEN=appicon` 看选择页，`APP_ICON=envelope|cards|hand` 强制切换；
+  切完**必须重启 SpringBoard** 才看得到主屏图标变化（`simctl spawn <udid> killall SpringBoard`）。
+
+---
+
 ## 诊断日志（反馈用）
 
 `DiagnosticsLog` 在 `Application Support/Diagnostics/log.txt` 滚动记录（上限 256 KB，
