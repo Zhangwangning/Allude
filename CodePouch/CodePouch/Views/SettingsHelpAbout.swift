@@ -246,7 +246,7 @@ struct AboutView: View {
                 .clipShape(.rect(cornerRadius: 78 * 0.2237, style: .continuous))
 
             Text("拾码 CodePouch")
-                .font(.system(size: 19, weight: .semibold))
+                .font(AppTheme.TypeScale.rowTitle.weight(.semibold))
 
             Text(AppVersion.display)
                 .font(AppTheme.TypeScale.note)

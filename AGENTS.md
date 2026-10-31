@@ -163,6 +163,9 @@ xcrun simctl terminate UDID com.jikezhang.codeclip; sleep 4
 
 需要强调时**只加 weight，不加字号**（`AppTheme.TypeScale.body.weight(.semibold)`）。
 
+例外只有两类，它们不是"字号"，是图形尺寸：chevron / 锁图标（12–13pt）、
+等宽码（设备 UUID、凭证输入框，15/13pt 等宽）—— 改它们等于改图形比例，别动。
+
 ---
 
 ## App 图标切换

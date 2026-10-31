@@ -232,7 +232,7 @@ struct SettingsPlainRow<Trailing: View>: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(title)
-                .font(.system(size: 17))
+                .font(AppTheme.TypeScale.rowTitle)
                 .fixedSize(horizontal: false, vertical: true)
 
             Spacer(minLength: 8)
@@ -259,7 +259,7 @@ struct SettingsValueLabel: View {
     var body: some View {
         HStack(spacing: 5) {
             Text(text)
-                .font(.system(size: 17))
+                .font(AppTheme.TypeScale.rowTitle)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .fixedSize()
