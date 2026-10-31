@@ -549,7 +549,7 @@ struct SettingsView: View {
                 // 🔴 这里**故意不用**主题色（主题是蓝的）：横幅是营销面，
                 //    参照 Infuse 的高饱和橙来看更像"付费墙"，也更容易被注意到。
                 //    原来的 amber(#B45309) 起手偏褐，压到白底上像脏了。
-                LinearGradient(colors: [AppTheme.proOrangeLight, AppTheme.proOrange],
+                LinearGradient(colors: [AppTheme.accentLight, AppTheme.accent],
                                startPoint: .topLeading,
                                endPoint: .bottomTrailing)
             }
@@ -781,7 +781,12 @@ struct FullVersionView: View {
             // 2026-10-31 主人：**一屏放得下，不要翻页**。
             // 所以去掉了页首的大标题块，版式与其它设置页同口径：
             // 分组标题 13pt、行标题 17pt、说明 11–12pt，靠紧凑间距压进一屏。
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 18) {
+                // 页内标题（2026-10-31 主人要求补上）。导航栏那个「完整版」太小，
+                // 进页面第一眼得知道这一页在卖什么；字号取 24pt，介于正文 17 与
+                // 系统大标题 34 之间，不与导航栏抢层级。
+                titleBlock
+
                 if purchase.isOwned {
                     ownedSection
                 } else {
@@ -826,17 +831,36 @@ struct FullVersionView: View {
         }
     }
 
-    // MARK: 方案（竖排单选）
+    // MARK: 页内标题
+
+    private var titleBlock: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("解锁完整版")
+                .font(.system(size: 26, weight: .bold))
+
+            Text("免费下载，按需解锁；不限条数，桌面小组件与实时活动全开。")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: 方案（横排）
 
     private var planList: some View {
         VStack(alignment: .leading, spacing: 8) {
             SectionHeader(title: "选择方案")
 
-            VStack(spacing: 8) {
+            // 三档**横排**（2026-10-31 主人：参照 Infuse 的横向分布）。
+            // 402pt 屏上内容宽 370pt，卡片间距 8 → 每张约 118pt，
+            // 价格 20pt 字刚好放得下「¥28.00」。
+            HStack(spacing: 8) {
                 ForEach(PurchaseStore.Plan.allCases) { plan in
                     planCard(plan)
                 }
             }
+            .padding(.top, 9)     // 给「推荐」徽章留出上探的空间
 
             Text("推荐买断：一次付清、永久有效，不用记着取消订阅。")
                 .font(.caption)
@@ -852,52 +876,55 @@ struct FullVersionView: View {
         return Button {
             withAnimation(.snappy(duration: 0.2)) { selected = plan }
         } label: {
-            HStack(spacing: 12) {
-                // 单选圈：选中填橙，未选空心
-                ZStack {
-                    Circle()
-                        .strokeBorder(on ? AppTheme.proOrange : Color(.separator), lineWidth: on ? 2 : 1.5)
-                        .frame(width: 22, height: 22)
-                    if on {
-                        Circle()
-                            .fill(AppTheme.proOrange)
-                            .frame(width: 12, height: 12)
-                    }
-                }
+            VStack(spacing: 6) {
+                Text(plan.title)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
 
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 6) {
-                        Text(plan.title)
-                            .font(.system(size: 17, weight: .semibold))
-                        if plan.isRecommended {
-                            Text("推荐")
-                                .font(.system(size: 11, weight: .semibold))
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(AppTheme.proOrange.opacity(0.14), in: .rect(cornerRadius: 4))
-                                .foregroundStyle(AppTheme.proOrange)
-                        }
-                    }
-                    Text(plan.period)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.tertiary)
-                }
-
-                Spacer(minLength: 8)
-
+                // 价格是这个卡片的主角：三档之间要比的是这个数
                 Text(price ?? "—")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(on ? AppTheme.proOrange : Color.primary)
-                    .fixedSize()
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(on ? AppTheme.accent : Color.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.55)
+
+                Text(plan.shortPeriod)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
             .frame(maxWidth: .infinity)
-            .background(Color(.secondarySystemGroupedBackground),
-                        in: .rect(cornerRadius: 18, style: .continuous))
+            .padding(.vertical, 16)
+            .background {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(on ? AppTheme.accent.opacity(0.08)
+                              : Color(.secondarySystemGroupedBackground))
+            }
             .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(on ? AppTheme.proOrange : Color.clear, lineWidth: 2)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(on ? AppTheme.accent : Color.clear, lineWidth: 2)
+            }
+            .overlay(alignment: .topTrailing) {
+                // 只靠描边颜色不够：截图、色弱、或渲染晚一帧都可能看错档位。
+                // 加一个勾，选中与否有形状上的差别。
+                if on {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 15))
+                        .foregroundStyle(AppTheme.accent)
+                        .padding(7)
+                }
+            }
+            .overlay(alignment: .top) {
+                if plan.isRecommended {
+                    Text("推荐")
+                        .font(.system(size: 10, weight: .semibold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(AppTheme.accent, in: .capsule)
+                        .foregroundStyle(.white)
+                        .offset(y: -9)
+                }
             }
         }
         .buttonStyle(.plain)
@@ -928,13 +955,13 @@ struct FullVersionView: View {
 
     private func featureRow(symbol: String, title: String, note: String) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            SettingsGlyph(symbol: symbol, tint: AppTheme.proOrange, size: 26)
+            SettingsGlyph(symbol: symbol, tint: AppTheme.accent, size: 26)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 15, weight: .semibold))
                 Text(note)
-                    .font(.system(size: 11))
+                    .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -942,7 +969,7 @@ struct FullVersionView: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
     }
 
     // MARK: 主行动
@@ -955,7 +982,7 @@ struct FullVersionView: View {
                 .font(.system(size: 15, weight: .semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 13)
-                .background(canBuy ? AppTheme.proOrange : Color(.tertiarySystemFill), in: .capsule)
+                .background(canBuy ? AppTheme.accent : Color(.tertiarySystemFill), in: .capsule)
                 .foregroundStyle(canBuy ? Color.white : Color.secondary)
         }
         .buttonStyle(.plain)
@@ -983,9 +1010,9 @@ struct FullVersionView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 11)
                 .overlay {
-                    Capsule().strokeBorder(AppTheme.proOrange.opacity(0.55), lineWidth: 1.5)
+                    Capsule().strokeBorder(AppTheme.accent.opacity(0.55), lineWidth: 1.5)
                 }
-                .foregroundStyle(AppTheme.proOrange)
+                .foregroundStyle(AppTheme.accent)
         }
         .buttonStyle(.plain)
     }
@@ -1005,8 +1032,8 @@ struct FullVersionView: View {
             }
             .font(.system(size: 12))
             // 付费面上统一用橙，别让两条蓝色链接在整页里跳出来
-            .tint(AppTheme.proOrange)
-            .foregroundStyle(AppTheme.proOrange)
+            .tint(AppTheme.accent)
+            .foregroundStyle(AppTheme.accent)
         }
         .padding(.horizontal, 4)
         .id("bottom")

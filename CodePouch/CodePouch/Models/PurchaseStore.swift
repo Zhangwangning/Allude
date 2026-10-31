@@ -52,6 +52,15 @@ final class PurchaseStore: ObservableObject {
             }
         }
 
+        /// 横排卡片第三行的极短说明（一行放得下）
+        var shortPeriod: String {
+            switch self {
+            case .monthly: "按月"
+            case .yearly: "按年"
+            case .lifetime: "永久"
+            }
+        }
+
         /// 界面上的推荐位。2026-10-31 主人定：**主推买断** ——
         /// 一次付清、永久使用，用户不用记着取消订阅，售后也少。
         var isRecommended: Bool { self == .lifetime }

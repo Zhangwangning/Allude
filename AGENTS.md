@@ -118,6 +118,16 @@ xcrun simctl io <UDID> screenshot /tmp/x.png
 `license`（完整版/订阅页）、`scan` / `scanPhoto`、`share`、`pickedUp`、`stats`、
 `detail`、`detailPicked`、`notify`、`gallery`。
 
+🔴 **装完先核对版本号再截图**：`simctl install` 与 `terminate` 是异步的，
+旧进程没死就 `launch`，会**静默沿用旧进程**——截到的是上一版界面，
+看起来像"改的代码没生效"。2026-10-31 因此误判过一次选中态。
+```bash
+xcrun simctl terminate UDID com.jikezhang.codeclip; sleep 4
+xcrun simctl install UDID …/CodePouch.app; sleep 2
+xcrun simctl terminate UDID com.jikezhang.codeclip; sleep 4
+# 确认装上去的是新构建，再 launch + 截图
+```
+
 环境变量必须带 **`SIMCTL_CHILD_`** 前缀。截图建议同时注入
 `SIMCTL_CHILD_SKIP_PERM=1`、`SIMCTL_CHILD_SKIP_ONBOARDING=1`，冷启动等 6–8 秒。
 
