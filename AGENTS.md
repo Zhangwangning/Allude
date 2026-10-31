@@ -205,8 +205,15 @@ swiftc -O -o /tmp/brand-check \
 #     shoujianbao / tiantian / yundakuaichaoshi）。
 # 除这两项外必须全 ✓；要让脚本变绿，改的是期望值，不是品牌表。
 
-# 签发 / 验签凭证（**历史工具**：凭证体系已停用，仅用于读旧快照/售后核对）
-python3 tools/license-gen/issue-openssl.py --service lifetime --device <32位HEX>
+# 签发 / 验签凭证（未上架期间给测试者发凭证用）
+python3 tools/license-gen/issue-openssl.py --plan 7d       --device <32位HEX>
+python3 tools/license-gen/issue-openssl.py --plan 30d      --device <码>
+python3 tools/license-gen/issue-openssl.py --plan 180d     --device <码>
+python3 tools/license-gen/issue-openssl.py --plan 1y       --device <码>
+python3 tools/license-gen/issue-openssl.py --plan forever  --device <码>
+# 也认 --plan 7天 / 30天 / 半年 / 一年 / 永久；旧写法 --service trial --days N 仍可用。
+# 限时凭证靠 payload 里的 `e`（到期时间）在**读侧**降级：过期即 free，App 与小组件同口径。
+
 python3 tools/license-gen/issue-openssl.py --check "<凭证>"
 ```
 

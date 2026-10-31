@@ -149,18 +149,53 @@ struct ActivationView: View {
                         .foregroundStyle(store.isPro ? AppTheme.doneTint : .secondary)
                         .fixedSize()
                 }
+
+                SettingsDivider()
+
+                // 2026-10-31 主人：凭证有 7 天 / 30 天 / 180 天 / 一年 / 永久五档，
+                // 所以这里必须能看出"还剩多久"，只写"已解锁"用户不知道什么时候到期。
+                SettingsPlainRow(title: "有效期") {
+                    Text(validityText)
+                        .font(.system(size: 15))
+                        .foregroundStyle(validityIsUrgent ? AppTheme.pendingTint : .secondary)
+                        .fixedSize()
+                }
             }
             .cardSurface()
 
             if let result = model.result {
                 Text(result)
                     .font(.system(size: 13))
-                    .foregroundStyle(model.isError ? AppTheme.pendingTint : AppTheme.doneTint)
+                    .foregroundStyle(model.isError ? AppTheme.todayTint : AppTheme.doneTint)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 4)
                     .transition(.opacity)
             }
         }
+    }
+
+    // MARK: 有效期文案
+
+    /// 当前权益的到期描述。永久 → 「永久」；限时 → 「2026-11-30 · 剩余 3 天」。
+    private var validityText: String {
+        guard store.isPro else { return "—" }
+        guard let expiry = EntitlementSnapshot.load().expiresAt else { return "永久" }
+        let days = remainingDays(until: expiry)
+        let date = expiry.formatted(.dateTime.year().month().day())
+        return days > 0 ? "\(date) · 剩余 \(days) 天" : "\(date) · 今天到期"
+    }
+
+    /// 剩余不到 7 天时标红，提醒续期。
+    private var validityIsUrgent: Bool {
+        guard store.isPro, let expiry = EntitlementSnapshot.load().expiresAt else { return false }
+        return remainingDays(until: expiry) <= 7
+    }
+
+    private func remainingDays(until date: Date) -> Int {
+        let calendar = Calendar.current
+        let from = calendar.startOfDay(for: Date())
+        let to = calendar.startOfDay(for: date)
+        return calendar.dateComponents([.day], from: from, to: to).day ?? 0
     }
 
     // MARK: 动作
@@ -181,10 +216,19 @@ struct ActivationView: View {
             // 🔴 导入成功后必须重算一次，否则界面还停在免费档
             store.refreshEntitlement()
 
-            let expiry = payload.expiresAt.map { $0.formatted(date: .abbreviated, time: .omitted) }
+            let success: String
+            if let expiry = payload.expiresAt {
+                let days = remainingDays(until: expiry)
+                let date = expiry.formatted(.dateTime.year().month().day())
+                success = days > 0
+                    ? "已激活 · 剩余 \(days) 天（\(date) 到期）"
+                    : "已激活 · 今天到期（\(date)）"
+            } else {
+                success = "已激活 · 永久有效"
+            }
             withAnimation {
                 model.isError = false
-                model.result = expiry.map { "已激活 · 有效期至 \($0)" } ?? "已激活 · 永久有效"
+                model.result = success
                 model.voucher = ""
             }
 

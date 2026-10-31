@@ -11,7 +11,13 @@
 #   · `/usr/bin/python3` + `/usr/bin/openssl` 是 macOS 自带的，最稳。
 #
 # 用法（与 issue.mjs 一致）：
-#   python3 issue-openssl.py --service trial    --device <32位HEX>        # 临时，默认 7 天
+#   python3 issue-openssl.py --plan 7d          --device <32位HEX>        # 7 天
+#   python3 issue-openssl.py --plan 30d         --device <码>             # 30 天
+#   python3 issue-openssl.py --plan 180d        --device <码>             # 180 天
+#   python3 issue-openssl.py --plan 1y          --device <码>             # 一年（365 天）
+#   python3 issue-openssl.py --plan forever     --device <码>             # 永久
+#   （也支持 --plan 7天 / 30天 / 半年 / 一年 / 永久 这类写法）
+#   python3 issue-openssl.py --service trial    --device <32位HEX>        # 等价旧写法，默认 7 天
 #   python3 issue-openssl.py --service lifetime --device <码> --note "订单尾号1234"  # 买断，永久
 #   python3 issue-openssl.py --check "CLIP1.xxx.yyy"
 #
@@ -42,6 +48,26 @@ KEY_PATH = os.path.join(HERE, 'private-key.pem')
 
 PREFIX = 'CLIP1'
 SERVICES = ('trial', 'lifetime')
+
+# 卖的五档有效期 → (service, days)。2026-10-31 主人定：
+#   7 天 / 30 天 / 180 天 / 一年 / 永久。
+# 前三档与一年都是「带到期时间的凭证」（service=trial），只是天数不同；
+# 永久走 lifetime，payload 不带 e 字段。
+PLANS = {
+    '7d': ('trial', 7),
+    '30d': ('trial', 30),
+    '180d': ('trial', 180),
+    '1y': ('trial', 365),
+    'forever': ('lifetime', 0),
+}
+# 允许的写法别名（中文/口语也认，免得每次翻文档）
+PLAN_ALIASES = {
+    '7': '7d', '7天': '7d', 'week': '7d',
+    '30': '30d', '30天': '30d', 'month': '30d', '1m': '30d',
+    '180': '180d', '180天': '180d', '半年': '180d', '6m': '180d',
+    '365': '1y', '365天': '1y', '一年': '1y', '12m': '1y',
+    'permanent': 'forever', 'lifetime': 'forever', '永久': 'forever', '买断': 'forever',
+}
 DEVICE_RE = re.compile(r'^[0-9A-F]{32}$')
 
 OPENSSL = '/usr/bin/openssl'
@@ -261,6 +287,16 @@ def main(argv) -> int:
     if isinstance(opts.get('check'), str):
         return do_check(opts['check'])
 
+    # --plan 是主人日常用的写法（7d/30d/180d/1y/forever），内部换算成 service + days。
+    plan = opts.get('plan')
+    if isinstance(plan, str):
+        key = PLAN_ALIASES.get(plan.strip(), plan.strip().lower())
+        if key not in PLANS:
+            print('✗ --plan 不认识：%s' % plan)
+            print('  可用：%s' % ' / '.join(PLANS))
+            return 1
+        opts['service'], opts['days'] = PLANS[key][0], str(PLANS[key][1])
+
     service = opts.get('service')
     if service not in SERVICES:
         print('--service 必须是 %s 之一' % ' / '.join(SERVICES))
@@ -293,8 +329,14 @@ def main(argv) -> int:
         code = issue(service, device, days, note)
         print(code)
         # 对账信息走 stderr：stdout 只留纯凭证，方便重定向进文件
-        print('— %s%s，绑定 %s，%d 字符'
-              % (service, '（永久）' if service == 'lifetime' else '，%d 天' % days, device, len(code)),
+        if service == 'lifetime':
+            validity = '永久'
+        elif days % 365 == 0 and days:
+            validity = '%d 年' % (days // 365)
+        else:
+            validity = '%d 天' % days
+        print('— %s（%s），绑定 %s，%d 字符'
+              % (service, validity, device, len(code)),
               file=sys.stderr)
     return 0
 
