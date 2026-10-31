@@ -548,6 +548,10 @@ struct CodePouchApp: App {
                     PickedUpView()
                 case "notify":
                     NavigationStack { NotificationSettingsView() }
+                case "legal":
+                    // 法律文档页（隐私政策）。App 内 WebView 读打包的 HTML，
+                    // 命令行点不到设置里的行，逐页验收只能靠这个入口。
+                    NavigationStack { LegalDocumentView(document: .privacy) }
                 case "license":
                     // 签名凭证页（设置 › 解锁 › 签名凭证）。命令行点不到设置里的行，
                     // 逐页验收只能靠这个入口。顺带验「未激活 / 已激活」两种状态。

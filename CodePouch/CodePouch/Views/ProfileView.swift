@@ -624,13 +624,13 @@ struct SettingsView: View {
                 // 法律文档（2026-10-31）：订阅类 App 必须能点到隐私政策与使用条款。
                 // 用系统浏览器打开 —— App 内嵌网页会在审核时被问"为什么不用 SF Safari"。
                 legalRow(symbol: "hand.raised.fill", title: "隐私政策",
-                         note: "无账号、无联网；取件数据只在本机", url: LegalLinks.privacy,
+                         note: "无账号、无联网；取件数据只在本机", document: .privacy,
                          tint: AppTheme.doneTint)
 
                 SettingsDivider()
 
                 legalRow(symbol: "doc.text.fill", title: "使用条款",
-                         note: "订阅、自动续期与退款规则", url: LegalLinks.terms,
+                         note: "订阅、自动续期与退款规则", document: .terms,
                          tint: AppTheme.sky)
             }
             .cardSurface()
@@ -647,19 +647,14 @@ struct SettingsView: View {
         }
     }
 
-    /// 打开外部法律文档的整行（点哪都跳，右侧带外链箭头提示「会离开 App」）
+    /// 法律文档整行：**推入 App 内页面**（2026-10-31 主人：不要跳浏览器）。
+    /// 文档 HTML 随包发布，离线可读；Store 表单里的地址另填 `LegalLinks`。
     private func legalRow(symbol: String, title: String, note: String,
-                          url: URL, tint: Color) -> some View {
-        Button {
-            UIApplication.shared.open(url)
+                          document: LegalDocument, tint: Color) -> some View {
+        NavigationLink {
+            LegalDocumentView(document: document)
         } label: {
-            SettingsRow(symbol: symbol, title: title, subtitle: note,
-                        showsChevron: false, tint: tint,
-                        trailing: AnyView(
-                            Image(systemName: "arrow.up.right")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(.quaternary)
-                        ))
+            SettingsRow(symbol: symbol, title: title, subtitle: note, tint: tint)
         }
         .buttonStyle(.plain)
     }
@@ -774,6 +769,8 @@ struct FullVersionView: View {
 
     /// 默认落在主推档（买断）
     @State private var selected: PurchaseStore.Plan = .lifetime
+    /// 条款 / 隐私以 App 内页面弹出，不跳浏览器
+    @State private var legalSheet: LegalDocument?
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -834,6 +831,9 @@ struct FullVersionView: View {
         .cloaksTabBar()
         .onAppear {
             if purchase.canPurchase == false { Task { await purchase.loadProducts() } }
+        }
+        .sheet(item: $legalSheet) { document in
+            LegalDocumentView(document: document)
         }
         }
     }
@@ -1032,9 +1032,9 @@ struct FullVersionView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 12) {
-                Link("隐私政策", destination: LegalLinks.privacy)
+                Button("隐私政策") { legalSheet = .privacy }
                 Text("·").foregroundStyle(.tertiary)
-                Link("使用条款", destination: LegalLinks.terms)
+                Button("使用条款") { legalSheet = .terms }
             }
             .font(.system(size: 12))
             // 付费面上统一用橙，别让两条蓝色链接在整页里跳出来

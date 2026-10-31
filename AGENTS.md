@@ -8,7 +8,12 @@ SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 `.lifetime`（¥28，非消耗型买断，**主推**）。走 StoreKit 2，价格一律取 `Product.displayPrice`。
 订阅会过期 → 权益快照必须写 `expiresAt`，否则小组件会一直按完整版渲染。
 
-> 隐私政策与使用条款托管在**公开仓库** `Zhangwangning/codepouch-legal`（GitHub Pages），
+> 隐私政策与使用条款有**三份副本要同步**：GitHub Pages（`Zhangwangning/codepouch-legal`，
+> App Store 表单填这个地址）、Gitee 镜像（`zhang_wangning/codepouch-legal`，国内可访问），
+> 以及 App 内打包的 `CodePouch/Legal/{privacy,terms}.html`（WKWebView 离线读，不跳浏览器）。
+> 改文档必须三处一起改，否则用户看到的和商店页面写的会不一致。
+
+> 托管地址：
 > 地址集中写在 `CodePouch/Models/LegalLinks.swift`。这三个 URL 已经要填进
 > App Store Connect 的审核表单 —— **不要改**，确需更换必须先让旧地址 301 过去。
 
