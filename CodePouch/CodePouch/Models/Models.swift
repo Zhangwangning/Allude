@@ -213,11 +213,10 @@ final class PickupStore: ObservableObject {
         }
     }
 
-    /// 免费版同屏展示上限（2026-10-30 主人定为 3；仅渲染裁剪，数据完整保留）。
+    /// 同屏展示上限（2026-11-01 主人定为 4；仅渲染裁剪，数据完整保留）。
     ///
-    /// 🔴 **引用共享层常量，不要在这里另写数字**：这里原先是独立的 `3`，
-    ///    而 `PickupLimits.freeVisible` 是 `4` —— App 列表裁 3 条、桌面小组件给 4 条，
-    ///    同一个「免费版」两套额度。现在两边同源。
+    /// 🔴 **引用共享层常量，不要在这里另写数字**：App 列表与桌面小组件
+    ///    必须同一个数字，否则会出现"列表 3 条、小组件 4 条"这种自相矛盾。
     static let freeVisibleLimit = PickupLimits.freeVisible
     /// 免费版短信存储上限（2026-10-30 主人定为 50；超出后 FIFO 淘汰最旧）
     static let freeStorageLimit = 50
@@ -234,7 +233,7 @@ final class PickupStore: ObservableObject {
     @Published private(set) var plan: MembershipPlan = .none
 
     /// 是否已解锁全部能力。
-    /// 免费档限制：同屏 3 条（`freeVisibleLimit`）、存储 50 条（`freeStorageLimit`）。
+    /// 未解锁时的限制：同屏 4 条（`freeVisibleLimit`）、存储 50 条（`freeStorageLimit`）。
     var isPro: Bool { plan.isActive }
 
     /// 按本机凭证重算权益。**导入凭证成功后必须调一次**，否则界面还停在免费档。

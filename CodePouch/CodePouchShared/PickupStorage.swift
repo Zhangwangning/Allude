@@ -97,10 +97,10 @@ enum PickupStorage {
 enum PickupLimits {
     /// 同屏展示上限（仅渲染裁剪，数据完整保留）。
     ///
-    /// 🔴 2026-10-30 **唯一定义点**。这里原先是 4，而 `PickupStore.freeVisibleLimit`
-    ///    另写了一个 3 —— App 列表裁 3 条、小组件却给 4 条，同一个「免费版」两个数字。
-    ///    现在 App 侧直接引用这个常量，以后改额度只改这里。
-    static let freeVisible = 3
+    /// 🔴 2026-11-01 主人：**统一 4 条** —— 待取/已取列表与小组件都按 4 条裁。
+    ///    仍是唯一定义点：App 侧 `PickupStore.freeVisibleLimit` 与小组件的
+    ///    `WidgetSnapshot` 都引用它，改额度只改这里。
+    static let freeVisible = 4
     /// 存储上限，超出后 FIFO 淘汰最旧
     static let freeStorage = 60
     /// 「不限量」的替代值。**不要用 `Int.max`**：`count - limit` 这类减法会溢出崩溃。

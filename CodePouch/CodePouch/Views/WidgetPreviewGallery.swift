@@ -51,7 +51,7 @@ struct WidgetCanvas: View {
 
         var title: String {
             switch self {
-            case .small: "小尺寸 · 1 条"
+            case .small: "小尺寸 · 最多 4 条"
             case .medium: "中尺寸 · 3 条/页"
             case .large: "大尺寸 · 8 条/页"
             case .extraLarge: "iPad 超大 · 6 条/页"
@@ -271,7 +271,7 @@ struct WidgetGalleryContent: View {
                     .font(AppTheme.TypeScale.rowSubtitle.weight(.semibold))
             }
 
-            Text("**拾码 CodePouch**：可用**小、中**两种尺寸，每种最多一个。\n\n**拾码 Pro**：解锁全部尺寸（大尺寸与竖版超大），且不限个数。\n\n这里把每种尺寸都画出来，方便你判断要不要解锁；标着「拾码 Pro」的那些，在系统小组件库里加不出来。")
+            Text("**拾码 CodePouch**：可用**小、中**两种尺寸，最多显示 4 条待取。\n\n**拾码 Pro**：解锁全部尺寸（大尺寸与竖版超大），一页最多 14 条。\n\n这里把每种尺寸都画出来，方便你判断要不要解锁；标着「拾码 Pro」的那些，在系统小组件库里加不出来。")
                 .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
