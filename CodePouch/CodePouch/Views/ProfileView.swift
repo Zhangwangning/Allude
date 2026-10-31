@@ -624,10 +624,17 @@ struct SettingsView: View {
 
                 SettingsDivider()
 
-                SettingsRow(symbol: "hand.raised.fill", title: "隐私",
-                            subtitle: "无账号、无联网；取件数据全程只在本机",
-                            showsChevron: false,
-                            tint: AppTheme.doneTint)
+                // 法律文档（2026-10-31）：订阅类 App 必须能点到隐私政策与使用条款。
+                // 用系统浏览器打开 —— App 内嵌网页会在审核时被问"为什么不用 SF Safari"。
+                legalRow(symbol: "hand.raised.fill", title: "隐私政策",
+                         note: "无账号、无联网；取件数据只在本机", url: LegalLinks.privacy,
+                         tint: AppTheme.doneTint)
+
+                SettingsDivider()
+
+                legalRow(symbol: "doc.text.fill", title: "使用条款",
+                         note: "订阅、自动续期与退款规则", url: LegalLinks.terms,
+                         tint: AppTheme.sky)
             }
             .cardSurface()
         }
@@ -641,6 +648,23 @@ struct SettingsView: View {
             try? await Task.sleep(nanoseconds: 1_600_000_000)
             withAnimation(.easeOut(duration: 0.2)) { copiedUUID = false }
         }
+    }
+
+    /// 打开外部法律文档的整行（点哪都跳，右侧带外链箭头提示「会离开 App」）
+    private func legalRow(symbol: String, title: String, note: String,
+                          url: URL, tint: Color) -> some View {
+        Button {
+            UIApplication.shared.open(url)
+        } label: {
+            SettingsRow(symbol: symbol, title: title, subtitle: note,
+                        showsChevron: false, tint: tint,
+                        trailing: AnyView(
+                            Image(systemName: "arrow.up.right")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.quaternary)
+                        ))
+        }
+        .buttonStyle(.plain)
     }
 
     private var footer: some View {
@@ -825,12 +849,22 @@ struct FullVersionView: View {
                     }
                 }
 
-                // Apple 要求订阅类 App 在购买处交代续期规则
-                Text("订阅会自动续期：确认购买后从 Apple ID 扣款，当前周期结束前 24 小时内自动续费；随时可在「设置 › Apple ID › 订阅」中取消。")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 4)
+                // Apple 3.1.2：订阅页上必须交代续期规则，且**必须能点到**
+                // 隐私政策与使用条款 —— 两条链接就放在这段文字下面。
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("订阅会自动续期：确认购买后从 Apple ID 扣款，当前周期结束前 24 小时内自动续费；随时可在「设置 › Apple ID › 订阅」中取消。")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack(spacing: 12) {
+                        Link("隐私政策", destination: LegalLinks.privacy)
+                        Text("·").foregroundStyle(.tertiary)
+                        Link("使用条款", destination: LegalLinks.terms)
+                    }
+                    .font(.caption)
+                }
+                .padding(.horizontal, 4)
 
                 if let message = purchase.message {
                     Text(message)

@@ -8,6 +8,10 @@ SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 `.lifetime`（¥28，非消耗型买断）。走 StoreKit 2，价格一律取 `Product.displayPrice`。
 订阅会过期 → 权益快照必须写 `expiresAt`，否则小组件会一直按完整版渲染。
 
+> 隐私政策与使用条款托管在**公开仓库** `Zhangwangning/codepouch-legal`（GitHub Pages），
+> 地址集中写在 `CodePouch/Models/LegalLinks.swift`。这三个 URL 已经要填进
+> App Store Connect 的审核表单 —— **不要改**，确需更换必须先让旧地址 301 过去。
+
 > 旧的「离线签名凭证 / 绑定设备」体系已于 2026-10-31 停用（从未对外售卖）。
 > `LicenseVerifier` / `license-gen` 工具**仍在**，只为读得懂老快照里的 `license` 字段；
 > 界面上已经没有粘贴凭证的入口，别再把它加回来（那是 App Store 3.1.1 的靶子）。
