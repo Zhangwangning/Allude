@@ -3,7 +3,12 @@
 iOS 取件码收纳 App。核心承诺：**数据只在本机，不联网、不上传、不需要注册**。
 SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 
-商业模式：**买断制**。离线签名凭证按设备绑定，本地验签解锁全功能。
+商业模式：**买断制 · App Store 内购**。非消耗型商品 `com.jikezhang.codeclip.pro`
+（一次买断、不订阅），走 StoreKit 2；价格一律取 `Product.displayPrice`。
+
+> 旧的「离线签名凭证 / 绑定设备」体系已于 2026-10-31 停用（从未对外售卖）。
+> `LicenseVerifier` / `license-gen` 工具**仍在**，只为读得懂老快照里的 `license` 字段；
+> 界面上已经没有粘贴凭证的入口，别再把它加回来（那是 App Store 3.1.1 的靶子）。
 
 ---
 
@@ -36,10 +41,11 @@ SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 
 这些是用户看不见的内部标识。对外名称是「拾码 CodePouch」，对外显示名改 `CFBundleDisplayName` 即可。
 
-### 3. 凭证枚举只增不删
+### 3. 权益枚举只增不删
 
-`LicenseService` / `MembershipPlan` 里**删掉任何一个 case**，已售出的凭证会在
-`JSONDecoder` 解码时失败 → 被判 `malformed` → 用户当场掉回免费档。
+`MembershipPlan` 里**删掉任何一个 case**，老快照会在 `JSONDecoder` 解码时失败 →
+被判 `malformed` → 用户当场掉回免费版。权益快照（`entitlement.json`）里新增字段
+一律 `decodeIfPresent` 给默认值，否则一次解码失败就是静默降级。
 
 `monthly` / `yearly` 就是为此保留的：**只读兼容，不再签发**，统一映射到 `.trial`。
 
@@ -52,8 +58,10 @@ SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 
 - **clean build 必须 0 warning**，弃用 API 当场迁移，不留 `@available` 兜底。
 - **不要提交构建产物**：`build/`、`build-sim/`、`DerivedData/` 已忽略。
-- **App 内不出现价格**。卖什么、多少钱都在店外说；App 只说「已解锁 / 未解锁」。
-- **App 内不做销售催促、不做防盗宣示**。
+- **价格只能来自 StoreKit**：内购（`PurchaseStore`，非消耗型）必须展示
+  `Product.displayPrice`，不要写死「¥18」—— 上架定价改了代码就对不上。
+  除此之外不做销售催促、不做防盗宣示。
+
 
 ---
 
@@ -159,7 +167,7 @@ swiftc -O -o /tmp/brand-check \
 #     shoujianbao / tiantian / yundakuaichaoshi）。
 # 除这两项外必须全 ✓；要让脚本变绿，改的是期望值，不是品牌表。
 
-# 签发 / 验签凭证
+# 签发 / 验签凭证（**历史工具**：凭证体系已停用，仅用于读旧快照/售后核对）
 python3 tools/license-gen/issue-openssl.py --service lifetime --device <32位HEX>
 python3 tools/license-gen/issue-openssl.py --check "<凭证>"
 ```

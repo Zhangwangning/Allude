@@ -369,6 +369,13 @@ struct EntitlementSnapshot: Codable, Equatable {
     /// `max(当前时间, 水位)` —— 时间能被调回去，水位不会。
     var lastSeenAt: Date?
 
+    /// 内购买断标记（2026-10-31）。
+    ///
+    /// 为什么写进快照而不是让小组件自己去问 StoreKit：扩展进程里拿
+    /// `Transaction.currentEntitlements` 依赖网络与缓存，取时间线时不可靠；
+    /// 而这份文件本来就在 App Group 里，主 App 购买成功后写一次，扩展直接读。
+    var storeOwned: Bool?
+
     /// 原始凭证串。**存它是为了每次读取都重新验签** ——
     /// 只存档位的话，越狱用户改一下 `entitlement.json` 里的 `plan` 就等于
     /// 自造了永久会员；留着凭证，签名对不上就当场降级。
@@ -398,7 +405,29 @@ struct EntitlementSnapshot: Codable, Equatable {
         let backed = !(snapshot.license ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .isEmpty
-        return backed && snapshot.isPro
+        let storeOwned = snapshot.storeOwned == true
+        return snapshot.isPro && (backed || storeOwned)
+    }
+
+    /// 记录「内购买断」状态并落盘（主 App 在 StoreKit 结果变化时调用）。
+    ///
+    /// 只改这一个来源：**不会**动 `license` —— 老凭证买家的权益由验签决定，
+    /// 内购退款/撤销不该把他们的凭证一起抹掉。
+    static func markStoreOwned(_ owned: Bool) {
+        var snapshot = load()
+        guard (snapshot.storeOwned ?? false) != owned else { return }
+
+        snapshot.storeOwned = owned
+        if owned {
+            snapshot.isPro = true
+            snapshot.plan = .lifetime
+        } else if (snapshot.license ?? "").isEmpty {
+            // 没有凭证兜底时才降级；有凭证的交给 `load()` 重新验签
+            snapshot.isPro = false
+            snapshot.plan = .none
+        }
+        snapshot.updatedAt = .now
+        _ = save(snapshot)
     }
 
     init(isPro: Bool, plan: MembershipPlan, updatedAt: Date,
@@ -438,6 +467,8 @@ struct EntitlementSnapshot: Codable, Equatable {
         expiresAt = try? container.decodeIfPresent(Date.self, forKey: .expiresAt)
         lastSeenAt = try? container.decodeIfPresent(Date.self, forKey: .lastSeenAt)
         license = try? container.decodeIfPresent(String.self, forKey: .license)
+        // 老快照没有这个键 —— 缺键是正常情况，不能因此解码失败
+        storeOwned = try? container.decodeIfPresent(Bool.self, forKey: .storeOwned)
     }
 
     private static let fileName = "entitlement.json"

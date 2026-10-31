@@ -38,6 +38,10 @@ struct CodePouchApp: App {
         let deviceCode = LicenseDevice.current
         print("[codeclip-verify] device=\(deviceCode)")
 
+        // 内购（StoreKit 2）：拉起交易监听并取商品。冷启动最早期挂上，
+        // 否则「购买待批准 / 跨设备购买」这类更新要等下一次冷启才反映出来。
+        PurchaseStore.shared.start()
+
         // 冷启动先对账一次权益。
         //
         // `load()` 会重新验签凭证 + 比对设备码，并把时间水位往前推 —— 放在这里
@@ -547,7 +551,7 @@ struct CodePouchApp: App {
                 case "license":
                     // 签名凭证页（设置 › 解锁 › 签名凭证）。命令行点不到设置里的行，
                     // 逐页验收只能靠这个入口。顺带验「未激活 / 已激活」两种状态。
-                    NavigationStack { LicenseActivationView() }
+                    NavigationStack { FullVersionView() }
                 // ⚠️ 2026-09-23：`auth` / `phone` / `email` / `password` /
                 //    `loginMethods` 五个截图分支随第三方登录体系一起删除。
                 // ⚠️ 2026-10-14：`vip` / `premium` / `license` / `profilePushed` /

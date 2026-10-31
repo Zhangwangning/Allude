@@ -87,9 +87,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     }
 
     /// 侧栏分组（顺序即显示顺序，与原来长页的分组一一对应）
-    /// 2026-10-31 起 `license` 不再出现在任何分组里 —— 凭证入口改为版本历史页的
-    /// 隐藏手势（见 `VersionHistoryView`），日常界面上看不到。
-    static let generalGroup: [SettingsPane] = [.notification, .widget, .activity, .courier, .station, .guide]
+    static let generalGroup: [SettingsPane] = [.notification, .widget, .activity, .courier, .station, .guide, .license]
     static let dataGroup: [SettingsPane] = [.storage]
     static let aboutGroup: [SettingsPane] = [.feedback, .version, .privacy]
 }
@@ -142,6 +140,7 @@ struct SettingsView: View {
         ScrollView {
             VStack(spacing: 16) {
                 settingsSection
+                fullVersionSection
                 dataSection
                 aboutSection
                 footer
@@ -328,7 +327,7 @@ struct SettingsView: View {
         case .courier:    CourierGalleryView(scope: .courier)
         case .station:    CourierGalleryView(scope: .station)
         case .guide:      UsageGuideView()
-        case .license:    LicenseActivationView()
+        case .license:    FullVersionView()
         case .version:    VersionHistoryView()
         case .storage:    dataDetailPane
         case .feedback:   feedbackPane
@@ -355,7 +354,7 @@ struct SettingsView: View {
                 }
                 .cardSurface()
 
-                Text("全部功能开放，记录数量不限；数据只保存在这台设备上。")
+                Text("数据只保存在这台设备上，不上传任何服务器。")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -507,6 +506,33 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: 完整版
+
+    /// 内购入口。
+    ///
+    /// 🔴 **必须可见**：App Store 要求付费功能有明显的购买入口，
+    /// 之前「连点 15 次才出现」那套已随凭证体系一起删除。
+    private var fullVersionSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "完整版")
+
+            VStack(spacing: 0) {
+                NavigationLink {
+                    FullVersionView()
+                } label: {
+                    SettingsRow(symbol: "sparkles",
+                                title: "完整版",
+                                subtitle: store.isPro
+                                    ? "已购买 · 感谢支持"
+                                    : "一次买断 · 不限条数",
+                                tint: AppTheme.amber)
+                }
+                .buttonStyle(.plain)
+            }
+            .cardSurface()
+        }
+    }
+
     // MARK: 本机数据
 
     private var dataSection: some View {
@@ -528,7 +554,7 @@ struct SettingsView: View {
             }
             .cardSurface()
 
-            Text("全部功能开放，记录数量不限；数据只保存在这台设备上。")
+            Text("数据只保存在这台设备上，不上传任何服务器。")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 4)
@@ -691,7 +717,7 @@ final class FeedbackModel: ObservableObject {
 enum AppVersion {
     static var display: String {
         let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        return (short?.isEmpty == false) ? short! : "0.2.8"
+        return (short?.isEmpty == false) ? short! : "0.3.0"
     }
 }
 
@@ -704,57 +730,23 @@ enum AppVersion {
 ///
 /// 🔴 **App 内不出现任何价格**（见 `MembershipPlan` 里的历史注释）：
 ///    档位归属由卖家在店外说明，这里只说「已解锁 / 未解锁」。
-struct LicenseActivationView: View {
+// MARK: - 完整版（内购）
+
+/// 一次性买断的全功能版本。
+///
+/// 2026-10-31 主人定：改成 App Store 内购（非消耗型）。
+/// **原先「粘贴凭证解锁」那套整体删除** —— 从未对外售卖，没有需要兼容的历史买家；
+/// 留着它只会给审核留一个「站外解锁」的口子（3.1.1 点名的正是 license key）。
+struct FullVersionView: View {
     @EnvironmentObject private var store: PickupStore
-
-    @State private var text = ""
-    @State private var outcome: Outcome?
-    @State private var copiedDevice = false
-    /// 本机标识默认打码，点「显示」才展开
-    @State private var revealed = false
-    @State private var copyResetTask: Task<Void, Never>?
-
-    private enum Outcome: Equatable {
-        /// 激活成功，关联值是档位说明（如「永久」）
-        case unlocked(String)
-        /// 激活失败：标题 + 下一步该怎么做
-        case rejected(String, String)
-
-        /// 弹窗标题 / 正文。**结果必须由用户确认后才消失** ——
-        /// 原先是在列表下方长出一张结果卡：验签失败时那行字很容易被
-        /// 键盘或屏幕边缘挡掉，用户只看到"点了没反应"。
-        var alertTitle: String {
-            switch self {
-            case .unlocked: return "凭证有效"
-            case .rejected(let title, _): return title
-            }
-        }
-
-        var alertMessage: String {
-            switch self {
-            case .unlocked(let label):
-                return "校验通过，已切换为完整版（\(label)）。"
-            case .rejected(_, let message):
-                return message
-            }
-        }
-    }
-
-    private var deviceCode: String { LicenseDevice.current }
-    private var trimmed: String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
+    /// 内购单例：交易监听在 App 启动时已挂上，这里只读状态
+    @ObservedObject private var purchase = PurchaseStore.shared
 
     var body: some View {
         ScrollView {
-            // 版式对齐「通知提醒」「小组件」这些二级设置页：
-            // 分组标题（卡外）→ 白卡 → 卡外说明，组间距 24。
-            //
-            // 🔴 2026-10-30 改版：原先是三张**品牌色卡**（天蓝 / 琥珀 / 绿）各自带
-            //    彩色图标标题，放进一排白卡的设置模块里像另一个 App 的页面。
-            //    设置语言里颜色只用来标"值的状态"，不用来给整张卡上色。
             VStack(spacing: 24) {
                 statusSection
-                deviceSection
-                activateSection
+                purchaseSection
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 14)
@@ -763,47 +755,24 @@ struct LicenseActivationView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("凭证")
+        .navigationTitle("完整版")
         .cloaksTabBar()
         .navigationBarTitleDisplayMode(.inline)
-        .scrollDismissesKeyboard(.interactively)
-        .onAppear(perform: runLicenseScaffold)
-        // 验签结果走系统弹窗：必须点「确认」才消失，不给"没看清就滑走"的机会。
-        // 关闭（无论点确认还是点外部）就把 outcome 清掉，避免下次进页面又弹一次。
-        .alert(outcome?.alertTitle ?? "",
-               isPresented: Binding(get: { outcome != nil },
-                                    set: { if !$0 { outcome = nil } }),
-               presenting: outcome) { _ in
-            Button("确认", role: .cancel) { outcome = nil }
-        } message: { outcome in
-            Text(outcome.alertMessage)
+        .onAppear {
+            // 冷启动那次取商品可能刚巧网络没好，进页面时补一次
+            if purchase.product == nil { Task { await purchase.loadProduct() } }
         }
     }
 
     // MARK: 当前状态
 
-    /// 行尾的档位文字。买断制口径 —— **不出现「会员 / 年费 / 月付」任何订阅词**。
-    /// 临时凭证按到期时间算剩余天数（凭证里签的是绝对时间，这里只是显示）。
-    private var planValue: String {
-        guard store.isPro else { return "免费版" }
-        if store.plan == .lifetime { return "完整版 · 永久" }
-        if let expiry = EntitlementSnapshot.load().expiresAt {
-            let days = max(0, Calendar.current.dateComponents([.day], from: Date(), to: expiry).day ?? 0)
-            return "临时 · 剩 \(days) 天"
-        }
-        return "临时"
-    }
-
     private var statusSection: some View {
-        // 🔴 2026-10-31 主人：**不出现「授权 / 解锁 / 激活」**这类词。
-        //    App 内越像"卖东西"，审核越容易按 3.1.1（内购）挑刺；
-        //    这里的口径改成描述「本机是什么版本」，而不是「你买了没」。
         SettingsGroup(title: "当前状态",
                       note: store.isPro
-                        ? "功能全部可用。凭证只在本机校验，不联网、不上传。"
-                        : "同屏显示 \(PickupStore.freeVisibleLimit) 条，最多存 \(PickupStore.freeStorageLimit) 条；超出后自动移除最旧的。") {
+                        ? "完整版已生效：不限条数，桌面小组件与实时活动同时解锁。"
+                        : "免费版同屏显示 \(PickupStore.freeVisibleLimit) 条，最多存 \(PickupStore.freeStorageLimit) 条；超出后自动移除最旧的。") {
             SettingsPlainRow(title: "版本") {
-                Text(planValue)
+                Text(store.isPro ? "已购买" : "免费版")
                     .font(.system(size: 17))
                     .foregroundStyle(store.isPro ? AppTheme.doneTint : Color.secondary)
                     .fixedSize()
@@ -811,97 +780,93 @@ struct LicenseActivationView: View {
         }
     }
 
-    // MARK: 本机标识
+    // MARK: 购买
 
-    private var deviceSection: some View {
-        SettingsGroup(title: "本机标识",
-                      note: "凭证与本机绑定，这一串就是绑定依据。更换设备后需按新设备重新签发。") {
-            SettingsPlainRow(title: "标识") {
-                HStack(spacing: 14) {
-                    Button {
-                        withAnimation(.easeOut(duration: 0.15)) { revealed = !revealed }
-                    } label: {
-                        Text(revealed ? "隐藏" : "显示")
-                            .font(.system(size: 17))
-                            .foregroundStyle(AppTheme.accent)
-                    }
-                    .buttonStyle(.plain)
-
-                    Button { copyDevice() } label: {
-                        Text(copiedDevice ? "已复制" : "复制")
-                            .font(.system(size: 17))
-                            .foregroundStyle(copiedDevice ? AppTheme.doneTint : AppTheme.accent)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            SettingsDivider(style: .plain)
-
-            // 35 个字符（32 位十六进制分四组）放不进行尾：17pt 标题已占去半行，
-            // 挤在右边只剩 ~250pt，必然折行。整串单独占一行，15pt 等宽。
-            // 默认打码（首尾各 8 位），点「显示」才展开 —— 复制永远复制完整值。
-            Text(revealed ? LicenseDevice.display(deviceCode)
-                          : LicenseDevice.masked(deviceCode))
-                .font(.system(size: 15, weight: .semibold, design: .monospaced))
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-        }
-    }
-
-    // MARK: 输入凭证
-
-    private var activateSection: some View {
+    /// 价格一律取 `Product.displayPrice`：App Store 要求展示商店返回的本地化价格，
+    /// 写死「¥18」会与实际上架定价对不上，价格变了也没人改代码。
+    private var purchaseSection: some View {
         VStack(spacing: 12) {
-            SettingsGroup(title: "凭证",
-                          note: "校验只在本机进行，不联网。凭证与本机标识一一对应，换机需重新签发。") {
-                editor
-                SettingsDivider(style: .plain)
-                actionRow(title: "从剪贴板粘贴", systemImage: "doc.on.clipboard") { pasteCredential() }
+            if purchase.isOwned {
+                // 已购：不再摆价格、恢复、失败提示 —— 那些只对"还没买"的人有意义
+                SettingsGroup(title: "完整版",
+                              note: "已购买，感谢支持。换机或重装后可在原 Apple ID 下恢复。") {
+                    SettingsPlainRow(title: "不限条数") {
+                        Text("已启用")
+                            .font(.system(size: 17))
+                            .foregroundStyle(AppTheme.doneTint)
+                            .fixedSize()
+                    }
+                }
+            } else {
+                buyableSection
+            }
+        }
+    }
 
-                if !text.isEmpty {
+    /// 未购状态下的购买区块
+    private var buyableSection: some View {
+        VStack(spacing: 12) {
+            SettingsGroup(title: "完整版",
+                          note: "一次买断、永久有效；不订阅、不自动续费。换机或重装后点「恢复购买」即可找回。") {
+                SettingsPlainRow(title: "不限条数") {
+                    if let price = purchase.priceText {
+                        Text(price)
+                            .font(.system(size: 17))
+                            .foregroundStyle(.secondary)
+                            .fixedSize()
+                    } else if purchase.isLoading {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Text("—").font(.system(size: 17)).foregroundStyle(.tertiary)
+                    }
+                }
+
+                if !purchase.isOwned {
                     SettingsDivider(style: .plain)
-                    actionRow(title: "清空", systemImage: "xmark.circle", tint: .secondary) {
-                        text = ""
-                        outcome = nil
+                    actionRow(title: "恢复购买", systemImage: "arrow.clockwise") {
+                        Task { await purchase.restore() }
                     }
                 }
             }
 
-            activateButton
-        }
-    }
+            buyButton
 
-    private var editor: some View {
-        ZStack(alignment: .topLeading) {
-            TextEditor(text: $text)
-                .font(.system(size: 13, design: .monospaced))
-                .scrollContentBackground(.hidden)
-                .frame(minHeight: 96)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
-
-            if text.isEmpty {
-                Text("CLIP1 开头的一整串，中间没有空格。")
-                    .font(.system(size: 13, design: .monospaced))
-                    .foregroundStyle(.tertiary)
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 12)
-                    .allowsHitTesting(false)
+            if let message = purchase.message {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 4)
             }
         }
-        .background(Color(.tertiarySystemFill), in: .rect(cornerRadius: 10))
-        .padding(16)
     }
 
-    /// 设置页形态的动作行：整行可点，标题用强调色，右侧配一个弱化的符号。
-    ///
-    /// 原先这里是一排胶囊小按钮（粘贴 / 清空 / 激活），那是工具条的语汇；
-    /// 放进「授权状态 + 设备码」这排设置卡里，只有它长得不像设置页。
+    private var buyButton: some View {
+        Button {
+            Task { await purchase.purchase() }
+        } label: {
+            Text(buyTitle)
+                .font(.system(size: 15, weight: .semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 13)
+                .background(canBuy ? AppTheme.accent : Color(.tertiarySystemFill), in: .capsule)
+                .foregroundStyle(canBuy ? Color.white : Color.secondary)
+        }
+        .buttonStyle(.plain)
+        .disabled(!canBuy || purchase.isPurchasing)
+    }
+
+    private var canBuy: Bool { purchase.product != nil && !purchase.isPurchasing }
+
+    private var buyTitle: String {
+        if purchase.isPurchasing { return "处理中…" }
+        guard let price = purchase.priceText else { return "购买完整版" }
+        return "购买完整版 · \(price)"
+    }
+
+    /// 设置页形态的动作行：整行可点，标题强调色，右侧配一个弱化符号。
     private func actionRow(title: String, systemImage: String,
                            tint: Color = AppTheme.accent,
                            action: @escaping () -> Void) -> some View {
@@ -910,9 +875,7 @@ struct LicenseActivationView: View {
                 Text(title)
                     .font(.system(size: 17))
                     .foregroundStyle(tint)
-
                 Spacer(minLength: 8)
-
                 Image(systemName: systemImage)
                     .font(.system(size: 16))
                     .foregroundStyle(tint.opacity(0.75))
@@ -924,80 +887,5 @@ struct LicenseActivationView: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-    }
-
-    /// 主操作：与「添加」页的提交键同一口径（胶囊实心主色）。
-    private var activateButton: some View {
-        Button { activate() } label: {
-            Text("验证")
-                .font(.system(size: 15, weight: .semibold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 13)
-                .background(trimmed.isEmpty ? Color(.tertiarySystemFill) : AppTheme.accent,
-                            in: .capsule)
-                .foregroundStyle(trimmed.isEmpty ? Color.secondary : Color.white)
-        }
-        .buttonStyle(.plain)
-        .disabled(trimmed.isEmpty)
-    }
-
-    // MARK: 截图脚手架
-
-    /// `LICENSE_VOUCHER=<凭证>` 注入一串凭证并自动点一次「激活」。
-    ///
-    /// 命令行点不到屏幕上的按钮（本机没有 idb / applesimutils，AppleScript 会被
-    /// 辅助功能权限拒绝），没有这个入口就拍不到结果弹窗 —— 而弹窗正是要验的东西。
-    /// 走真实 `activate()`，不是伪造 outcome，验签与写盘都会被真的执行。
-    private func runLicenseScaffold() {
-        guard let voucher = ProcessInfo.processInfo.environment["LICENSE_VOUCHER"],
-              !voucher.isEmpty else { return }
-        Task { @MainActor in
-            // 等导航转场落定再弹，否则 alert 会被转场动画吃掉。
-            try? await Task.sleep(nanoseconds: 800_000_000)
-            text = voucher
-            activate()
-        }
-    }
-
-    // MARK: 动作
-
-    private func activate() {
-        guard !trimmed.isEmpty else { return }
-        switch LicenseActivation.activate(trimmed) {
-        case .success(let payload):
-            // 关键一步：不改这一步，界面会停在免费档（权益快照已经写盘，但 store 不知道）
-            store.refreshEntitlement()
-            outcome = .unlocked(planWord(payload.service.plan))
-            text = ""
-        case .failure(let error):
-            outcome = .rejected(error.title, error.message)
-        }
-    }
-
-    private func pasteCredential() {
-        guard let value = UIPasteboard.general.string, !value.isEmpty else { return }
-        text = value
-        outcome = nil
-    }
-
-    private func copyDevice() {
-        UIPasteboard.general.string = deviceCode
-        withAnimation(.easeOut(duration: 0.15)) { copiedDevice = true }
-        copyResetTask?.cancel()
-        copyResetTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 1_800_000_000)
-            if !Task.isCancelled {
-                withAnimation(.easeOut(duration: 0.2)) { copiedDevice = false }
-            }
-        }
-    }
-
-    /// 档位的中文短名。**买断制：只说「临时 7 天 / 永久」，不出现会员、年费这类订阅词。**
-    private func planWord(_ plan: MembershipPlan) -> String {
-        switch plan {
-        case .none:     return "未开通"
-        case .trial:    return "临时 7 天"
-        case .lifetime: return "永久"
-        }
     }
 }
