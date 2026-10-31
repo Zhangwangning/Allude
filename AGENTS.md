@@ -146,6 +146,25 @@ xcrun simctl terminate UDID com.jikezhang.codeclip; sleep 4
 
 ---
 
+## 字号（设置类界面统一标准）
+
+全 App 的设置/教程/二级页**只用 `AppTheme.TypeScale` 里的档位**，不要再写
+`.system(size: 11.5)` 这类随手值。起因：2026-11-01 主人指出"教程字号太小、
+设置里大大小小随意来"，盘出来 9–24 之间散着 18 种字号（含 10.5 / 11.5 / 12.5）。
+
+| 档位 | 字号 | 用途 |
+|---|---|---|
+| `rowTitle` | 17 | 行标题、行尾值（对齐系统设置） |
+| `rowSubtitle` | 13 | 行副标题、分区说明 |
+| `body` | 15 | 教程步骤说明、卡片内长文 |
+| `section` | 13 | 分区标题 |
+| `note` | 12 | 注解、页脚、卡片下小字 |
+| `badge` | 11 semibold | 徽章、角标 |
+
+需要强调时**只加 weight，不加字号**（`AppTheme.TypeScale.body.weight(.semibold)`）。
+
+---
+
 ## App 图标切换
 
 三套内置图标（经典 / 信封 / 卡券），设置 › App 图标可切换。

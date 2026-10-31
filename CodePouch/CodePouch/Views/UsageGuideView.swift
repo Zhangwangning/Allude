@@ -98,15 +98,15 @@ struct UsageGuideView: View {
 
                     HStack(alignment: .top, spacing: 12) {
                         Image(systemName: point.0)
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(AppTheme.TypeScale.rowTitle.weight(.semibold))
                             .foregroundStyle(point.2)
                             .frame(width: 28)
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(point.1)
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(AppTheme.TypeScale.rowTitle.weight(.semibold))
                             Text(point.3)
-                                .font(.system(size: 13))
+                                .font(AppTheme.TypeScale.body)
                                 .foregroundStyle(.secondary)
                                 .lineSpacing(2)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -151,7 +151,7 @@ struct UsageGuideView: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 Text("自动化只能监听「收到短信」。微信群转发的取件通知、快递 App 的推送、驿站发来的聊天截图 —— 这些都没有可监听的系统事件，这时用一条**手动快捷指令**：截屏 → 一键收纳。".richText)
-                    .font(.footnote)
+                    .font(AppTheme.TypeScale.body)
                     .foregroundStyle(.secondary)
                     .lineSpacing(4)
                     .fixedSize(horizontal: false, vertical: true)
@@ -160,16 +160,16 @@ struct UsageGuideView: View {
                     ForEach(Array(screenshotSteps.enumerated()), id: \.offset) { position, item in
                         HStack(alignment: .top, spacing: 10) {
                             Text("\(position + 1)")
-                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                .font(AppTheme.TypeScale.badge)
                                 .frame(width: 20, height: 20)
                                 .background(AppTheme.sky.opacity(0.15), in: .circle)
                                 .foregroundStyle(AppTheme.sky)
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.0)
-                                    .font(.caption.weight(.medium))
+                                    .font(AppTheme.TypeScale.note.weight(.medium))
                                 Text(item.1.richText)
-                                    .font(.caption)
+                                    .font(AppTheme.TypeScale.note)
                                     .foregroundStyle(.tertiary)
                                     .lineSpacing(3)
                                     .fixedSize(horizontal: false, vertical: true)
@@ -181,7 +181,7 @@ struct UsageGuideView: View {
                 }
 
                 Text("截图里没有取件信息（比如截了个聊天记录、截了个网页）就**什么都不会写入**，「待取」不会被污染。".richText)
-                    .font(.caption)
+                    .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.tertiary)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
@@ -219,7 +219,7 @@ struct UsageGuideView: View {
 
                 HStack(alignment: .top, spacing: 14) {
                     Text("\(step.index)")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .font(AppTheme.TypeScale.noteStrong)
                         .frame(width: 26, height: 26)
                         .background((step.isKey ? AppTheme.pendingTint : AppTheme.accent).opacity(0.15),
                                     in: .circle)
@@ -228,7 +228,7 @@ struct UsageGuideView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 6) {
                             Text(step.title)
-                                .font(.subheadline.weight(.medium))
+                                .font(AppTheme.TypeScale.bodyMedium)
 
                             if step.isKey {
                                 Text("关键")
@@ -241,7 +241,7 @@ struct UsageGuideView: View {
                         }
 
                         Text(step.detail.richText)
-                            .font(.caption)
+                            .font(AppTheme.TypeScale.note)
                             .foregroundStyle(.tertiary)
                             .lineSpacing(3)
                             .fixedSize(horizontal: false, vertical: true)
@@ -263,16 +263,16 @@ struct UsageGuideView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: symbol)
-                    .font(.system(size: 12))
+                    .font(AppTheme.TypeScale.note)
                     .foregroundStyle(tint)
                 Text(title)
-                    .font(.footnote.weight(.semibold))
+                    .font(AppTheme.TypeScale.body.weight(.semibold))
                 Spacer()
             }
             .foregroundStyle(.secondary)
 
             Text(detail.richText)
-                .font(.footnote)
+                .font(AppTheme.TypeScale.body)
                 .foregroundStyle(.secondary)
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)

@@ -63,9 +63,9 @@ struct HelpCenterView: View {
                     Toggle(isOn: $feedback.includeLog) {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("反馈时附带诊断日志")
-                                .font(.system(size: 15))
+                                .font(AppTheme.TypeScale.body)
                             Text("只在本机保存，点了发送才会随邮件发出")
-                                .font(.system(size: 11))
+                                .font(AppTheme.TypeScale.note)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -126,7 +126,7 @@ struct HelpCenterView: View {
     @ViewBuilder private var feedbackToast: some View {
         if showCleared {
             Text("诊断日志已清除")
-                .font(.system(size: 13, weight: .medium))
+                .font(AppTheme.TypeScale.rowSubtitle.weight(.medium))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .background(.regularMaterial, in: .capsule)
@@ -134,7 +134,7 @@ struct HelpCenterView: View {
                 .transition(.opacity)
         } else if feedback.showFallback {
             Text("邮件 App 不可用，邮箱已复制到剪贴板")
-                .font(.system(size: 13, weight: .medium))
+                .font(AppTheme.TypeScale.rowSubtitle.weight(.medium))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .background(.regularMaterial, in: .capsule)
@@ -249,7 +249,7 @@ struct AboutView: View {
                 .font(.system(size: 19, weight: .semibold))
 
             Text(AppVersion.display)
-                .font(.system(size: 12))
+                .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity)
@@ -278,7 +278,7 @@ struct PageFooter: View {
             Text("拾码 CodePouch \(AppVersion.display)")
             Text("ICP 备案号：备案中")
         }
-        .font(.system(size: 11))
+        .font(AppTheme.TypeScale.note)
         .foregroundStyle(.tertiary)
         .frame(maxWidth: .infinity)
         .padding(.top, 8)

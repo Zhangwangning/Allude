@@ -107,12 +107,12 @@ struct SettingsRow: View {
     private var labels: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.system(size: 16))
+                .font(AppTheme.TypeScale.rowTitle)
                 .foregroundStyle(.primary)
 
             if let subtitle {
                 Text(subtitle)
-                    .font(.system(size: 12))
+                    .font(AppTheme.TypeScale.rowSubtitle)
                     .foregroundStyle(.tertiary)
                     .lineLimit(subtitleOneLine ? 1 : nil)
                     .minimumScaleFactor(subtitleOneLine ? 0.72 : 1)
@@ -123,7 +123,7 @@ struct SettingsRow: View {
 
     private func detailText(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 16))
+            .font(AppTheme.TypeScale.rowTitle)
             .foregroundStyle(.secondary)
             // 行尾值不允许被压成两行：它多是「关闭 / 80% / 顶部」这类短词，
             // 一旦换行会与左侧标题错位得非常明显。
@@ -197,7 +197,7 @@ struct SettingsCard<Content: View>: View {
 
             if let note {
                 Text(note)
-                    .font(.system(size: 13))
+                    .font(AppTheme.TypeScale.rowSubtitle)
                     .foregroundStyle(.secondary)
                     .lineSpacing(2)
                     .padding(.horizontal, 16)

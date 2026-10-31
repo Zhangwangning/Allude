@@ -75,6 +75,33 @@ enum AppTheme {
     ///
     /// 与主题蓝分开是刻意的：付费面要"热"、要跟内容区拉开距离；
     /// 而 App 内容区的主色仍是图标蓝，不能因为卖东西改成橙的。
+    // MARK: 字号（2026-11-01 统一）
+    //
+    // 🔴 全 App 的**设置类界面**只用这几档，别再随手写 `.system(size: 11.5)`。
+    //    起因：主人指出"教程字号太小、设置里大大小小随意来"，盘了一遍发现
+    //    9–24 之间散着 18 种字号（还有 10.5 / 11.5 / 12.5 这种没道理的值）。
+    //
+    // 档位口径（对齐 iOS 设置页的比例）：
+    //   行标题 17 · 行副标题 13 · 行尾值 17 · 正文/说明 15 · 分区标题 13 · 注解 12
+    // 需要强调时**只加 weight，不加字号**。
+    enum TypeScale {
+        /// 行标题、行尾值（与系统设置同尺寸）
+        static let rowTitle = Font.system(size: 17)
+        static let rowTitleMedium = Font.system(size: 17, weight: .medium)
+        /// 行副标题
+        static let rowSubtitle = Font.system(size: 13)
+        /// 正文：教程步骤说明、卡片内长文（原来是 13，读着费劲）
+        static let body = Font.system(size: 15)
+        static let bodyMedium = Font.system(size: 15, weight: .medium)
+        /// 分区标题
+        static let section = Font.system(size: 13)
+        /// 注解、页脚、卡片下方小字
+        static let note = Font.system(size: 12)
+        static let noteStrong = Font.system(size: 12, weight: .semibold)
+        /// 徽章、角标这类极短标签
+        static let badge = Font.system(size: 11, weight: .semibold)
+    }
+
     // MARK: 付费面 · 香槟金（2026-10-31 主人定）
     //
     // 🔴 金色必须**成对用**：浅金只做底，文字一律用深金墨。

@@ -87,7 +87,7 @@ struct AppIconSettingsView: View {
                 HStack(spacing: 4) {
                     if selected == choice {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 11))
+                            .font(AppTheme.TypeScale.note)
                             .foregroundStyle(AppTheme.accent)
                     }
                     Text(choice.title)

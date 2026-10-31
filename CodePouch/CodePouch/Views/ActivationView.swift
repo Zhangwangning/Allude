@@ -64,9 +64,9 @@ struct ActivationView: View {
                     } label: {
                         HStack(spacing: 5) {
                             Image(systemName: model.copiedDevice ? "checkmark" : "doc.on.doc")
-                                .font(.system(size: 11, weight: .semibold))
+                                .font(AppTheme.TypeScale.noteStrong)
                             Text(model.copiedDevice ? "已复制" : "复制")
-                                .font(.system(size: 13, weight: .medium))
+                                .font(AppTheme.TypeScale.rowSubtitle.weight(.medium))
                         }
                         .foregroundStyle(model.copiedDevice ? AppTheme.doneTint : AppTheme.accent)
                     }
@@ -75,7 +75,7 @@ struct ActivationView: View {
                     Spacer(minLength: 0)
 
                     Text("完整值不会显示在屏幕上，复制后使用")
-                        .font(.system(size: 11))
+                        .font(AppTheme.TypeScale.note)
                         .foregroundStyle(.tertiary)
                 }
             }
@@ -120,7 +120,7 @@ struct ActivationView: View {
                     activate()
                 } label: {
                     Text("激活")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(AppTheme.TypeScale.body.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                         .background(model.canActivate ? AppTheme.accent : Color(.tertiarySystemFill),
@@ -145,7 +145,7 @@ struct ActivationView: View {
             VStack(spacing: 0) {
                 SettingsPlainRow(title: "拾码 Pro") {
                     Text(store.isPro ? "已解锁" : "未解锁")
-                        .font(.system(size: 17))
+                        .font(AppTheme.TypeScale.rowTitle)
                         .foregroundStyle(store.isPro ? AppTheme.doneTint : .secondary)
                         .fixedSize()
                 }
@@ -156,7 +156,7 @@ struct ActivationView: View {
                 // 所以这里必须能看出"还剩多久"，只写"已解锁"用户不知道什么时候到期。
                 SettingsPlainRow(title: "有效期") {
                     Text(validityText)
-                        .font(.system(size: 15))
+                        .font(AppTheme.TypeScale.body)
                         .foregroundStyle(validityIsUrgent ? AppTheme.pendingTint : .secondary)
                         .fixedSize()
                 }
@@ -165,7 +165,7 @@ struct ActivationView: View {
 
             if let result = model.result {
                 Text(result)
-                    .font(.system(size: 13))
+                    .font(AppTheme.TypeScale.rowSubtitle)
                     .foregroundStyle(model.isError ? AppTheme.todayTint : AppTheme.doneTint)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 4)
