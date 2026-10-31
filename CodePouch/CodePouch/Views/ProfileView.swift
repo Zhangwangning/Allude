@@ -574,6 +574,7 @@ struct SettingsView: View {
                 SettingsRow(symbol: "number.square.fill",
                             title: "设备 UUID",
                             subtitle: LicenseDevice.masked(LicenseDevice.current),
+                            subtitleOneLine: true,
                             showsChevron: false,
                             tint: AppTheme.indigo,
                             trailing: AnyView(

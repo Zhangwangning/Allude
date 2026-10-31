@@ -60,6 +60,10 @@ struct SettingsRow: View {
     let symbol: String
     let title: String
     var subtitle: String? = nil
+    /// 副标题强制单行（2026-10-31，UUID 这类定长标识用）。
+    /// 宽度不够时按比例缩字，而不是折成两行 —— 折行会把整行撑高、
+    /// 第二段还会越过图标列，看着像排版坏了。
+    var subtitleOneLine: Bool = false
     var detail: String? = nil
     var showsChevron: Bool = true
     var tint: Color = AppTheme.accent
@@ -110,6 +114,8 @@ struct SettingsRow: View {
                 Text(subtitle)
                     .font(.system(size: 12))
                     .foregroundStyle(.tertiary)
+                    .lineLimit(subtitleOneLine ? 1 : nil)
+                    .minimumScaleFactor(subtitleOneLine ? 0.72 : 1)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
