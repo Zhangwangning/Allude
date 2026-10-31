@@ -74,7 +74,7 @@ struct ActivationView: View {
 
                     Spacer(minLength: 0)
 
-                    Text("复制的是完整值，界面只显示部分")
+                    Text("完整值不会显示在屏幕上，复制后使用")
                         .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
                 }
