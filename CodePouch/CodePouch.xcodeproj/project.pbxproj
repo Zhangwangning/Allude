@@ -18,6 +18,7 @@
 		AA0000000000000000000037 /* PickupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000023 /* PickupStorage.swift */; };
 		AA0000000000000000000038 /* CodePouchWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000024 /* CodePouchWidgetBundle.swift */; };
 		AA0000000000000000000039 /* PickupWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000025 /* PickupWidget.swift */; };
+		AA0000000000000000000061 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000060 /* PrivacyInfo.xcprivacy */; };
 		AA000000000000000000003A /* PickupWidgetIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000026 /* PickupWidgetIntent.swift */; };
 		AA000000000000000000003B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000027 /* Assets.xcassets */; };
 		AA000000000000000000003C /* WidgetVisuals.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000003D /* WidgetVisuals.swift */; };
@@ -69,6 +70,7 @@
 		AA0000000000000000000022 /* PickupModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickupModels.swift; sourceTree = "<group>"; };
 		AA0000000000000000000023 /* PickupStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickupStorage.swift; sourceTree = "<group>"; };
 		AA0000000000000000000024 /* CodePouchWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodePouchWidgetBundle.swift; sourceTree = "<group>"; };
+		AA0000000000000000000060 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AA0000000000000000000025 /* PickupWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickupWidget.swift; sourceTree = "<group>"; };
 		AA0000000000000000000026 /* PickupWidgetIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickupWidgetIntent.swift; sourceTree = "<group>"; };
 		AA0000000000000000000027 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -157,6 +159,7 @@
 				AA0000000000000000000026 /* PickupWidgetIntent.swift */,
 				AA0000000000000000000046 /* PickupLiveActivity.swift */,
 				AA0000000000000000000027 /* Assets.xcassets */,
+				AA0000000000000000000060 /* PrivacyInfo.xcprivacy */,
 				AA0000000000000000000028 /* Info.plist */,
 			);
 			path = CodePouchWidget;
@@ -271,6 +274,7 @@
 			files = (
 				AA000000000000000000003B /* Assets.xcassets in Resources */,
 				AA000000000000000000004C /* Assets.xcassets in Resources */,
+				AA0000000000000000000061 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -471,6 +475,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.3.1;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jikezhang.codeclip;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -502,6 +507,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.3.1;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jikezhang.codeclip;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -529,6 +535,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 0.3.1;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jikezhang.codeclip.CodeClipWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -557,6 +564,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 0.3.1;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jikezhang.codeclip.CodeClipWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
