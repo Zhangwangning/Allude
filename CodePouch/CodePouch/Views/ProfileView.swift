@@ -772,8 +772,8 @@ struct FullVersionView: View {
     @EnvironmentObject private var store: PickupStore
     @ObservedObject private var purchase = PurchaseStore.shared
 
-    /// 默认落在主推档（年付）
-    @State private var selected: PurchaseStore.Plan = .yearly
+    /// 默认落在主推档（买断）
+    @State private var selected: PurchaseStore.Plan = .lifetime
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -858,6 +858,11 @@ struct FullVersionView: View {
                     planCard(plan)
                 }
             }
+
+            Text("推荐买断：一次付清、永久有效，不用记着取消订阅。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 4)
         }
     }
 

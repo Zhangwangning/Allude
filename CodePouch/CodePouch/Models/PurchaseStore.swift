@@ -27,7 +27,8 @@ final class PurchaseStore: ObservableObject {
 
     /// 三档商品。`rawValue` 拼进 product ID —— 改名字等于换商品，已购用户会丢权益。
     enum Plan: String, CaseIterable, Identifiable {
-        case monthly, yearly, lifetime
+        // 顺序即界面顺序：**买断排第一**（主推），订阅在后
+        case lifetime, yearly, monthly
 
         var id: String { rawValue }
 
@@ -47,12 +48,13 @@ final class PurchaseStore: ObservableObject {
             switch self {
             case .monthly: "按月自动续期"
             case .yearly: "按年自动续期"
-            case .lifetime: "一次买断"
+            case .lifetime: "一次付费，永久使用，不续期"
             }
         }
 
-        /// 界面上的推荐位（年付是主推档）
-        var isRecommended: Bool { self == .yearly }
+        /// 界面上的推荐位。2026-10-31 主人定：**主推买断** ——
+        /// 一次付清、永久使用，用户不用记着取消订阅，售后也少。
+        var isRecommended: Bool { self == .lifetime }
     }
 
     static let shared = PurchaseStore()
