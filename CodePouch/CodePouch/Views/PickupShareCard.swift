@@ -449,7 +449,10 @@ struct SharePreviewSheet: View {
     }
 
     var body: some View {
-        ZStack {
+        // 矮屏（Duo 折叠态 678pt）：直板机 ≥ 850pt，永远走不到这个分支
+        let compact = Self.windowSize.height < 720
+
+        return ZStack {
             // 遮罩：点击关闭（RootView 级 overlay，没有下滑手势，补一个退出路径）
             Color.black.opacity(0.30)
                 .ignoresSafeArea()
@@ -464,9 +467,14 @@ struct SharePreviewSheet: View {
             if horizontalSizeClass == .regular {
                 duoLayout
             } else {
-                phoneLayout
+                // 🔴 尺寸**不能**用 GeometryReader 读：它在被 ignore 安全区的层级里
+                //    仍然报"安全区内"的尺寸，Duo 外屏会少掉上下两条边，面板变得不满屏。
+                phoneLayout(in: Self.windowSize)
             }
         }
+        // 🔴 Duo 外屏的状态栏时间画在面板内部右上角，正压在「完成」胶囊上。
+        //    分享面板是模态的，紧凑态下直接隐藏状态栏（2026-11-01 主人截图）。
+        .statusBarHidden(compact)
         .sheet(isPresented: $model.showActivity) {
             if let image = model.image {
                 ActivityShareSheet(activityItems: [image])
@@ -478,18 +486,29 @@ struct SharePreviewSheet: View {
 
     /// 标准「预览 + 底部操作条」布局：卡片水平居中、操作按钮在底部横排。
     /// 面板四角同半径（26pt）、四周留 8pt 浮在遮罩上，与系统 sheet 观感一致。
-    private var phoneLayout: some View {
+    /// 当前窗口尺寸（面板挂在 RootView 顶层 overlay，窗口即全屏）
+    private static var windowSize: CGSize {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let window = scenes.flatMap(\.windows).first { $0.isKeyWindow } ?? scenes.first?.windows.first
+        if let size = window?.bounds.size { return size }
+        // 兜底：窗口还没连上时用场景里的屏幕（不要用 UIScreen.main，iOS 26 已弃用）
+        return scenes.first?.screen.bounds.size ?? CGSize(width: 402, height: 874)
+    }
+
+    private func phoneLayout(in size: CGSize) -> some View {
         // 🔴 面板圆角 = **系统真实屏幕圆角 − 内缩量**，这样两者的弧线才同心平行
         // （2026-10-27 主人两次指出「四个圆角跟手机屏幕圆角不一致」）。
         // 之前先写 26、再凭经验写 46，都是硬编码猜测 —— 机型一对就露馅。
         // 现在直接读 UIScreen 的 displayCornerRadius；读不到才回落到 55。
         let inset: CGFloat = 8
         let corner = max(0, Self.displayCornerRadius - inset)
+        // 🔴 矮屏（Duo 折叠态 678pt）走紧凑版式：直板机 ≥ 850pt，永远进不来。
+        let compact = size.height < 720
 
         return VStack(spacing: 0) {
-            phoneHeader
-            phoneCard
-            phoneActions
+            phoneHeader(compact: compact, corner: corner)
+            phoneCard(compact: compact)
+            phoneActions(compact: compact)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(colorScheme == .dark
@@ -499,7 +518,7 @@ struct SharePreviewSheet: View {
         .padding(inset)
     }
 
-    private var phoneHeader: some View {
+    private func phoneHeader(compact: Bool, corner: CGFloat) -> some View {
         HStack(spacing: 12) {
             Text("分享取件码")
                 .font(.system(size: 17, weight: .semibold))
@@ -519,20 +538,26 @@ struct SharePreviewSheet: View {
                 .onTapGesture { SharePresenter.shared.dismiss() }
                 .accessibilityAddTraits(.isButton)
         }
-        .padding(.horizontal, 20)
         // 🔴 面板挂着 `.ignoresSafeArea()`（RootView 那个 overlay 加的），所以这里
         // **拿不到安全区自动避让** —— 不手动补，标题会压在状态栏时间上、胶囊会被灵动岛吞掉。
         // 用 UIKit 直接取窗口 inset（比 GeometryReader 在被忽略安全区的层级里读可靠）。
-        .padding(.top, Self.windowSafeInsets.top)
+        //
+        // 🔴 紧凑屏（Duo 折叠态）额外把左右让到圆角之内：面板圆角 = 屏幕圆角 − 8，
+        //    466pt 宽的屏上那个弧很大，20pt 边距会把「完成」胶囊压进弧里被切掉
+        //    （2026-11-01 主人截图）。
+        .padding(.horizontal, compact ? max(24, corner * 0.86) : 20)
+        // 紧凑屏顶部要同时躲开**系统状态栏**（Duo 上时间压在面板右上角）与**面板大圆角**
+        .padding(.top, (compact ? max(Self.windowSafeInsets.top, 16) : Self.windowSafeInsets.top) + (compact ? 10 : 0))
         .padding(.bottom, 4)
     }
 
     /// 预览卡片：按「可用宽 / 可用高」双约束等比铺满，再水平居中。
-    private var phoneCard: some View {
+    private func phoneCard(compact: Bool) -> some View {
         GeometryReader { proxy in
-            let hPad: CGFloat = 28
+            let hPad: CGFloat = compact ? 40 : 28
             let availW = max(0, proxy.size.width - hPad * 2)
-            let availH = max(0, proxy.size.height - 8)
+            // 紧凑屏留一点上下呼吸；卡片不再顶满整个剩余高度
+            let availH = max(0, proxy.size.height - (compact ? 14 : 8))
             let ratio = imageRatio
             let fitW = ratio > 0 ? min(availW, availH * ratio) : availW
             let cardW = fitW
@@ -551,11 +576,14 @@ struct SharePreviewSheet: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
+        // 🔴 Duo 外屏的状态栏时间画在面板**内部**（顶部约 72pt 处），
+        //    卡片不往下让就会被时钟压住（2026-11-01 主人截图）。
+        .padding(.top, compact ? 12 : 0)
     }
 
     /// 底部操作条：复用 `QuickShareAction`（竖排图标 + 文字、横向均分），
     /// 这也是它原本的形态（Duo 那次改版把取件码分享挪到右侧竖排，车票分享还在用它）。
-    private var phoneActions: some View {
+    private func phoneActions(compact: Bool) -> some View {
         HStack(spacing: 0) {
             if let image = model.image {
                 QuickShareAction(icon: model.saved ? "checkmark" : "square.and.arrow.down",
@@ -582,11 +610,12 @@ struct SharePreviewSheet: View {
             }
         }
         .padding(.horizontal, 20)
-        .padding(.top, 10)
+        .padding(.top, compact ? 6 : 10)
         // 原来只留 safeBottom+8（≈42），按钮文字离 Home 指示条太近，
         // 整组像贴在面板底边（2026-10-27 主人：「底部的三个按钮太靠下了」）。
-        // 现在给到 safeBottom+20（≈54），留出呼吸。
-        .padding(.bottom, max(28, Self.windowSafeInsets.bottom + 20))
+        // 现在给到 safeBottom+20（≈54），留出呼吸；矮屏没有那么多余量，收到 +10。
+        .padding(.bottom, max(compact ? 22 : 28,
+                              Self.windowSafeInsets.bottom + (compact ? 10 : 20)))
     }
 
     // MARK: - iPhone Duo（宽屏，保留原定制，2026-10-25 版）
