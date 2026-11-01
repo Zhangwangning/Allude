@@ -556,6 +556,15 @@ struct PickupListView: View {
             .overlay(alignment: .bottom) { bottomOverlay }
             // 🔴 不用 alert 也不用新页面：随机四位数就在**弹窗里**输入，
             //    输对了删除键才激活（2026-11-01 主人）。
+            // 截图脚手架：`CONFIRM_DEMO=1` 打开页面就把确认弹窗亮起来，
+            // 用来拍"列表 + 弹窗"的真实叠放效果（纯色底拍不出这个）。
+            .onAppear {
+                if ProcessInfo.processInfo.environment["CONFIRM_DEMO"] == "1" {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                        model.confirmClearPicked = true
+                    }
+                }
+            }
             .destructiveConfirm(
                 isPresented: $model.confirmClearPicked,
                 title: "清空已取件记录",

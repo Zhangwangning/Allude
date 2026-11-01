@@ -68,7 +68,7 @@ struct DestructiveConfirmDialog: View {
     /// 「清空」常亮红色，点下去才校验（输不对删不掉）。
     var body: some View {
         ZStack {
-            Color.black.opacity(0.28)
+            Color.black.opacity(0.20)
                 .ignoresSafeArea()
                 .onTapGesture { isPresented = false }
 
