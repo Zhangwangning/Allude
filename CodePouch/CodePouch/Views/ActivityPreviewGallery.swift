@@ -510,18 +510,42 @@ struct ActivityPreviewGallery: View {
         .clipped()
     }
 
-    /// Duo 折叠态：直接展示官方机模。
+    /// Duo 折叠态：官方机模 + 右侧竖排灵动岛。
     ///
-    /// 🔴 暂不在图上叠灵动岛 —— 官方机模里**烤进了时间和 Wi-Fi**（那是"没有活动"的样子），
-    ///    真机上岛出现后它们会让位；我们既没法把烤进去的像素挪走，也不该画一个
-    ///    盖住它们的大黑块（试过，很难看）。等拿到**无状态栏**的机模再叠。
-    ///    （2026-11-01 已向主人要这一版素材。）
+    /// 位置不是猜的：从主人給的外屏实拍截图上量的（572×787）——
+    /// 岛体 x 0.757…0.809、y 0.176…0.303，即**宽 5.2%、高 12.7%**，
+    /// 中心落在 (78.3%, 23.9%)。竖排：上图标、下数量。
     private func duoStage(width: CGFloat) -> some View {
-        Image(isLockState ? MockupArt.Duo.lock : MockupArt.Duo.home)
-            .resizable()
-            .scaledToFit()
-            .frame(width: width)
-            .frame(maxWidth: .infinity, alignment: .center)
+        let height = width / MockupArt.Duo.ratio
+        return ZStack(alignment: .topLeading) {
+            Image(isLockState ? MockupArt.Duo.lock : MockupArt.Duo.home)
+                .resizable()
+                .scaledToFit()
+                .frame(width: width)
+
+            if !isLockState {
+                duoIsland
+                    .frame(width: width * 0.062, height: height * 0.172)
+                    .position(x: width * 0.784, y: height * 0.288)
+            }
+        }
+        .frame(width: width, height: height, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    /// 竖排岛内容：上图标、下数量（与真机顺序一致）
+    private var duoIsland: some View {
+        VStack(spacing: 4) {
+            AppMarkIcon(size: 16)
+            Text(islandState.pendingCount > 99 ? "99+" : "\(islandState.pendingCount)")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black, in: .capsule)
     }
 
     private func phoneStage(proxy: GeometryProxy) -> some View {
