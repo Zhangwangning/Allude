@@ -515,6 +515,14 @@ struct SharePreviewSheet: View {
                     ? Color(.secondarySystemGroupedBackground)
                     : Color(.systemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
+        // 🔴 面板挂在 RootView 顶层并 `.ignoresSafeArea()`（为了盖住标签栏），
+        //    所以这里必须**自己**把安全区补回来。Duo 外屏实测：
+        //    `window=466x678 inset t=0 l=0 r=84 b=34` —— 右侧 84pt 是摄像头 / dock，
+        //    底部 34pt 是 Home 条。不补，卡片和「完成」就被压在摄像头下面
+        //    （2026-11-01 主人截图）。直板机不走这个分支。
+        .padding(.trailing, compact ? Self.windowSafeInsets.right : 0)
+        .padding(.leading, compact ? Self.windowSafeInsets.left : 0)
+        .padding(.bottom, compact ? Self.windowSafeInsets.bottom : 0)
         .padding(inset)
     }
 
@@ -545,7 +553,7 @@ struct SharePreviewSheet: View {
         // 🔴 紧凑屏（Duo 折叠态）额外把左右让到圆角之内：面板圆角 = 屏幕圆角 − 8，
         //    466pt 宽的屏上那个弧很大，20pt 边距会把「完成」胶囊压进弧里被切掉
         //    （2026-11-01 主人截图）。
-        .padding(.horizontal, compact ? max(24, corner * 0.86) : 20)
+        .padding(.horizontal, 20)
         // 紧凑屏顶部要同时躲开**系统状态栏**（Duo 上时间压在面板右上角）与**面板大圆角**
         .padding(.top, (compact ? max(Self.windowSafeInsets.top, 16) : Self.windowSafeInsets.top) + (compact ? 10 : 0))
         .padding(.bottom, 4)

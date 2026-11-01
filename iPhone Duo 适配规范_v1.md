@@ -47,6 +47,21 @@ enum DeviceClass {
 - 统计页的图表与数字排布重新分配，不要横向拉伸；
 - 详情页在宽屏下用「侧栏」而不是整页推入。
 
+## 2.5 外屏的安全区（实测，必须遵守）
+
+```
+window = 466 × 678 pt
+safeAreaInsets = top 0 / left 0 / **right 84** / bottom 34
+```
+
+- **右侧 84pt** 是摄像头与 dock 的占用区，任何铺满全屏的面板都不能画进去；
+- **底部 34pt** 是 Home 指示条；
+- 顶部 0：但**系统状态栏的时间会画在内容区内部**，模态面板建议
+  `.statusBarHidden(true)`，否则时间会压住右上角按钮。
+
+凡是 `ignoresSafeArea()` 的全屏面板（分享面板、各类 cover），
+在这个设备上都要手动把 `safeAreaInsets` 补回去。
+
 ## 3. 小组件与实时活动
 
 - 小组件尺寸由系统决定，Duo 上多出的 `systemExtraLarge` /
