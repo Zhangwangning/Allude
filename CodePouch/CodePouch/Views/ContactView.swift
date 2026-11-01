@@ -9,13 +9,15 @@ import SwiftUI
 //
 // 🔴 账号与二维码来自主人提供的截图/链接，改之前先核对：
 //    小红书 https://xhslink.cn/o/7EXKCLCJzB0（号 zwn1652503532）、
-//    抖音 ZWN1652503532（显示名 John Wayne，暂无主页链接，只能复制号 + 扫码）、
+//    抖音 https://v.douyin.com/jUUUICs4WuY/（@John Wayne · ZWN1652503532）、
 //    公众号「极客 ZHANG」。
 // ============================================================================
 
 private enum ContactLink {
     /// 小红书主页（主人给的口令链接，会跳到 App 或网页）
     static let xiaohongshu = URL(string: "https://xhslink.cn/o/7EXKCLCJzB0")!
+    /// 抖音主页（主人给的分享短链；不装抖音会落到网页版）
+    static let douyin = URL(string: "https://v.douyin.com/jUUUICs4WuY/")!
 }
 
 struct ContactView: View {
@@ -82,14 +84,14 @@ struct ContactView: View {
 
                 SettingsDivider()
 
-                // 抖音：没有主页链接，只能复制号（抖音号拼不主页地址，需要 sec_uid）
+                // 抖音：点一下直接打开主页（分享短链，没装 App 会落到网页版）
                 Button {
-                    copy(douyinID, id: "douyin")
+                    open(ContactLink.douyin, fallbackID: douyinID, id: "douyin")
                 } label: {
                     SettingsRow(symbol: "music.note", title: "抖音",
-                                subtitle: douyinID,
-                                detail: copied == "douyin" ? "已复制" : "复制号",
-                                showsChevron: false,
+                                subtitle: "@John Wayne · \(douyinID)",
+                                subtitleOneLine: true,
+                                detail: "打开主页",
                                 tint: AppTheme.indigo)
                 }
                 .buttonStyle(.plain)
