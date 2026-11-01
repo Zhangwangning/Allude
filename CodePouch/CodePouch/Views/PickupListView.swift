@@ -554,14 +554,15 @@ struct PickupListView: View {
             .navigationTitle("待取")
             .toolbar { toolbarContent }
             .overlay(alignment: .bottom) { bottomOverlay }
-            .alert("清空已取件记录？", isPresented: $model.confirmClearPicked) {
-                Button("取消", role: .cancel) {}
-                Button("清空", role: .destructive) {
-                    DiagnosticsLog.record("records", "clear-picked \(store.pickedUpRecords.count)")
-                    withAnimation(.snappy) { store.clearPickedUp() }
-                }
-            } message: {
-                Text("记录只存在这台手机上，删除后无法恢复，也没有备份可以还原。")
+            // 🔴 不用 alert 也不用新页面：随机四位数就在**弹窗里**输入，
+            //    输对了删除键才激活（2026-11-01 主人）。
+            .destructiveConfirm(
+                isPresented: $model.confirmClearPicked,
+                title: "清空已取件记录",
+                message: "记录只存在这台手机上，删除后无法恢复，也没有备份可以还原。"
+            ) {
+                DiagnosticsLog.record("records", "clear-picked \(store.pickedUpRecords.count)")
+                withAnimation(.snappy) { store.clearPickedUp() }
             }
             .sheet(isPresented: $model.showAdd) {
                 AddPickupSheet(onClose: { model.showAdd = false },

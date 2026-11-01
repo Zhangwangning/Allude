@@ -231,9 +231,13 @@ App 内「关于 › 声明与免责」（`StatementView`）是唯一的对外�
 **卸载 App 或删除记录后 App 内无法恢复**（没有云端备份、没有回收站）。
 文案在 `LegalConsentView.dataNotice`，别弱化成"请注意"。
 
-同理，「清空已取件记录」在 2026-11-01 前是**直接删、没有确认**的，
-现在必须先弹确认（`PickupListModel.confirmClearPicked`），
-提示语同样点明"无法恢复、没有备份"。
+同理，「清空已取件记录」在 2026-11-01 前是**直接删、没有确认**的。
+现在要先过一道**随机四位数字**：弹窗里显示一个随机数，用户照着输入，
+输对了「清空」才变红可点（`DestructiveConfirmDialog` + `.destructiveConfirm(...)`）。
+- 🔴 是**盖在当前页上的居中弹窗**，不是新页面、也不是系统 alert
+  （alert 里做不了"输对了才激活"）。
+- 数字每次弹出重新生成，防止记住上次的数字闭眼输。
+- 截图验收：`SCREEN=confirmClear`（未匹配，按钮灰）、加 `CONFIRM_MATCH=1`（已激活，按钮红）。
 
 截图验收：`SCREEN=consent`；不带 `SKIP_ONBOARDING` 冷启动可看真实首次流程。
 

@@ -562,6 +562,15 @@ struct CodePouchApp: App {
                     NavigationStack { NotificationSettingsView() }
                 case "appicon":
                     NavigationStack { AppIconSettingsView() }
+                case "confirmClear":
+                    // 弹窗是 overlay 形式，得挂在一个宿主视图上才拍得到
+                    Color(.systemGroupedBackground)
+                        .ignoresSafeArea()
+                        .destructiveConfirm(
+                            isPresented: .constant(true),
+                            title: "清空已取件记录",
+                            message: "记录只存在这台手机上，删除后无法恢复，也没有备份可以还原。"
+                        ) {}
                 case "consent":
                     LegalConsentView { }
                 case "contact":
