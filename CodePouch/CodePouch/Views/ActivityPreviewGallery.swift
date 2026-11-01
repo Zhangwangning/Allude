@@ -219,6 +219,15 @@ enum MockupArt {
         scheme == .dark ? kind.dark : kind.light
     }
 
+    /// iPhone Duo 折叠态（外屏）官方机模，2026-11-01 主人提供（1574×2194）。
+    /// 这两张是**带壳带壁纸**的成品图，不需要再拼屏幕。
+    enum Duo {
+        static let home = "DuoFrameHome"
+        static let lock = "DuoFrameLock"
+        /// 素材宽高比（1574 / 2194）
+        static let ratio: CGFloat = 1574.0 / 2194.0
+    }
+
     // MARK: 壁纸亮度（描边不透明度用）
 
     /// 机模**灵动岛两侧壁纸**的平均亮度（0…1，Rec.709）。
@@ -291,6 +300,16 @@ struct ActivityPreviewGallery: View {
 
     /// 截图脚手架：`SIMCTL_CHILD_ACTIVITY_PAGE=1` 可直接落到指定页（默认 0）。
     @State private var previewPage = Int(ProcessInfo.processInfo.environment["ACTIVITY_PAGE"] ?? "") ?? 0
+
+    /// 当前窗口宽度：用来判断是不是 iPhone Duo 折叠态。
+    /// 🔴 不能用机模自己的宽度 —— 它被 `aspectRatio` 锁死在 ~215pt；
+    ///    也不能只看某一行的宽度（受内容约束）。窗口尺寸随折叠/展开变化，
+    ///    页面因此重绘时会重新读到最新值。
+    private var windowWidth: CGFloat {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let window = scenes.flatMap(\.windows).first { $0.isKeyWindow } ?? scenes.first?.windows.first
+        return window?.bounds.width ?? 0
+    }
 
     /// 真实待办里的前三条。
     private var realItems: [PickupActivityAttributes.Item] {
@@ -446,6 +465,7 @@ struct ActivityPreviewGallery: View {
                 .frame(maxWidth: .infinity, alignment: .center)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 4)
+
         }
     }
 
@@ -464,8 +484,48 @@ struct ActivityPreviewGallery: View {
     ///
     /// 机身为什么允许整张交叉：两张机模是同一台 16 Pro 渲出来的，
     /// 屏幕以外平均差 11/765（肉眼不可见），交叉时看到的只有壁纸在换。
+    /// iPhone Duo 折叠态（外屏）的判定：只靠**可用宽度**。
+    /// 直板机 ≈370pt、Duo 外屏 ≈434pt、Duo 内屏 ≈637pt —— 区间互不重叠。
+    /// ⚠️ 没有公开的"是否折叠"API，Apple 只按 size class / 尺寸表达。
+    private func isDuoFolded(width: CGFloat) -> Bool {
+        width > 400 && width < 520
+    }
+
     private var stage: some View {
-        GeometryReader { proxy in
+        Group {
+            if isDuoFolded(width: windowWidth) {
+                GeometryReader { proxy in
+                    duoStage(width: proxy.size.width)
+                }
+            } else {
+                GeometryReader { proxy in
+                    phoneStage(proxy: proxy)
+                }
+            }
+        }
+        .aspectRatio(450.0 / 920.0, contentMode: .fit)
+        .frame(height: 440)
+        .frame(maxWidth: .infinity)
+        .animation(.smooth(duration: transitionDuration), value: previewPage)
+        .clipped()
+    }
+
+    /// Duo 折叠态：直接展示官方机模。
+    ///
+    /// 🔴 暂不在图上叠灵动岛 —— 官方机模里**烤进了时间和 Wi-Fi**（那是"没有活动"的样子），
+    ///    真机上岛出现后它们会让位；我们既没法把烤进去的像素挪走，也不该画一个
+    ///    盖住它们的大黑块（试过，很难看）。等拿到**无状态栏**的机模再叠。
+    ///    （2026-11-01 已向主人要这一版素材。）
+    private func duoStage(width: CGFloat) -> some View {
+        Image(isLockState ? MockupArt.Duo.lock : MockupArt.Duo.home)
+            .resizable()
+            .scaledToFit()
+            .frame(width: width)
+            .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    private func phoneStage(proxy: GeometryProxy) -> some View {
+        Group {
             let scale = max(proxy.size.width, 1) / 450
 
             ZStack(alignment: .top) {
@@ -477,12 +537,6 @@ struct ActivityPreviewGallery: View {
             .scaleEffect(scale, anchor: .topLeading)
             .frame(width: 450 * scale, height: 920 * scale, alignment: .topLeading)
         }
-        // 450×920 与机模同比例：容器高 440 时宽约 215pt，与改造前一致
-        .aspectRatio(450.0 / 920.0, contentMode: .fit)
-        .frame(height: 440)
-        .frame(maxWidth: .infinity)
-        .animation(.smooth(duration: transitionDuration), value: previewPage)
-        .clipped()
     }
 
     // MARK: 舞台 · 壁纸
