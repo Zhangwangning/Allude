@@ -63,41 +63,34 @@ struct DestructiveConfirmDialog: View {
 
     private var matched: Bool { input == code }
 
-    /// 版式照系统 alert 走（2026-11-01 主人给的参考图）：
-    /// 标题居中、说明文字里带【随机数】、输入框占位符就是那串数字、底部两个并排按钮。
-    /// 「清空」**常亮红色**，点下去才校验：输对就执行，输错给红字提示并换一个新数字。
+    /// 版式照主人给的参考图：
+    ///   标题靠左 → 说明靠左（含【随机数】）→ 胶囊输入框 → 两个独立胶囊按钮。
+    /// 「清空」常亮红色，点下去才校验（输不对删不掉）。
     var body: some View {
         ZStack {
             Color.black.opacity(0.28)
                 .ignoresSafeArea()
                 .onTapGesture { isPresented = false }
 
-            VStack(spacing: 0) {
-                VStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 8) {
                     Text(title)
                         .font(.system(size: 17, weight: .semibold))
-                        .multilineTextAlignment(.center)
 
-                    Text("\(message)\n请输入【\(code)】来执行此次操作")
-                        .font(.system(size: 13))
+                    Text("\(message)请输入【\(code)】来执行此次操作")
+                        .font(.system(size: 15))
                         .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 20)
-                .padding(.bottom, 14)
 
                 TextField(code, text: $input)
                     .font(.system(size: 16))
                     .keyboardType(.numberPad)
                     .multilineTextAlignment(.center)
                     .focused($focused)
-                    .padding(.vertical, 9)
-                    .padding(.horizontal, 12)
+                    .frame(height: 44)
                     .background(Color(.tertiarySystemFill),
-                                in: .rect(cornerRadius: 10, style: .continuous))
-                    .padding(.horizontal, 16)
+                                in: .rect(cornerRadius: 22, style: .continuous))
                     .onChange(of: input) { _, new in
                         let digits = new.filter(\.isNumber)
                         input = String(digits.prefix(4))
@@ -106,28 +99,25 @@ struct DestructiveConfirmDialog: View {
 
                 if wrong {
                     Text("数字不正确，请重新输入")
-                        .font(.system(size: 12))
+                        .font(.system(size: 13))
                         .foregroundStyle(.red)
-                        .padding(.top, 6)
                         .transition(.opacity)
                 }
 
-                HStack(spacing: 0) {
+                HStack(spacing: 10) {
                     Button {
                         isPresented = false
                     } label: {
                         Text("取消")
                             .font(.system(size: 17))
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 13)
+                            .frame(height: 44)
+                            .background(Color(.tertiarySystemFill),
+                                        in: .rect(cornerRadius: 22, style: .continuous))
                             .contentShape(.rect)
                     }
                     .buttonStyle(.plain)
 
-                    Divider().frame(height: 44)
-
-                    // 按钮**常亮**（2026-11-01 主人）：输不对删不掉，没必要先灰着。
-                    // 点下去时校验，错了给红字提示并换一个新数字。
                     Button {
                         guard matched else {
                             withAnimation(.snappy(duration: 0.2)) { wrong = true }
@@ -142,19 +132,18 @@ struct DestructiveConfirmDialog: View {
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(.red)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 13)
+                            .frame(height: 44)
+                            .background(Color(.tertiarySystemFill),
+                                        in: .rect(cornerRadius: 22, style: .continuous))
                             .contentShape(.rect)
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.top, 16)
-                .overlay(alignment: .top) {
-                    Divider()
-                }
             }
-            .frame(maxWidth: 280)
+            .padding(20)
+            .frame(maxWidth: 330)
             .background(.regularMaterial,
-                        in: .rect(cornerRadius: 16, style: .continuous))
+                        in: .rect(cornerRadius: 22, style: .continuous))
             // 键盘弹出时往上抬，别被挡住
             .padding(.bottom, focused ? 200 : 0)
         }
