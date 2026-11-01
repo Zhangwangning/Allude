@@ -369,6 +369,21 @@ App 内「关于 › 声明与免责」（`StatementView`）是唯一的对外�
   现在用 `DuoOuterDisplay.isActive && 400 < width < 520`：
   设备条件来自窗口高 < 720pt（直板机最矮 852pt），宽度只是辅助。
 
+### 能不能直接读机型？（2026-11-01 实测结论：不能靠它）
+
+同一份探针在两台模拟器上的输出：
+
+| 取值 | 直板机（iPhone 16 Pro） | Duo 折叠态 |
+|---|---|---|
+| `UIDevice.model` | `iPhone` | `iPhone` —— **区分不了** |
+| `uname().machine` | `arm64` | `arm64` —— 模拟器里是宿主架构 |
+| `UIDevice.name` | `iPhone 16 Pro` | `iPhone Duo` —— **但真机上是用户改的名字**（如"张三的 iPhone"） |
+| `window bounds` | 402×874 | 466×678 —— ✅ 唯一可靠 |
+
+结论：`machine` 在真机上是 `iPhone17,1` 这类标识，但 Apple 不公开映射表、
+新机型还认不出来；`name` 可被用户改；`model` 恒为 iPhone。
+**所以继续用尺寸判定**，这也正是 Apple 的口径（按 size class / 几何适配，不按机型分支）。
+
 ## 首次启动（同意条款 → 引导）
 
 2026-11-01 主人要求：首启**必须先读并同意《使用条款》《隐私政策》**，再看使用教程。
