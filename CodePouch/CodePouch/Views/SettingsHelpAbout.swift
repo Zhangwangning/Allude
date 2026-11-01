@@ -23,17 +23,6 @@ struct HelpCenterView: View {
         ScrollView {
             VStack(spacing: 16) {
                 VStack(spacing: 0) {
-                    NavigationLink {
-                        UsageGuideView()
-                    } label: {
-                        SettingsRow(symbol: "book.fill", title: "使用教程",
-                                    subtitle: "入门 · 短信自动化 · 截屏收件",
-                                    tint: AppTheme.violet)
-                    }
-                    .buttonStyle(.plain)
-
-                    SettingsDivider()
-
                     Button {
                         DiagnosticsLog.record("feedback", "open")
                         feedback.startMail(includeLog: feedback.includeLog)
@@ -54,6 +43,17 @@ struct HelpCenterView: View {
                                     subtitle: "版本、系统与最近操作记录，不含短信内容",
                                     showsChevron: false,
                                     tint: AppTheme.sky)
+                    }
+                    .buttonStyle(.plain)
+
+                    SettingsDivider()
+
+                    // 联系方式（2026-11-01 从「关于」移到这里：它属于"找我们"，不是"关于产品"）
+                    NavigationLink {
+                        ContactView()
+                    } label: {
+                        SettingsRow(symbol: "at", title: "联系方式",
+                                    tint: AppTheme.indigo)
                     }
                     .buttonStyle(.plain)
                 }
@@ -202,17 +202,6 @@ struct AboutView: View {
                     } label: {
                         SettingsRow(symbol: "text.document.fill", title: "声明与免责",
                                     tint: AppTheme.amber)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .cardSurface()
-
-                VStack(spacing: 0) {
-                    NavigationLink {
-                        ContactView()
-                    } label: {
-                        SettingsRow(symbol: "at", title: "联系方式",
-                                    tint: AppTheme.indigo)
                     }
                     .buttonStyle(.plain)
                 }
