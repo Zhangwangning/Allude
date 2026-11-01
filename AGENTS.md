@@ -141,6 +141,14 @@ xcrun simctl terminate UDID com.jikezhang.codeclip; sleep 4
 环境变量必须带 **`SIMCTL_CHILD_`** 前缀。截图建议同时注入
 `SIMCTL_CHILD_SKIP_PERM=1`、`SIMCTL_CHILD_SKIP_ONBOARDING=1`，冷启动等 6–8 秒。
 
+🔴 **`launch` 必须带 `--terminate-running-process`**（2026-11-01 踩了一整轮）：
+App 还在后台时，`simctl launch` 只把它**切回前台**，`SIMCTL_CHILD_*` 一个都不传
+—— 表现为"截图落到了列表页，脚手架像坏了一样"。实测探针：
+不加参数时 `SCREEN=nil`，加上后 `SCREEN=settings`。
+```bash
+SIMCTL_CHILD_SCREEN=settings xcrun simctl launch --terminate-running-process <UDID> com.jikezhang.codeclip
+```
+
 真机回归基准模拟器：iPhone 16 Pro `272DD31C-D94F-46B4-9CC7-974A61439777`。
 iPhone 直板机已完工（0.3.3）；**iPhone Duo 折叠屏适配已开工**，规矩见「里程碑」一节。iPad 暂不维护。
 
