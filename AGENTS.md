@@ -243,6 +243,24 @@ App 内「关于 › 声明与免责」（`StatementView`）是唯一的对外�
    - `bash tools/install-device.sh` 装机后 `devicectl` 核对版本号。
 4. **版本号不混**：Duo 的实验性改动不跟着直板机一起发，合并前确认直板机构建 0 warning。
 
+## iPhone Duo 模拟器（2026-11-01 首次装机）
+
+- 设备类型：`com.apple.CoreSimulator.SimDeviceType.iPhone-Duo`
+- UDID：`C1B11E62-C700-4065-BFAE-E65D2BA42071`（iOS 27.2）
+- 两个显示：`--display=1` 是**折叠态外屏**（1398×2034，约 466×678pt），
+  `--display=3` 是展开态内屏（2007×2853）。折叠时内屏是黑的。
+- 截图必须带 `--display=`：不带参数会报 `Invalid argument`。
+- ⚠️ **`simctl` 没有 fold/unfold 命令**，展开态只能在模拟器菜单里手动切；
+  命令行验收先按折叠态做，展开态靠 `CODEPOUCH_DEVICE=duo` 脚手架 + 人工截图校对。
+
+### 折叠态首装实测（0.3.3）暴露的问题
+
+1. **标签栏变成右侧竖排浮动胶囊**：466pt 被判成 regular width，
+   iOS 27 自动换成 iPad 那种浮动样式，横向吃掉约 70pt。
+2. **单列列表被拉宽**：卡片随宽度拉伸，标题与时间的间距变松。
+
+两条都归入 Duo 适配的第一批待办，改法见 `iPhone Duo 适配规范_v1.md`。
+
 ## 首次启动（同意条款 → 引导）
 
 2026-11-01 主人要求：首启**必须先读并同意《使用条款》《隐私政策》**，再看使用教程。
