@@ -532,8 +532,13 @@ struct ActivityPreviewGallery: View {
     /// iPhone Duo 折叠态（外屏）的判定：只靠**可用宽度**。
     /// 直板机 ≈370pt、Duo 外屏 ≈434pt、Duo 内屏 ≈637pt —— 区间互不重叠。
     /// ⚠️ 没有公开的"是否折叠"API，Apple 只按 size class / 尺寸表达。
+    /// 🔴 **必须同时满足两个条件**，只看宽度会把直板机误判进来：
+    /// iPhone 16 Pro 的窗口宽是 402pt，正好落在我最初写的那条宽度带里，
+    /// 结果直板机也被换成了「暂不提供预览」（2026-11-01 主人指出）。
+    /// 高度判据来自 `DuoOuterDisplay`（App 启动时按窗口高 < 720pt 写入 App Group），
+    /// 直板机最矮 852pt，永远不满足。
     private func isDuoFolded(width: CGFloat) -> Bool {
-        width > 400 && width < 520
+        DuoOuterDisplay.isActive && width > 400 && width < 520
     }
 
     private var stage: some View {
