@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>拾码 CodePouch · 内测名额购买与激活说明</title>
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --card: #ffffff;
+    --ink: #1d1d1f;
+    --ink-2: #6e6e73;
+    --line: #e5e5ea;
+    --accent: #0a84ff;
+    --accent-soft: #eaf3ff;
+    --warn: #b25000;
+    --warn-soft: #fff4e8;
+    --ok: #1d8f4e;
+    --ok-soft: #e9f8ef;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.75 -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    padding: 24px 16px 64px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+
+  header { margin-bottom: 22px; }
+  h1 { font-size: 26px; line-height: 1.35; margin: 0 0 8px; letter-spacing: -0.3px; }
+  .meta { color: var(--ink-2); font-size: 13px; }
+  .meta span + span::before { content: "·"; margin: 0 8px; }
+
+  .hero {
+    background: var(--accent-soft);
+    border: 1px solid #d7e8ff;
+    border-radius: 16px;
+    padding: 18px 18px 16px;
+    margin: 22px 0;
+  }
+  .hero .kicker {
+    font-size: 12px; font-weight: 600; letter-spacing: .08em;
+    color: var(--accent); text-transform: uppercase; margin-bottom: 6px;
+  }
+  .hero p { margin: 0; font-size: 17px; font-weight: 600; line-height: 1.6; }
+
+  section {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 20px 20px 18px;
+    margin: 16px 0;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+  h2 {
+    font-size: 18px; margin: 0 0 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  h2 .num {
+    flex: none;
+    width: 24px; height: 24px; border-radius: 8px;
+    background: var(--accent); color: #fff;
+    font-size: 13px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  h3 { font-size: 15px; margin: 18px 0 6px; }
+  p { margin: 0 0 10px; }
+  ul, ol { margin: 0 0 10px; padding-left: 1.25em; }
+  li { margin: 4px 0; }
+  strong { font-weight: 600; }
+  code {
+    font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: #f2f2f7; border-radius: 5px; padding: 1px 5px;
+  }
+
+  .table-wrap { overflow-x: auto; margin: 10px 0 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 520px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-2); background: #fafafc; white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  td.yes { color: var(--ok); font-weight: 600; }
+  td.no { color: var(--warn); font-weight: 600; }
+
+  .callout {
+    border-radius: 12px; padding: 12px 14px; margin: 12px 0;
+    font-size: 14.5px; line-height: 1.7;
+  }
+  .callout.warn { background: var(--warn-soft); color: #6b3a00; border: 1px solid #ffe0c2; }
+  .callout.ok { background: var(--ok-soft); color: #14532d; border: 1px solid #cdeeda; }
+  .callout .t { display: block; font-weight: 600; margin-bottom: 3px; }
+
+  .shot {
+    border: 1.5px dashed #c9c9d1; border-radius: 12px;
+    padding: 22px 12px; text-align: center;
+    color: #9a9aa2; font-size: 13px; margin: 12px 0;
+    background: #fcfcfe;
+  }
+
+  .steps { counter-reset: step; list-style: none; padding: 0; margin: 8px 0 0; }
+  .steps > li {
+    counter-increment: step;
+    position: relative; padding: 0 0 0 38px; margin: 0 0 16px;
+  }
+  .steps > li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 1px;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: #f0f0f5; color: var(--ink-2);
+    font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+  }
+  /* 只有每步开头的标题是块级；正文里的 <b> 保持行内，否则会被拆成多行 */
+  .steps > li > b:first-child { display: block; margin-bottom: 2px; }
+
+  details {
+    border-top: 1px solid var(--line); padding: 12px 0;
+  }
+  details:first-of-type { border-top: none; }
+  details summary {
+    cursor: pointer; font-weight: 600; font-size: 15px; list-style: none;
+    display: flex; align-items: center; gap: 8px;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before {
+    content: "＋"; color: var(--accent); font-weight: 600; flex: none;
+  }
+  details[open] summary::before { content: "－"; }
+  details p { margin: 8px 0 0; color: var(--ink-2); font-size: 14.5px; }
+
+  footer {
+    text-align: center; color: var(--ink-2); font-size: 12.5px;
+    margin-top: 28px; line-height: 1.9;
+  }
+  .toc { font-size: 14px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc li { margin: 2px 0; }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #000; --card: #1c1c1e; --ink: #f5f5f7; --ink-2: #98989d;
+      --line: #2c2c2e; --accent-soft: #10233a; --warn-soft: #3a2408;
+      --ok-soft: #10301f;
+    }
+    th { background: #232326; }
+    code { background: #2c2c2e; }
+    .hero { border-color: #1d3a5c; }
+    .shot { background: #232326; border-color: #3a3a3d; }
+    .callout.warn { color: #ffcf9e; border-color: #5a3a12; }
+    .callout.ok { color: #a7f3c5; border-color: #1d5136; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>内测名额购买与激活说明</h1>
+    <div class="meta">
+      <span>拾码 CodePouch</span><span>IPA 内测</span><span>v1 · 2026-11-01</span>
+    </div>
+  </header>
+
+  <div class="hero">
+    <div class="kicker">先说清楚</div>
+    <p>你买的是「软件激活凭据」，不是「iOS 签名」。<br>
+    iOS 签名决定 <em>能不能装</em>，激活凭据决定 <em>装完能不能用全部功能</em>。</p>
+  </div>
+
+  <section>
+    <h2><span class="num">1</span>两个「签名」到底差在哪</h2>
+    <p>第一次接触 iOS 的人几乎都会混淆，这张表能解决 90% 的疑问。</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th></th><th>iOS 签名（装机签名）</th><th>软件激活凭据（授权码）</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><b>解决什么</b></td><td>让系统允许安装这个 App</td><td>让 App 内的功能解锁</td></tr>
+          <tr><td><b>谁来提供</b></td><td><b>你自己</b>（用你的 Apple ID）</td><td>极客ZHANG</td></tr>
+          <tr><td><b>长什么样</b></td><td>证书 + 描述文件，随 App 装进系统</td><td>一段以 <code>CLIP1.</code> 开头的文本</td></tr>
+          <tr><td><b>有效期</b></td><td>免费 Apple ID <b>7 天</b>；付费开发者账号 <b>1 年</b></td><td>一年 / 永久</td></tr>
+          <tr><td><b>过期会怎样</b></td><td>App 打不开，重签即可，<b>数据不丢</b></td><td>功能失效，<b>数据不丢</b></td></tr>
+          <tr><td><b>绑定对象</b></td><td>你的 Apple ID 与设备</td><td>你这台 iPhone 的设备码</td></tr>
+          <tr><td><b>费用</b></td><td class="yes">免费（自己签）</td><td>内测名额费用</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout ok">
+      <span class="t">一句话记法</span>
+      iOS 签名管「能不能装」，激活凭据管「装完能不能全用」。两者互不影响。
+    </div>
+
+    <p>所以下面这些组合都是正常的：</p>
+    <ul>
+      <li>自己签名 + 买了凭据 → 能装，功能全开</li>
+      <li>自己签名 + 没买凭据 → 能装，只有基础功能（或用 30 天试用）</li>
+      <li>7 天后签名过期 → <b>App 打不开</b>，但凭据仍然有效，重签后自动恢复</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="num">2</span>凭据档位</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>档位</th><th>有效期</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><b>一年</b></td><td>激活当天起 12 个月</td><td>到期后失效，需重新激活</td></tr>
+          <tr><td><b>永久</b></td><td>长期有效</td><td>跟随设备码，不随时间失效</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>价格与下单方式见商品页。</p>
+    <div class="callout warn">
+      <span class="t">注意</span>
+      内测期<b>没有订阅、没有内购</b>。这两档与将来正式版的订阅是两套体系，互不影响。
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">3</span>购买与激活流程</h2>
+    <ol class="steps">
+      <li>
+        <b>下单</b>
+        在商品页选择档位（一年 / 永久）。
+      </li>
+      <li>
+        <b>确认收货</b>
+        必须先确认收货，我才会发 ipa 文件。发文件与签发凭据都需要人工逐一处理，确认收货是这条流程的起点。
+      </li>
+      <li>
+        <b>收到 ipa 后自行签名安装</b>
+        我会把 <code>CodePouch.ipa</code> 发给你。之后你自己完成签名与安装：
+        <ul>
+          <li>工具：AltStore / Sideloadly（电脑配置一次，之后手机上点一下重签）</li>
+          <li>或任何你熟悉的方式（企业签名、付费开发者账号自签都可以）</li>
+          <li>装完记得：<b>设置 › 通用 › VPN 与设备管理</b> → 信任证书</li>
+        </ul>
+        <div class="callout warn" style="margin-top:8px">
+          签名这一步我不代做、也不收费。你用自己的 Apple ID，我不接触你的账号。
+        </div>
+      </li>
+      <li>
+        <b>在 App 里复制设备码</b>
+        打开 App → <b>设置 › 激活</b> → 进入二级页面：
+        <ul>
+          <li>页面显示本机<b>设备码</b>（打码显示，例如 <code>••••••••••••••••••••••••••••</code>）</li>
+          <li>点「复制」—— 复制的是<b>完整设备码</b>，不是屏幕上的打码</li>
+          <li>发给我（邮件、微信、小红书私信都行）</li>
+        </ul>
+        <div class="shot">【截图位：设置 › 激活 › 设备码与复制按钮】</div>
+        <p style="margin:6px 0 0;color:var(--ink-2);font-size:14px">
+          设备码是 32 位大写十六进制，首次启动 App 时随机生成，<b>卸载重装也不会变</b>（存在 Keychain）。
+        </p>
+      </li>
+      <li>
+        <b>我给你签发凭据</b>
+        收到设备码后，我会签一张<b>只对这台设备有效</b>的凭据发回给你。
+        <div class="callout warn" style="margin-top:8px">一机一凭据。同一张凭据换到另一台手机无效 —— 这是设计如此。</div>
+      </li>
+      <li>
+        <b>输入凭据激活</b>
+        回到 <b>设置 › 激活</b>，把凭据整段粘贴进去 → 点激活。
+        <ul>
+          <li>页面显示当前档位与到期时间（永久则显示「永久」）</li>
+          <li>列表与小组件条数限制解除，大尺寸小组件解锁</li>
+        </ul>
+        <div class="shot">【截图位：激活成功状态】</div>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2><span class="num">4</span>30 天免费试用</h2>
+    <p>如果你<b>自己能搞定 iOS 签名</b>，可以不买名额，免费使用 <b>30 天</b>：</p>
+    <ol>
+      <li>自行签名安装 ipa</li>
+      <li>把设备码发我</li>
+      <li>我签发一张 <b>30 天</b>的试用凭据</li>
+      <li>输入后即可使用全部功能</li>
+    </ol>
+    <p style="color:var(--ink-2);font-size:14px">每人每台设备限一次。30 天到期后不再续，需要继续使用再考虑名额。</p>
+  </section>
+
+  <section>
+    <h2><span class="num">5</span>设备码相关的三件事</h2>
+
+    <h3>重装 App 不会换码</h3>
+    <p>设备码存在 iOS 的 Keychain 里，卸载 App 后仍然保留，重装读回同一个值。
+    所以签名过期后重新签名、覆盖安装，凭据依然有效。</p>
+
+    <h3>但这几种情况会换码</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>情况</th><th>设备码</th><th>凭据</th><th>数据</th></tr></thead>
+        <tbody>
+          <tr><td>覆盖安装 / 重签</td><td class="yes">不变</td><td class="yes">有效</td><td class="yes">保留</td></tr>
+          <tr><td>卸载后重装</td><td class="yes">不变</td><td class="yes">有效</td><td class="no">丢失</td></tr>
+          <tr><td>抹掉所有内容和设置</td><td class="no">会变</td><td class="no">需换绑</td><td class="no">丢失</td></tr>
+          <tr><td>换新手机</td><td class="no">新码</td><td class="no">需换绑</td><td class="no">不迁移</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>换机与抹机后需要换绑，请先联系我，按档位处理（各档换绑次数见商品页说明）。</p>
+
+    <h3>别把设备码与凭据发到公开群</h3>
+    <p>设备码本身不是密钥，但凭据是绑定它的授权。公开出去等于把你的名额送人。</p>
+  </section>
+
+  <section>
+    <h2><span class="num">6</span>必须接受的风险</h2>
+    <ul>
+      <li><b>iOS 签名 7 天到期</b>（免费 Apple ID）：到期 App 打不开，需要重签，<b>数据不受影响</b>。</li>
+      <li><b>掉签风险</b>：用第三方签名服务时，对方证书被吊销会导致 App 突然打不开。自己用 Apple ID 签最稳。</li>
+      <li><b>App 未上架</b>，功能会随内测反馈调整。</li>
+      <li><b>数据只在本机</b>：卸载、抹机、换机都会丢数据，<b>没有云端备份</b>。这是设计选择，不是故障。</li>
+      <li>需要 <b>iOS 27 及以上</b>。</li>
+      <li>iPhone Duo（折叠屏）：可用，但实时活动页<b>不提供预览</b>（我没有真机验证渲染效果）。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="num">7</span>常见问题</h2>
+
+    <details open>
+      <summary>我买了名额，是不是就包含 iOS 签名了？</summary>
+      <p>不包含。名额费用对应的是软件激活凭据。iOS 签名用你自己的 Apple ID 完成，免费。</p>
+    </details>
+
+    <details>
+      <summary>7 天后 App 打不开了，是不是名额白买了？</summary>
+      <p>不是。那是签名过期，重新签名安装即可。<b>凭据依然有效</b>，激活状态不受影响。</p>
+    </details>
+
+    <details>
+      <summary>一张凭据能用在几台设备上？</summary>
+      <p>一台。多台设备需要多个名额。</p>
+    </details>
+
+    <details>
+      <summary>能开发票吗？</summary>
+      <p>内测阶段不提供发票，介意的请勿下单。</p>
+    </details>
+
+    <details>
+      <summary>为什么不能直接上架、走 App Store 内购？</summary>
+      <p>还在走备案与上架流程。上架后会有正式的 App Store 版本与内购，届时内测名额与正式版订阅是两套体系。</p>
+    </details>
+
+    <details>
+      <summary>我换手机了怎么办？</summary>
+      <p>把新手机的设备码发我，按档位换绑。政策见商品页，或直接问我。</p>
+    </details>
+  </section>
+
+  <section>
+    <h2><span class="num">8</span>我这边的承诺</h2>
+    <ul>
+      <li>收到设备码后<b>当天内</b>签发（通常几小时内）</li>
+      <li>凭据只签给你这台设备，不会复用给他人</li>
+      <li>你的设备码只用于签发凭据，不用于任何其他用途，不会公开</li>
+      <li><b>不接触、不索要</b>你的 Apple ID 与密码</li>
+    </ul>
+  </section>
+
+  <footer>
+    拾码 CodePouch · 内测说明<br>
+    反馈与咨询：zhang_wangning@126.com
+  </footer>
+
+</div>
+</body>
+</html>
