@@ -32,7 +32,7 @@ struct ContactView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 rowsCard
-                wechatCard
+                wechatImage
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 12)
@@ -96,43 +96,24 @@ struct ContactView: View {
         .cardSurface()
     }
 
-    // MARK: 微信公众号（只能展示，无法跳转）
+    // MARK: 微信公众号（只放图片）
 
-    private var wechatCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Image("IconWeChat")
-                    .resizable()
-                    .interpolation(.high)
-                    .frame(width: 22, height: 22)
-                    .clipShape(.rect(cornerRadius: 22 * 0.29, style: .continuous))
-
-                Text("微信公众号")
-                    .font(AppTheme.TypeScale.rowTitle.weight(.medium))
-
-                Text("@极客 ZHANG")
-                    .font(AppTheme.TypeScale.rowSubtitle)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
-
-            // 公众号没有可用的跳转 scheme，这里直接展示主人给的「搜一搜」横幅。
+    /// 2026-11-01 主人：**只放那张图**，不要卡片边框、不要标题、不要微信图标。
+    /// 图里的二维码与「微信搜一搜 极客ZHANG」已经是完整信息，再加一层壳就是重复。
+    /// 下方这句话的用途是**引导反馈**，不是引导关注 —— 措辞要克制。
+    private var wechatImage: some View {
+        VStack(alignment: .leading, spacing: 8) {
             Image("QRWeChatBanner")
                 .resizable()
                 .interpolation(.high)
                 .scaledToFit()
-                .clipShape(.rect(cornerRadius: 12, style: .continuous))
-                .padding(.horizontal, 12)
 
-            Text("微信里搜一搜「极客ZHANG」即可关注")
+            Text("有使用上的问题，可以在公众号后台留言。")
                 .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.tertiary)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 14)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 4)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface()
     }
 
     // MARK: 动作

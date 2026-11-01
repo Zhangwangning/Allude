@@ -227,8 +227,10 @@ App 内「关于 › 声明与免责」（`StatementView`）是唯一的对外�
 - **不展示二维码**。小红书 `https://xhslink.cn/o/7EXKCLCJzB0`、
   抖音 `https://v.douyin.com/jUUUICs4WuY/` 点击直接跳主页（打不开会提示）。
 - 微信公众号**无法跳转**：`weixin://` 只能打开微信本体，公众号二维码里是微信私有
-  ticket，第三方拼不出来。所以用主人给的「微信搜一搜」横幅图直接展示
-  （`QRWeChatBanner`），下面一行小字「微信里搜一搜「极客ZHANG」即可关注」。
+  ticket，第三方拼不出来。所以**只放那一张横幅图**（`QRWeChatBanner`），
+  不加卡片边框、不加标题、不加微信图标（2026-11-01 主人：图里信息已完整）。
+  图下那句话是**引导反馈**（"有使用上的问题，可以在公众号后台留言"），
+  不是引导关注 —— 措辞克制，别写成"欢迎关注"。
 - 行首用平台官方图标（`IconMail` / `IconXiaohongshu` / `IconDouyin` / `IconWeChat`），
   `SettingsRow.imageAsset` 支持图片图标。
   ⚠️ `IconMail` 是 Apple「邮件」App 的图标，属 Apple 商标；仅在自家 App 里指代
