@@ -77,7 +77,7 @@ struct ContactView: View {
                 open(ContactLink.xiaohongshu, id: "xhs")
             } label: {
                 SettingsRow(symbol: "heart.fill", imageAsset: "IconXiaohongshu",
-                            title: "小红书", subtitle: "极客 ZHANG",
+                            title: "小红书", subtitle: "@极客 ZHANG",
                             detail: "去小红书")
             }
             .buttonStyle(.plain)
@@ -88,7 +88,7 @@ struct ContactView: View {
                 open(ContactLink.douyin, id: "douyin")
             } label: {
                 SettingsRow(symbol: "music.note", imageAsset: "IconDouyin",
-                            title: "抖音", subtitle: "John Wayne",
+                            title: "抖音", subtitle: "@John Wayne",
                             detail: "去抖音")
             }
             .buttonStyle(.plain)
@@ -110,7 +110,7 @@ struct ContactView: View {
                 Text("微信公众号")
                     .font(AppTheme.TypeScale.rowTitle.weight(.medium))
 
-                Text("极客 ZHANG")
+                Text("@极客 ZHANG")
                     .font(AppTheme.TypeScale.rowSubtitle)
                     .foregroundStyle(.secondary)
             }
