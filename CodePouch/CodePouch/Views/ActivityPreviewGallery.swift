@@ -414,7 +414,11 @@ struct ActivityPreviewGallery: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 26) {
                 activityToggleSection
-                previewPagerSection
+                if isDuoFolded(width: windowWidth) {
+                    duoUnavailableNote
+                } else {
+                    previewPagerSection
+                }
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.vertical, 18)
@@ -424,6 +428,34 @@ struct ActivityPreviewGallery: View {
         .cloaksTabBar()
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: startAutoplayIfNeeded)
+    }
+
+    /// iPhone Duo：**不做预览**，只说明原因（2026-11-01 主人定）。
+    ///
+    /// 试过渲染、也试过贴实拍截图，都不好看：Duo 外屏的灵动岛是侧边竖排形态，
+    /// 与 iPhone 横向岛不是一套几何，在静态机模上拼总有违和感。
+    /// 与其给一个"看起来像、其实不像"的预览，不如老实说明。
+    private var duoUnavailableNote: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                Text("暂不提供预览")
+                    .font(AppTheme.TypeScale.rowSubtitle.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+            }
+
+            Text("由于开发者没有 iPhone Duo 真机，无法进行 iPhone Duo 的实时活动渲染。\n\n开关仍然有效：打开后，锁屏与灵动岛会按系统的方式显示最新待取的取件码。")
+                .font(AppTheme.TypeScale.body)
+                .foregroundStyle(.secondary)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardSurface()
     }
 
     /// 截图脚手架：`ACTIVITY_AUTOPLAY=1` 每 2.4 秒自动翻一页。
