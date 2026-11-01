@@ -321,6 +321,12 @@ App 内「关于 › 声明与免责」（`StatementView`）是唯一的对外�
 - Duo 外屏：只剩数字、居中、>99 显示 `99+`；
   直板机：保持「待取 N」横排（原口径 2026-09-22 定调，别动）。
 - 截图脚手架：`DUO_OUTER=1|0` 强制覆盖，可在任意模拟器上拍两种形态。
+- ⚠️ **真灵动岛在模拟器截图里抓不到**（连 Duo 也一样）：`Activity.request` 成功、
+  日志有 `requested id=...`，但 `simctl io screenshot` 截出来没有岛
+  —— 与 iPhone 16 Pro 模拟器那个 `suppressionForSuppressSystemApertureCompletely`
+  是同一类问题。**真岛屿呈现只能让主人在 Simulator 里自己看，或真机上看。**
+- 数字居中不能靠 `.frame(maxWidth: .infinity)`：trailing 区域宽度由系统决定，
+  撑开的是内容不是区域。用 `GeometryReader` 拿到区域真实尺寸再居中。
 
 🔴 **教训**：改灵动岛前先想清楚"这个视图是不是所有设备共用"。
 第一次改的时候直接动了 `IslandCompactTrailing`，直板机也一起变了，

@@ -414,14 +414,18 @@ struct IslandCompactTrailing: View {
         if DuoOuterDisplay.isActive {
             // 🔴 **只在 iPhone Duo 外屏**（2026-11-01 主人）：
             //   那里灵动岛很窄，「待取」二字占掉近一半可画宽 —— 只留数字、居中。
-            Text(cappedCount)
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(islandPrimary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .multilineTextAlignment(.center)
+            // 🔴 真灵动岛里 trailing 区域的宽度由系统决定，
+            //    `.frame(maxWidth: .infinity)` 撑的是**内容**宽度、不是区域宽度，
+            //    所以数字会贴着图标一侧。用 GeometryReader 拿到区域真实尺寸再居中。
+            GeometryReader { proxy in
+                Text(cappedCount)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(islandPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .frame(width: proxy.size.width, height: proxy.size.height, alignment: .center)
+            }
         } else {
             // 直板机保持原样：光一个数字没有上下文，必须带「待取」二字（2026-09-22 定调）
             //
