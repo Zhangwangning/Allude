@@ -514,7 +514,17 @@ struct SharePreviewSheet: View {
         .background(colorScheme == .dark
                     ? Color(.secondarySystemGroupedBackground)
                     : Color(.systemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
+        // 🔴 Duo 外屏是**D 型屏**（2026-10-25 主人指出，2026-11-01 再次强调）：
+        //    铰链侧（左）是小圆角、机身外缘（右）是大圆角，四角同半径必然错位。
+        //    直板机仍用统一圆角。
+        .clipShape(compact
+                   ? AnyShape(UnevenRoundedRectangle(
+                        topLeadingRadius: 16,
+                        bottomLeadingRadius: 16,
+                        bottomTrailingRadius: corner,
+                        topTrailingRadius: corner,
+                        style: .continuous))
+                   : AnyShape(RoundedRectangle(cornerRadius: corner, style: .continuous)))
         // 🔴 面板挂在 RootView 顶层并 `.ignoresSafeArea()`（为了盖住标签栏），
         //    所以这里必须**自己**把安全区补回来。Duo 外屏实测：
         //    `window=466x678 inset t=0 l=0 r=84 b=34` —— 右侧 84pt 是摄像头 / dock，
@@ -621,9 +631,10 @@ struct SharePreviewSheet: View {
         .padding(.top, compact ? 6 : 10)
         // 原来只留 safeBottom+8（≈42），按钮文字离 Home 指示条太近，
         // 整组像贴在面板底边（2026-10-27 主人：「底部的三个按钮太靠下了」）。
-        // 现在给到 safeBottom+20（≈54），留出呼吸；矮屏没有那么多余量，收到 +10。
-        .padding(.bottom, max(compact ? 22 : 28,
-                              Self.windowSafeInsets.bottom + (compact ? 10 : 20)))
+        // 现在给到 safeBottom+20（≈54），留出呼吸。
+        // 🔴 紧凑态**不能**再叠加一次 safeBottom：面板外层已经整体让开了 34pt，
+        //    再叠一次就是双层留白（2026-11-01 主人：「底部为啥留这么多间隙」）。
+        .padding(.bottom, compact ? 14 : max(28, Self.windowSafeInsets.bottom + 20))
     }
 
     // MARK: - iPhone Duo（宽屏，保留原定制，2026-10-25 版）

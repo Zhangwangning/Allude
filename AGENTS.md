@@ -277,6 +277,11 @@ App 内「关于 › 声明与免责」（`StatementView`）是唯一的对外�
    右侧 84pt 是摄像头/dock 区、底部 34pt 是 Home 条。
    面板挂在 RootView 顶层且 `ignoresSafeArea`（为了盖住标签栏），
    所以必须自己把这四边补回来，否则内容会被摄像头压住。
+6. 🔴 **圆角按 D 型屏分边**：铰链侧（左）16pt 小圆角、机身外缘（右）大圆角
+   （`corner = displayCornerRadius − 8`），用 `UnevenRoundedRectangle`。
+   四角同半径在 D 型屏上一定错位。直板机仍是统一 `RoundedRectangle`。
+7. ⚠️ **底部留白不能叠两层**：面板外层已经让开 34pt（Home 条），
+   内部按钮条再用 `safeBottom + x` 就会翻倍（2026-11-01 主人：「底部为啥留这么多间隙」）。
 
 ⚠️ 直板机的分享面板**没有改**（`compact == false` 走原参数），截图对比过。
 
