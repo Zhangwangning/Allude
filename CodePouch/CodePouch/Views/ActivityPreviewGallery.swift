@@ -775,7 +775,8 @@ struct ActivityPreviewGallery: View {
         // 🔴 2026-10-28 主人：「总开关」三个字删掉 —— 卡片里那行「显示实时活动」已说明一切。
         SettingsGroup(title: "",
                       note: "在锁屏与灵动岛上显示最新待取的取件码。关闭后立刻收掉卡片，重新打开后自动恢复。") {
-            SettingsPlainRow(title: "显示实时活动") {
+            // 🔴 2026-11-01 主人：去掉「显示」二字，标题就叫「实时活动」。
+            SettingsPlainRow(title: "实时活动") {
                 Toggle("", isOn: Binding(
                     get: { LiveActivitySetting.isEnabled },
                     set: { on in
