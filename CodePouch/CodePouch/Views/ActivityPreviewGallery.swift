@@ -230,6 +230,8 @@ enum MockupArt {
         /// 主人拍的实机截图（放进来就会优先使用）
         static let shotHome = Self.existing("DuoActivityHome")
         static let shotLock = Self.existing("DuoActivityLock")
+        /// 展开态（宽黑条 + 取件码）
+        static let shotExpanded = Self.existing("DuoActivityExpanded")
 
         /// 资源存在才返回名字 —— 没放截图时回落到官方机模
         private static func existing(_ name: String) -> String? {
@@ -533,8 +535,16 @@ struct ActivityPreviewGallery: View {
     ///   · `DuoActivityLock` —— 外屏锁屏 + 实时活动卡片
     /// 没有提供时，回落到主人给的官方机模（`DuoFrameHome` / `DuoFrameLock`）。
     private func duoStage(width: CGFloat) -> some View {
-        let shot = isLockState ? MockupArt.Duo.shotLock : MockupArt.Duo.shotHome
-        let fallback = isLockState ? MockupArt.Duo.lock : MockupArt.Duo.home
+        // 三种形态各用各的截图：展开（宽条）/ 紧凑（竖岛）/ 锁屏（卡片）
+        let shot: String?
+        let fallback: String
+        if isLockState {
+            shot = MockupArt.Duo.shotLock; fallback = MockupArt.Duo.lock
+        } else if currentState == .expanded, let expanded = MockupArt.Duo.shotExpanded {
+            shot = expanded; fallback = MockupArt.Duo.home
+        } else {
+            shot = MockupArt.Duo.shotHome; fallback = MockupArt.Duo.home
+        }
         return Image(shot ?? fallback)
             .resizable()
             .scaledToFit()
