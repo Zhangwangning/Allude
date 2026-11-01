@@ -532,7 +532,9 @@ struct SharePreviewSheet: View {
         //    （2026-11-01 主人截图）。直板机不走这个分支。
         .padding(.trailing, compact ? Self.windowSafeInsets.right : 0)
         .padding(.leading, compact ? Self.windowSafeInsets.left : 0)
-        .padding(.bottom, compact ? Self.windowSafeInsets.bottom : 0)
+        // 🔴 底部**不再**额外让出 34pt（2026-11-01 主人：底部间距太大，
+        //    要和顶部一致）。顶部也只有 inset 8，所以底部同样只留 8；
+        //    Home 指示条由面板内按钮条的 padding 让开。
         .padding(inset)
     }
 
@@ -634,7 +636,7 @@ struct SharePreviewSheet: View {
         // 现在给到 safeBottom+20（≈54），留出呼吸。
         // 🔴 紧凑态**不能**再叠加一次 safeBottom：面板外层已经整体让开了 34pt，
         //    再叠一次就是双层留白（2026-11-01 主人：「底部为啥留这么多间隙」）。
-        .padding(.bottom, compact ? 14 : max(28, Self.windowSafeInsets.bottom + 20))
+        .padding(.bottom, compact ? 26 : max(28, Self.windowSafeInsets.bottom + 20))
     }
 
     // MARK: - iPhone Duo（宽屏，保留原定制，2026-10-25 版）
