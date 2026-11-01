@@ -376,33 +376,74 @@ struct IslandCompactLeading: View {
     }
 }
 
+/// 当前是不是「iPhone Duo 外屏」——紧凑态只在那种屏上改成纯数字。
+///
+/// 🔴 为什么要把这个判断放进 App Group：灵动岛由**小组件进程**渲染，
+///    它看不到主 App 的窗口尺寸；主 App 启动时把结论写进共享容器，
+///    两边读到的是同一个答案（与 `AppIconStore` 同一套路）。
+enum DuoOuterDisplay {
+    private static let key = "codeclip.duoOuter"
+
+    static var isActive: Bool {
+        // 截图脚手架：`DUO_OUTER=1|0` 强制覆盖，方便在任何一台模拟器上拍两种形态
+        if let raw = ProcessInfo.processInfo.environment["DUO_OUTER"] { return raw == "1" }
+        let defaults = UserDefaults(suiteName: PickupStorage.appGroupID) ?? .standard
+        return defaults.bool(forKey: key)
+    }
+
+    /// 主 App 启动时调用：窗口高度 < 720pt 即判定为 Duo 折叠态外屏
+    /// （直板机最矮也有 852pt，永远不满足）。
+    static func refresh(windowHeight: CGFloat) {
+        let defaults = UserDefaults(suiteName: PickupStorage.appGroupID) ?? .standard
+        let duo = windowHeight < 720
+        if defaults.bool(forKey: key) != duo {
+            defaults.set(duo, forKey: key)
+        }
+    }
+}
+
 struct IslandCompactTrailing: View {
     let state: PickupActivityAttributes.ContentState
 
-    /// 上限显示：超过 99 就写「99+」（2026-11-01 主人）
-    private var displayCount: String {
+    /// 超过 99 写成「99+」，避免三位数触发缩放
+    private var cappedCount: String {
         state.pendingCount > 99 ? "99+" : "\(state.pendingCount)"
     }
 
     var body: some View {
-        // 🔴 紧凑态右侧**只留数字**（2026-11-01 主人）：
-        //   「待取」两个字占掉近一半宽度，而灵动岛这里本来就窄；
-        //   数字居中、语义交给左侧的 App 图标。
-        //   超过 99 显示「99+」，避免三位数被挤到缩放。
-        Text(displayCount)
-            .font(.system(size: 15, weight: .bold, design: .rounded))
-            .monospacedDigit()
-            .foregroundStyle(islandPrimary)
+        if DuoOuterDisplay.isActive {
+            // 🔴 **只在 iPhone Duo 外屏**（2026-11-01 主人）：
+            //   那里灵动岛很窄，「待取」二字占掉近一半可画宽 —— 只留数字、居中。
+            Text(cappedCount)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(islandPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .multilineTextAlignment(.center)
+        } else {
+            // 直板机保持原样：光一个数字没有上下文，必须带「待取」二字（2026-09-22 定调）
+            //
+            // 宽度账（按 Apple HIG 的**真实**单侧可画宽）：
+            //   紧凑态单侧 = 52.33pt（393x852）/ 62.33pt（430x932）
+            //   「待取」10pt × 2 字 = 20pt + 间距 3pt + 数字 15pt
+            //   → 合计 32.2pt（一位）/ 41.4pt（两位），仍有余量。
+            HStack(spacing: 3) {
+                Text("待取")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(islandSecondary)
+
+                Text("\(state.pendingCount)")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(islandPrimary)
+            }
             .lineLimit(1)
             .minimumScaleFactor(0.7)
-            // 左右居中：单侧可画区是固定宽，撑满后居中对齐
-            .frame(maxWidth: .infinity, alignment: .center)
-            .multilineTextAlignment(.center)
-        // 🔴 **不要加 `.fixedSize()`**（2026-09-23 撤掉，主人反馈真机"显示不全"）：
-        //    它的语义是"按理想尺寸布局、宁可溢出也不收缩"。真机上单侧只有
-        //    52.33pt，内容一旦超出就被系统**直接裁掉**（右半截消失），
-        //    `minimumScaleFactor` 根本没机会生效。
-        //    撤掉后宽度竞争会先走缩放，不足时才截断 —— 这才是"显示不全"的正解。
+            // 🔴 **不要加 `.fixedSize()`**（2026-09-23 撤掉）：真机上单侧只有 52.33pt，
+            //    内容溢出会被系统直接裁掉右半截，`minimumScaleFactor` 来不及生效。
+        }
     }
 }
 

@@ -70,6 +70,13 @@ struct RootView: View {
             model.selection = record.isPickedUp ? .picked : .pending
         }
         .onAppear {
+            // 记录"当前是不是 Duo 折叠态外屏"给小组件进程用（灵动岛由它渲染）
+            if let window = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .flatMap(\.windows).first(where: \.isKeyWindow) {
+                DuoOuterDisplay.refresh(windowHeight: window.bounds.height)
+            }
+
             // 冷启动场景：delegate 在视图起来之前就写好了 id，这里补切一次
             if let id = notificationRouter.pendingRecordID,
                let record = PickupStore.shared.records.first(where: { $0.id == id }) {
