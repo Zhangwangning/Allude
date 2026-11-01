@@ -253,13 +253,29 @@ App 内「关于 › 声明与免责」（`StatementView`）是唯一的对外�
 - ⚠️ **`simctl` 没有 fold/unfold 命令**，展开态只能在模拟器菜单里手动切；
   命令行验收先按折叠态做，展开态靠 `CODEPOUCH_DEVICE=duo` 脚手架 + 人工截图校对。
 
-### 折叠态首装实测（0.3.3）暴露的问题
+### 🔴 官方设计规范（2026-11-01 查证，优先于一切猜测）
 
-1. **标签栏变成右侧竖排浮动胶囊**：466pt 被判成 regular width，
-   iOS 27 自动换成 iPad 那种浮动样式，横向吃掉约 70pt。
-2. **单列列表被拉宽**：卡片随宽度拉伸，标题与时间的间距变松。
+完整笔记在 **`iPhone Duo 官方设计规范笔记_v1.md`**，来源是 Apple 三场 Tech Talks：
+[Prepare your app](https://developer.apple.com/videos/play/tech-talks/111461/) ·
+[Design for iPhone Duo](https://developer.apple.com/videos/play/tech-talks/111466/) ·
+[Strike a pose](https://developer.apple.com/videos/play/tech-talks/111463/)。
 
-两条都归入 Duo 适配的第一批待办，改法见 `iPhone Duo 适配规范_v1.md`。
+三条最容易搞错的官方口径：
+
+1. **侧边竖排标签栏是设计意图，不是 bug。**
+   官方："position your toolbars, tab bars and controls along the side"。
+   ⚠️ 我在 0.3.3 把它记成"问题"，**已撤回**。
+2. **只为两种 size class 设计**（外屏 compact / 内屏 regular），
+   内屏**不遵循 supportedInterfaceOrientations**，布局只看 size class。
+3. **折痕与摄像头是「保留区域」**，有 API 可查，不要写死像素：
+   `proxy.reservedRegions(kind: .division / .occlusion)`（iOS 27.1+）。
+
+### 折叠态首装实测（0.3.3）真正要改的
+
+1. ~~标签栏变右侧竖排~~ → **符合官方意图，不改**。
+2. **单列列表被拉宽**：官方要求 regular 宽度下用两列或分栏，这条要做。
+3. 自绘面板写死了 `safeAreaInsets.right` 与 16/55 圆角：
+   应改用 `.occlusion` 区域 + `ConcentricRectangle` / `UICornerConfiguration`。
 
 ### 已修：外屏「分享取件码」面板（0.3.3 build 59）
 
