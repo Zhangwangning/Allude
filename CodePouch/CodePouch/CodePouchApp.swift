@@ -571,6 +571,8 @@ struct CodePouchApp: App {
                             title: "清空已取件记录",
                             message: "记录只存在这台手机上，删除后无法恢复，也没有备份可以还原。"
                         ) {}
+                case "version":
+                    NavigationStack { VersionHistoryView() }
                 case "consent":
                     LegalConsentView { }
                 case "contact":
