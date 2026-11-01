@@ -200,6 +200,18 @@ struct AboutView: View {
                 .cardSurface()
 
                 VStack(spacing: 0) {
+                    NavigationLink {
+                        StatementView()
+                    } label: {
+                        SettingsRow(symbol: "text.document.fill", title: "声明与免责",
+                                    subtitle: "来源 · 技术栈 · 第三方标识 · 侵权联系",
+                                    tint: AppTheme.amber)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .cardSurface()
+
+                VStack(spacing: 0) {
                     Button {
                         UIPasteboard.general.string = FeedbackModel.mail
                         withAnimation(.snappy(duration: 0.2)) { copiedMail = true }
