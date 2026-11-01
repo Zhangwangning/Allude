@@ -219,12 +219,20 @@ App 内「关于 › 声明与免责」（`StatementView`）是唯一的对外�
 
 ## 联系方式页（`ContactView`）
 
-- 「直接联系」：邮箱**点击复制**；小红书**点击打开主页**（`https://xhslink.cn/o/7EXKCLCJzB0`）；
-  抖音**点击打开主页**（`https://v.douyin.com/jUUUICs4WuY/`）。
-  抖音号本身拼不出主页地址（主页用 sec_uid），所以链接只能由主人给分享短链。
-- 「扫码找到我」：三张二维码**直接平铺展示**，不再点进二级页；
-  小红书/抖音的码是从主人给的海报里截出来的，公众号是干净白底码。
-- 改账号或换码时，只动 `ContactView` 里的常量与 `QR*.imageset`。
+2026-11-01 第二版口径（主人定的）：
+
+- 每行显示**平台名 + 账号名**，不显示那串 ID（`zwn1652503532` 对用户没有意义）。
+  邮箱例外：地址本身就是账号，保留 `zhang_wangning@126.com`。
+- 行尾动作写明白：`复制邮箱` / `去小红书` / `去抖音`。
+- **不展示二维码**。小红书 `https://xhslink.cn/o/7EXKCLCJzB0`、
+  抖音 `https://v.douyin.com/jUUUICs4WuY/` 点击直接跳主页（打不开会提示）。
+- 微信公众号**无法跳转**：`weixin://` 只能打开微信本体，公众号二维码里是微信私有
+  ticket，第三方拼不出来。所以用主人给的「微信搜一搜」横幅图直接展示
+  （`QRWeChatBanner`），下面一行小字「微信里搜一搜「极客ZHANG」即可关注」。
+- 行首用平台官方图标（`IconMail` / `IconXiaohongshu` / `IconDouyin` / `IconWeChat`），
+  `SettingsRow.imageAsset` 支持图片图标。
+  ⚠️ `IconMail` 是 Apple「邮件」App 的图标，属 Apple 商标；仅在自家 App 里指代
+  "发邮件"这一动作，不暗示与 Apple 的合作关系。
 
 ## 产品命名（2026-11-01 主人定）
 

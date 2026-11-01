@@ -58,6 +58,9 @@ struct SettingsGlyph: View {
 
 struct SettingsRow: View {
     let symbol: String
+    /// 有值时用**图片**当行首图标（平台品牌图标），否则用 `symbol` 的 SF Symbol。
+    /// 2026-11-01 联系方式页需要展示小红书/微信/抖音的官方图标。
+    var imageAsset: String? = nil
     let title: String
     var subtitle: String? = nil
     /// 副标题强制单行（2026-10-31，UUID 这类定长标识用）。
@@ -100,8 +103,17 @@ struct SettingsRow: View {
     }
 
     /// 实心彩色方块：顶部稍浅、底部到本色，与系统设置的图标块同一观感。
-    private var icon: some View {
-        SettingsGlyph(symbol: symbol, tint: tint, size: Self.iconSize)
+    @ViewBuilder private var icon: some View {
+        if let imageAsset {
+            Image(imageAsset)
+                .resizable()
+                .interpolation(.high)
+                // 与 SettingsGlyph 的观感对齐：同一尺寸、同一连续圆角比例
+                .frame(width: Self.iconSize, height: Self.iconSize)
+                .clipShape(.rect(cornerRadius: Self.iconSize * 0.29, style: .continuous))
+        } else {
+            SettingsGlyph(symbol: symbol, tint: tint, size: Self.iconSize)
+        }
     }
 
     private var labels: some View {
