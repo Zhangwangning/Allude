@@ -217,6 +217,26 @@ App 内「关于 › 声明与免责」（`StatementView`）是唯一的对外�
 - 不要再写"参考了某 App"之类的话（与第 3 条冲突）；
 - 品牌图标只能出现在「快递公司 / 驿站管理」这类标识场景，别拿去做宣传图。
 
+## 首次启动（同意条款 → 引导）
+
+2026-11-01 主人要求：首启**必须先读并同意《使用条款》《隐私政策》**，再看使用教程。
+
+顺序（`RootTabModel` 控制，两个都是 fullScreenCover，不叠加）：
+1. `LegalConsentView`：条款链接（`LegalDocumentView`，App 内读）+ 「我已阅读并同意」
+   勾选 + 「同意并继续」（未勾选置灰）+ 「不同意」（弹说明）。
+2. 同意后写 `legal.consent.v1`，接着进 `OnboardingView`（三页速览），
+   完成写 `onboarding.completed.v1`。
+
+这一页还有一条**必须写清**的事：数据只在本机，
+**卸载 App 或删除记录后 App 内无法恢复**（没有云端备份、没有回收站）。
+文案在 `LegalConsentView.dataNotice`，别弱化成"请注意"。
+
+同理，「清空已取件记录」在 2026-11-01 前是**直接删、没有确认**的，
+现在必须先弹确认（`PickupListModel.confirmClearPicked`），
+提示语同样点明"无法恢复、没有备份"。
+
+截图验收：`SCREEN=consent`；不带 `SKIP_ONBOARDING` 冷启动可看真实首次流程。
+
 ## 联系方式页（`ContactView`）
 
 2026-11-01 第二版口径（主人定的）：

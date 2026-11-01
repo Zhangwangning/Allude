@@ -562,6 +562,8 @@ struct CodePouchApp: App {
                     NavigationStack { NotificationSettingsView() }
                 case "appicon":
                     NavigationStack { AppIconSettingsView() }
+                case "consent":
+                    LegalConsentView { }
                 case "contact":
                     NavigationStack { ContactView() }
                 case "statement":

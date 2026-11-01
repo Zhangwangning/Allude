@@ -76,6 +76,12 @@ struct RootView: View {
                 model.selection = record.isPickedUp ? .picked : .pending
             }
         }
+        // 首次启动：**先合法同意，再引导**。两个都是全屏，互不叠加。
+        .fullScreenCover(isPresented: $model.showConsent) {
+            LegalConsentView {
+                model.acceptConsent()
+            }
+        }
         // 首次安装引导（写完标记后不再出现；设置页可重看）
         .fullScreenCover(isPresented: $model.showOnboarding) {
             OnboardingView {
@@ -97,14 +103,22 @@ enum RootTab: String, Hashable {
 final class RootTabModel: ObservableObject {
     @Published var selection: RootTab
 
+    /// 首次启动的**法律同意页**（2026-11-01）：必须先同意条款才能进 App。
+    @Published var showConsent: Bool
     /// 首次安装引导的呈现态（UserDefaults 手写持久化，工程不用 @AppStorage）。
     @Published var showOnboarding: Bool
 
     private static let onboardingKey = "onboarding.completed.v1"
+    private static let consentKey = "legal.consent.v1"
 
     init() {
-        // 首启引导：没写过完成标记就是第一次装（截图脚手架可用 SKIP_ONBOARDING=1 跳过）
-        showOnboarding = ProcessInfo.processInfo.environment["SKIP_ONBOARDING"] == nil
+        // 截图脚手架统一跳过首启流程（SKIP_ONBOARDING=1）
+        let skipping = ProcessInfo.processInfo.environment["SKIP_ONBOARDING"] != nil
+
+        // 顺序很重要：**先同意条款，再看引导**。同意过就直接看引导。
+        showConsent = !skipping && !UserDefaults.standard.bool(forKey: Self.consentKey)
+        showOnboarding = !skipping
+            && UserDefaults.standard.bool(forKey: Self.consentKey)
             && !UserDefaults.standard.bool(forKey: Self.onboardingKey)
 
         // 截图脚手架：`SIMCTL_CHILD_TAB=pending|picked|stats|settings` 直接落到目标页
@@ -116,6 +130,15 @@ final class RootTabModel: ObservableObject {
         case "stats", "browse":  selection = .stats
         case "settings":         selection = .settings
         default:                 selection = .pending
+        }
+    }
+
+    /// 同意条款：写标记 + 收起同意页、接着进入引导页。
+    func acceptConsent() {
+        UserDefaults.standard.set(true, forKey: Self.consentKey)
+        showConsent = false
+        if !UserDefaults.standard.bool(forKey: Self.onboardingKey) {
+            showOnboarding = true
         }
     }
 

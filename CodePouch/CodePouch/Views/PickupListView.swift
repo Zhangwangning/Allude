@@ -54,6 +54,11 @@ final class PickupListModel: ObservableObject {
     @Published var undoAction: PickupUndoAction = .completed
     @Published var showUndo = false
 
+    /// 「清空已取件记录」的确认态。
+    /// 🔴 数据只在本机，删了 App 内**没有任何办法恢复**（没有云端备份、没有回收站），
+    ///    所以这个动作必须先问一次（2026-11-01 主人要求）。
+    @Published var confirmClearPicked = false
+
     // 添加入口（手动粘贴 / 扫描识别）
     @Published var showAdd = false
     @Published var showScan = false
@@ -549,6 +554,15 @@ struct PickupListView: View {
             .navigationTitle("待取")
             .toolbar { toolbarContent }
             .overlay(alignment: .bottom) { bottomOverlay }
+            .alert("清空已取件记录？", isPresented: $model.confirmClearPicked) {
+                Button("取消", role: .cancel) {}
+                Button("清空", role: .destructive) {
+                    DiagnosticsLog.record("records", "clear-picked \(store.pickedUpRecords.count)")
+                    withAnimation(.snappy) { store.clearPickedUp() }
+                }
+            } message: {
+                Text("记录只存在这台手机上，删除后无法恢复，也没有备份可以还原。")
+            }
             .sheet(isPresented: $model.showAdd) {
                 AddPickupSheet(onClose: { model.showAdd = false },
                                onAdded: handleAdded)
@@ -768,7 +782,7 @@ struct PickupListView: View {
 
         if !store.pickedUpRecords.isEmpty {
             Button(role: .destructive) {
-                withAnimation(.snappy) { store.clearPickedUp() }
+                model.confirmClearPicked = true
             } label: {
                 Label("清空已取件记录", systemImage: "trash")
             }
