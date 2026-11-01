@@ -414,7 +414,7 @@ struct ActivityPreviewGallery: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 26) {
                 activityToggleSection
-                if isDuoFolded(width: windowWidth) {
+                if isDuoDevice {
                     duoUnavailableNote
                 } else {
                     previewPagerSection
@@ -532,18 +532,31 @@ struct ActivityPreviewGallery: View {
     /// iPhone Duo 折叠态（外屏）的判定：只靠**可用宽度**。
     /// 直板机 ≈370pt、Duo 外屏 ≈434pt、Duo 内屏 ≈637pt —— 区间互不重叠。
     /// ⚠️ 没有公开的"是否折叠"API，Apple 只按 size class / 尺寸表达。
-    /// 🔴 **必须同时满足两个条件**，只看宽度会把直板机误判进来：
-    /// iPhone 16 Pro 的窗口宽是 402pt，正好落在我最初写的那条宽度带里，
-    /// 结果直板机也被换成了「暂不提供预览」（2026-11-01 主人指出）。
-    /// 高度判据来自 `DuoOuterDisplay`（App 启动时按窗口高 < 720pt 写入 App Group），
-    /// 直板机最矮 852pt，永远不满足。
-    private func isDuoFolded(width: CGFloat) -> Bool {
-        DuoOuterDisplay.isActive && width > 400 && width < 520
+    /// 当前窗口尺寸（判断设备几何用）
+    private var windowSize: CGSize {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let window = scenes.flatMap(\.windows).first { $0.isKeyWindow } ?? scenes.first?.windows.first
+        return window?.bounds.size ?? .zero
+    }
+
+    /// 是不是 iPhone Duo —— **折叠态与展开态都要算**（2026-11-01 主人要求内屏也不给预览）。
+    ///
+    /// 两个几何特征互为补充，且都与任何 iPhone 直板机不重叠：
+    /// ```
+    ///   Duo 折叠态  466 ×  678   → 高 < 720
+    ///   Duo 展开态  669 ×  951   → 宽 > 600（iPhone 最宽 440）
+    ///   直板机      402 ×  874 / 440 × 956   → 两条都不满足
+    /// ```
+    /// ⚠️ 不要只写宽度带 `400…520`：iPhone 16 Pro 的 402pt 正好在里面，
+    /// 直板机会被误判成 Duo（2026-11-01 踩过）。
+    private var isDuoDevice: Bool {
+        let size = windowSize
+        return size.height < 720 || size.width > 600
     }
 
     private var stage: some View {
         Group {
-            if isDuoFolded(width: windowWidth) {
+            if isDuoDevice {
                 GeometryReader { proxy in
                     duoStage(width: proxy.size.width)
                 }
@@ -555,9 +568,8 @@ struct ActivityPreviewGallery: View {
         }
         // Duo 的机模是 1574×2194（比例 0.717），和 iPhone 的 450×920（0.489）不同，
         // 容器比例得跟着换，否则图会被宽度限制、缩成一小块。
-        .aspectRatio(isDuoFolded(width: windowWidth) ? MockupArt.Duo.ratio : 450.0 / 920.0,
-                     contentMode: .fit)
-        .frame(height: isDuoFolded(width: windowWidth) ? 470 : 440)
+        .aspectRatio(isDuoDevice ? MockupArt.Duo.ratio : 450.0 / 920.0, contentMode: .fit)
+        .frame(height: isDuoDevice ? 470 : 440)
         .frame(maxWidth: .infinity)
         .animation(.smooth(duration: transitionDuration), value: previewPage)
         .clipped()
