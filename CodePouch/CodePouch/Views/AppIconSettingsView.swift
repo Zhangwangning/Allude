@@ -1,36 +1,36 @@
 import SwiftUI
+import OSLog
 
 // MARK: ============================================================================
 // App 图标（2026-11-01 主人）
 //
-// 系统级切换：`UIApplication.setAlternateIconName`。选中后桌面、设置、多任务、
-// 通知里的图标会一起变 —— 除了「通知里显示的图标」这一类由系统接管的地方，
-// 我们不用（也做不到）自己绘制。
-//
-// App 内能看到图标的地方（关于页、灵动岛/锁屏）读同一份选择，
-// 见 `AppIconChoice` / `AppiconMark`。
+// 版式照**快递公司页**那一套：白色卡片里 4 列自适应网格，格子 = 54pt 圆角方块 + 一行名字。
+// 换图标是系统级动作（`UIApplication.setAlternateIconName`），选中后桌面、设置、
+// 多任务、通知里的图标会一起变；灵动岛与关于页读同一份选择。
 // ============================================================================
 
 struct AppIconSettingsView: View {
     @State private var selected = AppIconStore.current
     @State private var showError = false
 
-    private let columns = [GridItem(.adaptive(minimum: 96), spacing: 18)]
+    /// 与快递公司页同口径：自适应列，最小 72pt（54 方块 + 左右留白）
+    private let columns = [GridItem(.adaptive(minimum: 72), spacing: 14)]
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                LazyVGrid(columns: columns, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
+                sectionHeader
+
+                LazyVGrid(columns: columns, spacing: 14) {
                     ForEach(AppIconChoice.allCases) { choice in
-                        option(choice)
+                        cell(choice)
                     }
                 }
-                .padding(18)
-                .frame(maxWidth: .infinity)
+                .padding(14)
                 .cardSurface()
 
                 Text("更换后，桌面、App 资源库、多任务和通知里的图标会一起改变。")
-                    .font(.caption2)
+                    .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.tertiary)
                     .padding(.horizontal, 4)
                     .fixedSize(horizontal: false, vertical: true)
@@ -44,17 +44,15 @@ struct AppIconSettingsView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("App 图标")
         .navigationBarTitleDisplayMode(.inline)
-        // 截图/验收脚手架：命令行点不了图标，`APP_ICON=envelope|cards|hand`
-        // 在页面出现后延迟一拍再切 —— App.init 里调 setAlternateIconName 太早，
-        // 场景还没连上，系统连回调都不给（实测：既不换图标也不报错）。
+        // 截图/验收脚手架：命令行点不了格子，`APP_ICON=icon05` 强制切换。
         .onAppear {
             guard let raw = ProcessInfo.processInfo.environment["APP_ICON"],
                   let choice = AppIconChoice(rawValue: raw) else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                // 直接调系统 API，绕过「已选中就返回」的 guard（脚手架要能强制切换）
                 AppIconStore.store(choice)
                 UIApplication.shared.setAlternateIconName(choice.alternateName) { error in
-                    DiagnosticsLog.record("appIcon", "scaffold=\(choice.rawValue) error=\(error.map { "\($0)" } ?? "none")")
+                    Logger(subsystem: "com.jikezhang.codeclip", category: "appIcon")
+                        .notice("scaffold=\(choice.rawValue, privacy: .public) error=\(error.map { "\($0)" } ?? "none", privacy: .public)")
                     DispatchQueue.main.async {
                         if error == nil { selected = choice }
                     }
@@ -68,35 +66,60 @@ struct AppIconSettingsView: View {
         }
     }
 
-    private func option(_ choice: AppIconChoice) -> some View {
-        Button {
+    /// 与快递公司页一致：分类图标 + 标题 + 数量 + 说明
+    private var sectionHeader: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "app.badge.fill")
+                .font(AppTheme.TypeScale.badge)
+                .foregroundStyle(AppTheme.accent)
+            Text("可选图标")
+                .font(AppTheme.TypeScale.rowSubtitle.weight(.semibold))
+            Text("\(AppIconChoice.allCases.count)")
+                .font(AppTheme.TypeScale.note)
+                .monospacedDigit()
+                .foregroundStyle(.tertiary)
+            Spacer(minLength: 0)
+        }
+        .padding(.leading, 4)
+    }
+
+    private func cell(_ choice: AppIconChoice) -> some View {
+        let isOn = choice == selected
+
+        return Button {
             apply(choice)
         } label: {
-            VStack(spacing: 8) {
+            VStack(spacing: 7) {
                 Image(choice.assetName)
                     .resizable()
                     .interpolation(.high)
-                    .frame(width: 72, height: 72)
-                    .clipShape(.rect(cornerRadius: 72 * 0.2237, style: .continuous))
+                    .frame(width: 54, height: 54)
+                    .clipShape(.rect(cornerRadius: 54 * 0.29, style: .continuous))
                     .overlay {
-                        RoundedRectangle(cornerRadius: 72 * 0.2237, style: .continuous)
-                            .strokeBorder(AppTheme.accent, lineWidth: selected == choice ? 2 : 0)
-                            .padding(-4)
+                        RoundedRectangle(cornerRadius: 54 * 0.29, style: .continuous)
+                            .strokeBorder(AppTheme.accent, lineWidth: isOn ? 2 : 0)
+                            .padding(-3)
+                    }
+                    .overlay(alignment: .bottomTrailing) {
+                        if isOn {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 15))
+                                .foregroundStyle(AppTheme.accent)
+                                .background(Circle().fill(.white).padding(1.5))
+                                .offset(x: 4, y: 4)
+                        }
                     }
 
-                HStack(spacing: 4) {
-                    if selected == choice {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(AppTheme.TypeScale.note)
-                            .foregroundStyle(AppTheme.accent)
-                    }
-                    Text(choice.title)
-                        .font(.system(size: 13, weight: selected == choice ? .semibold : .regular))
-                        .foregroundStyle(selected == choice ? AppTheme.accent : .secondary)
-                }
+                Text(choice.title)
+                    .font(.system(size: 10))
+                    .foregroundStyle(isOn ? AppTheme.accent : .secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .frame(height: 14, alignment: .top)
             }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(choice.title)图标")
     }
 
     private func apply(_ choice: AppIconChoice) {
@@ -112,10 +135,10 @@ struct AppIconSettingsView: View {
             DispatchQueue.main.async {
                 if error != nil {
                     showError = true
-                    // 失败就回滚选择，避免界面显示"已切换"但桌面没变
                     AppIconStore.store(selected)
                 } else {
-                    DiagnosticsLog.record("appIcon", "changed to \\(choice.rawValue)")
+                    Logger(subsystem: "com.jikezhang.codeclip", category: "appIcon")
+                        .notice("changed to \(choice.rawValue, privacy: .public)")
                     withAnimation(.snappy(duration: 0.2)) { selected = choice }
                 }
             }

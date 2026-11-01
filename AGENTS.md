@@ -170,12 +170,13 @@ xcrun simctl terminate UDID com.jikezhang.codeclip; sleep 4
 
 ## App 图标切换
 
-三套内置图标（经典 / 信封 / 卡券），设置 › App 图标可切换。
+八套内置图标，**默认是第 3 套「取件袋」**；设置 › App 图标可切换（版式同快递公司页的网格）。
 
 - 主图标：`Assets.xcassets/AppIcon.appiconset`（1024，**不能有透明通道、不能自带圆角**）。
-- 另外两套是 alternate icon，由 **真实 `CodePouch/Info.plist`** 里的
-  `CFBundleAlternateIcons` 声明（`IconEnvelope` / `IconCards`），
-  文件是 bundle 根目录的 `IconEnvelope@2x.png`(120) / `@3x.png`(180)。
+- 另外七套是 alternate icon，由 **真实 `CodePouch/Info.plist`** 里的
+  `CFBundleAlternateIcons` 声明（`Icon01`…`Icon08`，跳过默认的 Icon03），
+  文件是 bundle 根目录的 `IconNN@2x.png`(120) / `@3x.png`(180)。
+- 图源自 512 满幅方图，**不再裁切**（早期那批是白底圆角，裁过角）。
   ⚠️ 工程已改为 `GENERATE_INFOPLIST_FILE = NO` + `INFOPLIST_FILE = Info.plist`，
   增删 Info.plist 键要改那个真实文件，`INFOPLIST_KEY_*` 不再生效。
 - 选择状态存 **App Group**（`codeclip.appIcon`）：灵动岛/锁屏由小组件进程渲染，

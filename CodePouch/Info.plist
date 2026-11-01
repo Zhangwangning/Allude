@@ -34,20 +34,65 @@
 		</dict>
 		<key>CFBundleAlternateIcons</key>
 		<dict>
-			<key>IconEnvelope</key>
+			<key>Icon01</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>IconEnvelope</string>
+					<string>Icon01</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>IconCards</key>
+			<key>Icon02</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>IconCards</string>
+					<string>Icon02</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>Icon04</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>Icon04</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>Icon05</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>Icon05</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>Icon06</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>Icon06</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>Icon07</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>Icon07</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>Icon08</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>Icon08</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
