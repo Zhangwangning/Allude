@@ -44,7 +44,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         switch self {
         case .notification: return "通知提醒"
         case .widget:       return "桌面小组件"
-        case .activity:     return "实时活动"
+        case .activity:     return "实时活动与灵动岛"
         case .courier:      return "快递公司"
         case .station:      return "驿站管理"
         case .guide:        return "使用教程"
@@ -497,8 +497,9 @@ struct SettingsView: View {
                 NavigationLink {
                     ActivityPreviewGallery()
                 } label: {
+                    // 🔴 2026-11-01 主人：设置首页这一行的名字与二级页导航栏对齐
                     SettingsRow(symbol: "platter.filled.top.iphone",
-                                title: "实时活动",
+                                title: "实时活动与灵动岛",
                                 tint: AppTheme.accent,
                                 locked: !store.isPro)
                 }
