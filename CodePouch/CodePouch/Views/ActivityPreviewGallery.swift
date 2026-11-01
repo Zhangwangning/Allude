@@ -424,7 +424,9 @@ struct ActivityPreviewGallery: View {
             .padding(.vertical, 18)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("实时活动")
+        // 🔴 2026-11-01 主人：开关行保留「实时活动」，导航栏换成更具体的名字，
+        //    否则一行字在同一屏出现两次。
+        .navigationTitle("实时活动与灵动岛")
         .cloaksTabBar()
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: startAutoplayIfNeeded)
