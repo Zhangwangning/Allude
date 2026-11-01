@@ -284,7 +284,7 @@ struct ActivityLockScreenCard: View {
 //
 // 口径（2026-09-22 主人定调）：两个形态都以 **App 图标**作唯一锚点，
 // 不再跟随当前那条待办的快递品牌 ——
-//   · 紧凑态 = 左 App 图标 + 右**「待取 N」横排**。原来右侧放取件码尾段，但紧凑态
+//   · 紧凑态 = 左 App 图标 + 右**待取数量**（2026-11-01 起去掉「待取」二字，>99 显示 99+）。原来右侧放取件码尾段，但紧凑态
 //     右侧可画宽度只有约 44pt（系统在挖孔两侧各留了硬边距），4 个等宽字形就是上限，
 //     多一位就截断成半个数字；数量是**一至两位**的短内容，永远不截断，
 //     而且「有几件要取」正是扫一眼岛时最该知道的量。
@@ -379,26 +379,25 @@ struct IslandCompactLeading: View {
 struct IslandCompactTrailing: View {
     let state: PickupActivityAttributes.ContentState
 
-    var body: some View {
-        // 横排「待取 4」：光一个数字没有语义 —— 紧凑态旁边没有别的上下文，
-        // 主人看到「3」无法判断是还有 3 件待取还是别的什么。
-        //
-        // 宽度账（按 Apple HIG 的**真实**单侧可画宽重算）：
-        //   紧凑态单侧 = **52.33pt（393x852 · 17 Pro）/ 62.33pt（430x932 · Pro Max）**
-        //   「待取」10pt × 2 字 = 20pt + 间距 3pt + 数字 15pt（一位 ≈ 9.2 / 两位 ≈ 18.4）
-        //   → 合计 **32.2pt（一位）/ 41.4pt（两位）**，在 52.33pt 内仍有余量。
-        HStack(spacing: 3) {
-            Text("待取")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(islandSecondary)
+    /// 上限显示：超过 99 就写「99+」（2026-11-01 主人）
+    private var displayCount: String {
+        state.pendingCount > 99 ? "99+" : "\(state.pendingCount)"
+    }
 
-            Text("\(state.pendingCount)")
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(islandPrimary)
-        }
-        .lineLimit(1)
-        .minimumScaleFactor(0.7)
+    var body: some View {
+        // 🔴 紧凑态右侧**只留数字**（2026-11-01 主人）：
+        //   「待取」两个字占掉近一半宽度，而灵动岛这里本来就窄；
+        //   数字居中、语义交给左侧的 App 图标。
+        //   超过 99 显示「99+」，避免三位数被挤到缩放。
+        Text(displayCount)
+            .font(.system(size: 15, weight: .bold, design: .rounded))
+            .monospacedDigit()
+            .foregroundStyle(islandPrimary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            // 左右居中：单侧可画区是固定宽，撑满后居中对齐
+            .frame(maxWidth: .infinity, alignment: .center)
+            .multilineTextAlignment(.center)
         // 🔴 **不要加 `.fixedSize()`**（2026-09-23 撤掉，主人反馈真机"显示不全"）：
         //    它的语义是"按理想尺寸布局、宁可溢出也不收缩"。真机上单侧只有
         //    52.33pt，内容一旦超出就被系统**直接裁掉**（右半截消失），

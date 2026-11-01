@@ -606,7 +606,7 @@ struct ActivityPreviewGallery: View {
                         note: "长按或同时有两个活动时展开，可画面积最大；只画最近一条待办，条数看右上角")
             case .compact:
                 return (title: "灵动岛 · 紧凑",
-                        note: "同时有两个活动时收成紧凑态：左 App 图标、右「待取 N」，三个以上只剩图标")
+                        note: "同时有两个活动时收成紧凑态：左 App 图标、右待取数量（超过 99 显示 99+），三个以上只剩图标")
             case .lock:
                 return (title: "锁屏卡片",
                         note: "锁屏上多条待办时取最新一条，其余用「还有 N 条」交代")
