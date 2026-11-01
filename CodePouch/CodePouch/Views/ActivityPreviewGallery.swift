@@ -226,6 +226,15 @@ enum MockupArt {
         static let lock = "DuoFrameLock"
         /// 素材宽高比（1574 / 2194）
         static let ratio: CGFloat = 1574.0 / 2194.0
+
+        /// 主人拍的实机截图（放进来就会优先使用）
+        static let shotHome = Self.existing("DuoActivityHome")
+        static let shotLock = Self.existing("DuoActivityLock")
+
+        /// 资源存在才返回名字 —— 没放截图时回落到官方机模
+        private static func existing(_ name: String) -> String? {
+            UIImage(named: name) != nil ? name : nil
+        }
     }
 
     // MARK: 壁纸亮度（描边不透明度用）
@@ -503,49 +512,34 @@ struct ActivityPreviewGallery: View {
                 }
             }
         }
-        .aspectRatio(450.0 / 920.0, contentMode: .fit)
-        .frame(height: 440)
+        // Duo 的机模是 1574×2194（比例 0.717），和 iPhone 的 450×920（0.489）不同，
+        // 容器比例得跟着换，否则图会被宽度限制、缩成一小块。
+        .aspectRatio(isDuoFolded(width: windowWidth) ? MockupArt.Duo.ratio : 450.0 / 920.0,
+                     contentMode: .fit)
+        .frame(height: isDuoFolded(width: windowWidth) ? 470 : 440)
         .frame(maxWidth: .infinity)
         .animation(.smooth(duration: transitionDuration), value: previewPage)
         .clipped()
     }
 
-    /// Duo 折叠态：官方机模 + 右侧竖排灵动岛。
+    /// Duo 折叠态：**用截图展示，不渲染**（2026-11-01 主人定）。
     ///
-    /// 位置不是猜的：从主人給的外屏实拍截图上量的（572×787）——
-    /// 岛体 x 0.757…0.809、y 0.176…0.303，即**宽 5.2%、高 12.7%**，
-    /// 中心落在 (78.3%, 23.9%)。竖排：上图标、下数量。
+    /// 原因：Duo 外屏的灵动岛是侧边竖排形态，跟 iPhone 的横向岛不是一套几何；
+    /// 在机模上叠渲染既难对齐、也容易和机模里烤进去的时间和 Wi-Fi 打架。
+    /// 所以这里直接显示**成品截图**，与真机一模一样。
+    ///
+    /// 素材约定（把截图丢进 Assets 即可，无需改代码）：
+    ///   · `DuoActivityHome` —— 外屏主屏幕 + 灵动岛（折叠态紧凑）
+    ///   · `DuoActivityLock` —— 外屏锁屏 + 实时活动卡片
+    /// 没有提供时，回落到主人给的官方机模（`DuoFrameHome` / `DuoFrameLock`）。
     private func duoStage(width: CGFloat) -> some View {
-        let height = width / MockupArt.Duo.ratio
-        return ZStack(alignment: .topLeading) {
-            Image(isLockState ? MockupArt.Duo.lock : MockupArt.Duo.home)
-                .resizable()
-                .scaledToFit()
-                .frame(width: width)
-
-            if !isLockState {
-                duoIsland
-                    .frame(width: width * 0.062, height: height * 0.172)
-                    .position(x: width * 0.784, y: height * 0.288)
-            }
-        }
-        .frame(width: width, height: height, alignment: .topLeading)
-        .frame(maxWidth: .infinity, alignment: .center)
-    }
-
-    /// 竖排岛内容：上图标、下数量（与真机顺序一致）
-    private var duoIsland: some View {
-        VStack(spacing: 4) {
-            AppMarkIcon(size: 16)
-            Text(islandState.pendingCount > 99 ? "99+" : "\(islandState.pendingCount)")
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black, in: .capsule)
+        let shot = isLockState ? MockupArt.Duo.shotLock : MockupArt.Duo.shotHome
+        let fallback = isLockState ? MockupArt.Duo.lock : MockupArt.Duo.home
+        return Image(shot ?? fallback)
+            .resizable()
+            .scaledToFit()
+            .frame(width: width)
+            .frame(maxWidth: .infinity, alignment: .center)
     }
 
     private func phoneStage(proxy: GeometryProxy) -> some View {
