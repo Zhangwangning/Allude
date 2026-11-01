@@ -609,7 +609,8 @@ struct SharePreviewSheet: View {
     /// 预览卡片：按「可用宽 / 可用高」双约束等比铺满，再水平居中。
     private func phoneCard(compact: Bool) -> some View {
         GeometryReader { proxy in
-            let hPad: CGFloat = compact ? 40 : 28
+            // 紧凑态底部不再有一条横栏，左右留白可以收窄，卡片随之变宽（方案 B）
+            let hPad: CGFloat = compact ? 24 : 28
             let availW = max(0, proxy.size.width - hPad * 2)
             // 紧凑屏留一点上下呼吸；卡片不再顶满整个剩余高度
             let availH = max(0, proxy.size.height - (compact ? 14 : 8))
@@ -639,39 +640,105 @@ struct SharePreviewSheet: View {
     /// 底部操作条：复用 `QuickShareAction`（竖排图标 + 文字、横向均分），
     /// 这也是它原本的形态（Duo 那次改版把取件码分享挪到右侧竖排，车票分享还在用它）。
     private func phoneActions(compact: Bool) -> some View {
-        HStack(spacing: 0) {
-            if let image = model.image {
-                QuickShareAction(icon: model.saved ? "checkmark" : "square.and.arrow.down",
-                                 title: model.saved ? "已保存" : "保存图片",
-                                 highlight: model.saved) {
-                    UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
-                    model.saved = true
-                    model.resetFlagsLater()
+        Group {
+            if compact {
+                // 🔴 紧凑态（Duo 外屏）：三个**独立胶囊**，不再占满整条底栏。
+                //    省下来的高度全给卡片（2026-11-01 主人选方案 B）。
+                HStack(spacing: 26) {
+                    ForEach(Array(compactActionItems.enumerated()), id: \.offset) { _, item in
+                        // 三个**圆形悬浮按钮**（2026-11-01 主人）：只有图标，没有文字，
+                        // 悬浮在面板上，比整条横栏轻得多。
+                        Button { item.action() } label: {
+                            Image(systemName: item.icon)
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundStyle(item.highlight ? Color.white : Color.primary)
+                                .frame(width: 48, height: 48)
+                                .background {
+                                    Circle()
+                                        .fill(item.highlight
+                                              ? AnyShapeStyle(AppTheme.accent)
+                                              : AnyShapeStyle(.regularMaterial))
+                                }
+                                .shadow(color: .black.opacity(0.12), radius: 8, y: 3)
+                                .contentShape(.circle)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(item.title)
+                    }
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                // 往上抬一点（2026-11-01 主人）：底部多留，圆形按钮不贴 Home 条
+                .padding(.bottom, 72)
+            } else {
+                HStack(spacing: 0) {
+                    if let image = model.image {
+                        QuickShareAction(icon: model.saved ? "checkmark" : "square.and.arrow.down",
+                                         title: model.saved ? "已保存" : "保存图片",
+                                         highlight: model.saved) {
+                            UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+                            model.saved = true
+                            model.resetFlagsLater()
+                        }
 
-                QuickShareAction(icon: model.copied ? "checkmark" : "doc.on.doc",
-                                 title: model.copied ? "已拷贝" : "拷贝图片",
-                                 highlight: model.copied) {
-                    UIPasteboard.general.image = image
-                    model.copied = true
-                    model.resetFlagsLater()
+                        QuickShareAction(icon: model.copied ? "checkmark" : "doc.on.doc",
+                                         title: model.copied ? "已拷贝" : "拷贝图片",
+                                         highlight: model.copied) {
+                            UIPasteboard.general.image = image
+                            model.copied = true
+                            model.resetFlagsLater()
+                        }
+                    }
+
+                    QuickShareAction(icon: "square.and.arrow.up",
+                                     title: "更多分享",
+                                     highlight: false) {
+                        model.showActivity = true
+                    }
                 }
-            }
-
-            QuickShareAction(icon: "square.and.arrow.up",
-                             title: "更多分享",
-                             highlight: false) {
-                model.showActivity = true
+                .padding(.horizontal, 20)
+                .padding(.top, 10)
+                // 原来只留 safeBottom+8（≈42），按钮文字离 Home 指示条太近，
+                // 整组像贴在面板底边（2026-10-27 主人：「底部的三个按钮太靠下了」）。
+                // 现在给到 safeBottom+20（≈54），留出呼吸。
+                .padding(.bottom, max(28, Self.windowSafeInsets.bottom + 20))
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, compact ? 6 : 10)
-        // 原来只留 safeBottom+8（≈42），按钮文字离 Home 指示条太近，
-        // 整组像贴在面板底边（2026-10-27 主人：「底部的三个按钮太靠下了」）。
-        // 现在给到 safeBottom+20（≈54），留出呼吸。
-        // 🔴 紧凑态**不能**再叠加一次 safeBottom：面板外层已经整体让开了 34pt，
-        //    再叠一次就是双层留白（2026-11-01 主人：「底部为啥留这么多间隙」）。
-        .padding(.bottom, compact ? 26 : max(28, Self.windowSafeInsets.bottom + 20))
+    }
+
+    /// 紧凑态的胶囊按钮内容（图标 + 短标题 + 动作）
+    private struct CompactAction {
+        let icon: String
+        let title: String
+        let highlight: Bool
+        let action: () -> Void
+    }
+
+    private var compactActionItems: [CompactAction] {
+        var items: [CompactAction] = []
+        if let image = model.image {
+            items.append(CompactAction(icon: model.saved ? "checkmark" : "square.and.arrow.down",
+                                       title: model.saved ? "已保存" : "保存",
+                                       highlight: model.saved) {
+                UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+                model.saved = true
+                model.resetFlagsLater()
+            })
+            items.append(CompactAction(icon: model.copied ? "checkmark" : "doc.on.doc",
+                                       title: model.copied ? "已拷贝" : "拷贝",
+                                       highlight: model.copied) {
+                UIPasteboard.general.image = image
+                model.copied = true
+                model.resetFlagsLater()
+            })
+        }
+        items.append(CompactAction(icon: "square.and.arrow.up",
+                                   title: "分享",
+                                   highlight: false) {
+            model.showActivity = true
+        })
+        return items
     }
 
     // MARK: - iPhone Duo（宽屏，保留原定制，2026-10-25 版）
