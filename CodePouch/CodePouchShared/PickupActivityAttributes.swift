@@ -295,7 +295,7 @@ struct ActivityLockScreenCard: View {
 // 🔴 App 图标的**唯一存放处 = `CodeClipShared/Assets.xcassets/AppMark.imageset`**
 //    （2026-09-23 核实）：这份共享资源在 pbxproj 里被 **App 与小组件扩展两个 target
 //    各自编译一次**（`CodeClip.xcodeproj` 有两个 Resources build phase 各引一份），
-//    所以 `Image("AppMark")` 在**两个进程的 main bundle** 里都查得到。
+//    所以图标资源在**两个进程的 main bundle** 里都查得到。
 //    已用 `xcrun assetutil --info <appex>/Assets.car` 确认过 `Name: AppMark`
 //    确实在扩展产物里 —— 真机岛内显示异常**不是**"扩展缺图"造成的。
 //
