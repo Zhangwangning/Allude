@@ -66,7 +66,7 @@ struct ContactView: View {
             } label: {
                 SettingsRow(symbol: "envelope.fill", imageAsset: "IconMail",
                             title: "邮箱", subtitle: mail, subtitleOneLine: true,
-                            detail: copiedMail ? "已复制" : "复制邮箱",
+                            detail: copiedMail ? "已复制" : "复制",
                             showsChevron: false)
             }
             .buttonStyle(.plain)
