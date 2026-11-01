@@ -492,7 +492,9 @@ struct CodePouchApp: App {
                 // SCREEN 环境变量用于命令行截图验证（simctl launch 时以 SIMCTL_CHILD_SCREEN 注入）。
                 // 不注入时走正常入口 RootView()，对正式运行无影响。
                 // 旧脚手架名 `history` / `stats` 都指向浏览页（统计已并入，2026-10-08）。
-                switch ProcessInfo.processInfo.environment["SCREEN"] {
+                // 内测分发的 Release 包不带脚手架（见 BuildFlags）：少一处可被翻的内部入口。
+                if BuildFlags.scaffoldsEnabled {
+                    switch ProcessInfo.processInfo.environment["SCREEN"] {
                 case "history", "stats", "browse":
                     // 统计页（2026-10-14 独立成第 3 个标签，旧脚手架名保留兼容）；
                     // StatsTabView 现已自带 NavigationStack，这里不再外包。
@@ -656,6 +658,9 @@ struct CodePouchApp: App {
                                     initialMode: .photo,
                                     onClose: {}, onAdded: { _ in })
                 default:
+                    RootView()
+                    }
+                } else {
                     RootView()
                 }
             }

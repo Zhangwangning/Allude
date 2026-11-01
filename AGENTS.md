@@ -563,6 +563,34 @@ python3 tools/license-gen/issue-openssl.py --check "<凭证>"
 
 ---
 
+## 内测分发包的防护（2026-11-01）
+
+把 IPA 发给别人，**防的是"拿了包就能白嫖 / 反编译看懂内部"**，不是防专业逆向 ——
+离线 App 做不到绝对防伪，目标是"成本高于价值"。
+
+已经做到的（不用改）：
+
+- **凭证是非对称签名**（ECDSA P-256）。App 里只有公钥，`private-key.pem` 不入库、
+  不进包（实测包内无任何 `.pem`、无私钥字样）。
+- **一机一凭证**：载荷里的 `d` = 设备码（32 位 HEX，随机生成、存 Keychain），
+  转发给别人无效。这是离线体系里唯一能挡"一码多卖"的机制。
+- **每次读取都重新验签**（`EntitlementSnapshot.load()`），手改
+  `entitlement.json` 里的 `plan`/`isPro` 会当场降级。
+- 到期在**读侧**判定，并把时间水位（`lastSeenAt`）往前推 —— 调系统时间回不到过去。
+
+2026-11-01 新增：
+
+- `BuildFlags.scaffoldsEnabled`：**只有 Debug 为真**。Release 包不再带 `SCREEN=…`
+  那套脚手架（实测包内 `colorCheck` / `activityRace` / `couponGallery` 字符串已消失）。
+  自己真机 / 模拟器截图走 Debug 构建（`tools/install-device.sh` 就是 Debug），不受影响。
+
+做不到 / 别自欺的：
+
+- 别人拿到 ipa 一定可以反编译看逻辑；Swift 没有可靠的商业级混淆。
+- 他们可以**改自己的包**绕过判断 —— 但改完只是他自己免费用，不会影响别人
+  （凭证仍绑设备码，改动也签不出新凭证）。
+- 真正的风险是**私钥泄漏**，不是二进制被看。私钥只在本机 `tools/license-gen/`。
+
 ## 提交规范
 
 署名 `极客ZHANG <zhang_wangning@126.com>`。提交信息用中文，
