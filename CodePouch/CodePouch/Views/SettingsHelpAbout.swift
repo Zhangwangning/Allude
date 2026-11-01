@@ -148,7 +148,6 @@ struct HelpCenterView: View {
 
 struct AboutView: View {
     @EnvironmentObject private var store: PickupStore
-    @State private var copiedMail = false
 
     var body: some View {
         ScrollView {
@@ -157,7 +156,6 @@ struct AboutView: View {
 
                 VStack(spacing: 0) {
                     legalRow(title: "隐私政策",
-                             note: "无账号、无联网；取件数据只在本机",
                              document: .privacy,
                              symbol: "hand.raised.fill",
                              tint: AppTheme.doneTint)
@@ -165,7 +163,6 @@ struct AboutView: View {
                     SettingsDivider()
 
                     legalRow(title: "使用条款",
-                             note: "订阅、自动续期与退款规则",
                              document: .terms,
                              symbol: "doc.text.fill",
                              tint: AppTheme.sky)
@@ -204,7 +201,6 @@ struct AboutView: View {
                         StatementView()
                     } label: {
                         SettingsRow(symbol: "text.document.fill", title: "声明与免责",
-                                    subtitle: "来源 · 技术栈 · 第三方标识 · 侵权联系",
                                     tint: AppTheme.amber)
                     }
                     .buttonStyle(.plain)
@@ -212,19 +208,10 @@ struct AboutView: View {
                 .cardSurface()
 
                 VStack(spacing: 0) {
-                    Button {
-                        UIPasteboard.general.string = FeedbackModel.mail
-                        withAnimation(.snappy(duration: 0.2)) { copiedMail = true }
-                        DiagnosticsLog.record("about", "copy-mail")
-                        Task { @MainActor in
-                            try? await Task.sleep(nanoseconds: 1_600_000_000)
-                            withAnimation(.snappy(duration: 0.2)) { copiedMail = false }
-                        }
+                    NavigationLink {
+                        ContactView()
                     } label: {
                         SettingsRow(symbol: "at", title: "联系方式",
-                                    subtitle: copiedMail ? "邮箱已复制" : FeedbackModel.mail,
-                                    subtitleOneLine: true,
-                                    showsChevron: false,
                                     tint: AppTheme.indigo)
                     }
                     .buttonStyle(.plain)
@@ -268,12 +255,12 @@ struct AboutView: View {
         .padding(.vertical, 8)
     }
 
-    private func legalRow(title: String, note: String, document: LegalDocument,
+    private func legalRow(title: String, document: LegalDocument,
                           symbol: String, tint: Color) -> some View {
         NavigationLink {
             LegalDocumentView(document: document)
         } label: {
-            SettingsRow(symbol: symbol, title: title, subtitle: note, tint: tint)
+            SettingsRow(symbol: symbol, title: title, tint: tint)
         }
         .buttonStyle(.plain)
     }
