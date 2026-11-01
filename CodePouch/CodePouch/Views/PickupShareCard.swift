@@ -486,6 +486,37 @@ struct SharePreviewSheet: View {
 
     /// 标准「预览 + 底部操作条」布局：卡片水平居中、操作按钮在底部横排。
     /// 面板四角同半径（26pt）、四周留 8pt 浮在遮罩上，与系统 sheet 观感一致。
+    /// 摄像头属于**保留区域**（reserved region），由系统告知，不该写死像素。
+    /// iOS 27.1 起可查；查不到（老系统/没有遮挡）时退回安全区，调用方取两者较大值。
+    private static var occlusionInsets: UIEdgeInsets {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        guard let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow)
+                ?? scenes.first?.windows.first else { return .zero }
+        guard #available(iOS 27.1, *) else { return .zero }
+
+        let bounds = window.bounds
+        var insets = UIEdgeInsets.zero
+        let tol: CGFloat = 1
+        for region in window.reservedRegions(kind: .occlusion) where region.isActive {
+            let f = region.frame
+            if f.maxX >= bounds.maxX - tol { insets.right = max(insets.right, bounds.maxX - f.minX) }
+            if f.minX <= bounds.minX + tol { insets.left = max(insets.left, f.maxX - bounds.minX) }
+            if f.maxY >= bounds.maxY - tol { insets.bottom = max(insets.bottom, bounds.maxY - f.minY) }
+            if f.minY <= bounds.minY + tol { insets.top = max(insets.top, f.maxY - bounds.minY) }
+        }
+        return insets
+    }
+
+    /// 安全区里除遮挡之外的部分（Home 条等）；与 `occlusionInsets` 分边取大
+    private static var effectiveInsets: UIEdgeInsets {
+        let occ = occlusionInsets
+        let safe = windowSafeInsets
+        return UIEdgeInsets(top: max(occ.top, safe.top),
+                            left: max(occ.left, safe.left),
+                            bottom: max(occ.bottom, safe.bottom),
+                            right: max(occ.right, safe.right))
+    }
+
     /// 当前窗口尺寸（面板挂在 RootView 顶层 overlay，窗口即全屏）
     private static var windowSize: CGSize {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
@@ -517,6 +548,10 @@ struct SharePreviewSheet: View {
         // 🔴 Duo 外屏是**D 型屏**（2026-10-25 主人指出，2026-11-01 再次强调）：
         //    铰链侧（左）是小圆角、机身外缘（右）是大圆角，四角同半径必然错位。
         //    直板机仍用统一圆角。
+        // 🔴 官方推荐是 `ConcentricRectangle`，但它靠**容器**的 cornerConfiguration 推导半径；
+        //    本面板挂在 RootView 顶层 overlay（没有圆角配置），实测会裁成直角。
+        //    所以在自绘 overlay 里只能按屏幕半径显式算：
+        //    机身外缘（右）= 屏幕圆角 − 内缩；铰链侧（左）是机身直边，用小圆角。
         .clipShape(compact
                    ? AnyShape(UnevenRoundedRectangle(
                         topLeadingRadius: 16,
@@ -530,8 +565,8 @@ struct SharePreviewSheet: View {
         //    `window=466x678 inset t=0 l=0 r=84 b=34` —— 右侧 84pt 是摄像头 / dock，
         //    底部 34pt 是 Home 条。不补，卡片和「完成」就被压在摄像头下面
         //    （2026-11-01 主人截图）。直板机不走这个分支。
-        .padding(.trailing, compact ? Self.windowSafeInsets.right : 0)
-        .padding(.leading, compact ? Self.windowSafeInsets.left : 0)
+        .padding(.trailing, compact ? Self.effectiveInsets.right : 0)
+        .padding(.leading, compact ? Self.effectiveInsets.left : 0)
         // 🔴 底部**不再**额外让出 34pt（2026-11-01 主人：底部间距太大，
         //    要和顶部一致）。顶部也只有 inset 8，所以底部同样只留 8；
         //    Home 指示条由面板内按钮条的 padding 让开。

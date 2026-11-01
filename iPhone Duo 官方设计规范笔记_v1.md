@@ -78,8 +78,18 @@ let regions = view.reservedRegions(kind: .division)
 - 另外 iOS 27.1 还有 `ReservedRegion`（SwiftUI）/ `UIViewReservedRegion`（UIKit），
   让**自绘控件**主动认领"我最多能占到哪"，用于自定义栏与全屏设计。
 
-🔴 **对我们的直接价值**：分享面板现在写死 `safeAreaInsets.right`，
-更稳的做法是查询 `.occlusion` 区域的 frame，摄像头换位置/换姿势都跟得上。
+✅ **已落地**（2026-11-01，分享面板）：改成查询 `.occlusion`，
+按「区域贴哪条边」折算成四条 inset，再与安全区分边取大。
+实测依然得到右侧 84pt，但来源变成了系统告知，不再是硬编码。
+
+```swift
+for region in window.reservedRegions(kind: .occlusion) where region.isActive {
+    let f = region.frame
+    if f.maxX >= bounds.maxX - tol { insets.right = max(insets.right, bounds.maxX - f.minX) }
+    // …左 / 上 / 下同理
+}
+```
+⚠️ `reservedRegions` 是 **iOS 27.1+**（工程部署目标 27.0），必须 `if #available(iOS 27.1, *)`。
 
 ## 5. 折痕避让 Displacement
 
@@ -158,8 +168,12 @@ NavigationStack {
       .padding(8.0)
       .ignoresSafeArea()
   ```
-- 🔴 这条**替代**了我们手写的"读 `displayCornerRadius` 再减 8"和
-  "左侧 16 / 右侧 55 硬编码"——D 型屏的非同心圆角，用这个 API 才跟得准。
+- 🔴 实测坑（2026-11-01）：`ConcentricRectangle` 的半径是从**容器的
+  `cornerConfiguration`** 推导的。我们的分享面板挂在 `RootView` 顶层 overlay，
+  容器没有圆角配置 → 它把面板裁成了**直角**。
+  所以在我们这种自绘全屏面板里，只能按屏幕半径显式算：
+  机身外缘 = `displayCornerRadius − 8`，铰链侧用小圆角（16）。
+  等面板改成真正的 `sheet`（系统会给它 cornerConfiguration）时再换回 `ConcentricRectangle`。
 
 ## 11. 不要碰 `UIScreen.main`
 

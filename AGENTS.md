@@ -274,8 +274,9 @@ App 内「关于 › 声明与免责」（`StatementView`）是唯一的对外�
 
 1. ~~标签栏变右侧竖排~~ → **符合官方意图，不改**。
 2. **单列列表被拉宽**：官方要求 regular 宽度下用两列或分栏，这条要做。
-3. 自绘面板写死了 `safeAreaInsets.right` 与 16/55 圆角：
-   应改用 `.occlusion` 区域 + `ConcentricRectangle` / `UICornerConfiguration`。
+3. ✅ 已改：自绘面板改用 `reservedRegions(kind: .occlusion)` 拿摄像头区域
+   （不再写死 84pt）。⚠️ 但 `ConcentricRectangle` 在根 overlay 里会裁成直角
+   （容器没有 cornerConfiguration），圆角仍按屏幕半径显式算。
 
 ### 已修：外屏「分享取件码」面板（0.3.3 build 59）
 
