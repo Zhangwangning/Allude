@@ -3,14 +3,18 @@ import SafariServices
 import UIKit
 
 // MARK: ============================================================================
-// 设置 › 快捷指令自动化（2026-11-04）
+// 设置 › 快捷指令自动化（2026-11-05 重构）
 //
-// 两种导入方式（主人定的口径）：
-//   · **iCloud 链接**（推荐）：点一下在 App 内用 Safari 打开，系统会问是否添加；
-//   · **用文件导入**：走系统分享面板把打包好的 .shortcut 交给快捷指令。
+// 版式按主人给的清单做：一行一个关键词，右侧「添加」，点开是弹出菜单：
+//   · iCloud 链接（推荐，填了才有）
+//   · 用文件导入（App 内自带已签名的文件）
 //
-// 导入后的自动化**默认关闭**，必须让用户自己去「快捷指令 › 自动化」打开开关 ——
-// App 改不了这个开关，所以文案必须把这一步单独说清。
+// 🔴 **不显示「已导入」状态**：用户可能在快捷指令里删掉，App 无从得知，
+//    显示状态只会制造"明明显示已导入却没生效"的误会。
+//
+// 🔴 自定义关键词仍不可行：未签名文件导入失败（已实测），
+//    导入时询问（WFWorkflowImportQuestions）对触发器不生效（B1/B2 实测无弹窗），
+//    所以只能提供预设关键词。
 // ============================================================================
 
 /// App 内打开网页（SFSafariViewController），不跳出 App
@@ -30,16 +34,12 @@ struct AutoRecordSettingsView: View {
     @State private var shareURL: URL?
     @State private var showShare = false
     @State private var linkURL: URL?
-    @State private var imported: Set<String> = []
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                steps
-                ForEach(ShortcutAutomation.presets) { preset in
-                    presetCard(preset)
-                }
-                limitation
+            VStack(alignment: .leading, spacing: 12) {
+                keywordsCard
+                note
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.vertical, 18)
@@ -47,7 +47,6 @@ struct AutoRecordSettingsView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("快捷指令自动化")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { imported = Set(ShortcutAutomation.importedKeywords) }
         .sheet(isPresented: $showShare) {
             if let shareURL {
                 ActivitySheet(items: [shareURL]).presentationDetents([.medium, .large])
@@ -61,103 +60,71 @@ struct AutoRecordSettingsView: View {
         }
     }
 
-    // MARK: 步骤说明
+    // MARK: 关键词列表
 
-    private var steps: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            stepRow(1, "选一个关键词，导入自动化",
-                    "关键词决定哪些短信会被收进来")
-            Divider().opacity(0.5)
-            stepRow(2, "到「快捷指令 › 自动化」打开开关",
-                    "系统导入的自动化默认是关闭的，不打开不会触发")
+    private var keywordsCard: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(ShortcutAutomation.presets.enumerated()), id: \.element.id) { index, preset in
+                HStack(spacing: 12) {
+                    Text("信息 包含「\(preset.keyword)」")
+                        .font(AppTheme.TypeScale.rowTitle)
+                    Spacer(minLength: 8)
+                    addMenu(preset)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+
+                if index < ShortcutAutomation.presets.count - 1 {
+                    SettingsDivider()
+                }
+            }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .cardSurface()
     }
 
-    private func stepRow(_ index: Int, _ title: String, _ detail: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Text("\(index)")
-                .font(AppTheme.TypeScale.badge)
-                .foregroundStyle(AppTheme.accent)
-                .frame(width: 18, height: 18)
-                .background(Circle().fill(AppTheme.accent.opacity(0.12)))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(AppTheme.TypeScale.bodyMedium)
-                Text(detail)
-                    .font(AppTheme.TypeScale.note)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+    /// 右侧「添加」：点开是弹出菜单（iCloud 链接 / 文件）
+    private func addMenu(_ preset: ShortcutAutomation.Preset) -> some View {
+        Menu {
+            if let link = ShortcutAutomation.icloudURL(for: preset.keyword) {
+                Button {
+                    linkURL = link
+                } label: {
+                    Label("iCloud 链接（推荐）", systemImage: "link")
+                }
             }
+            Button {
+                guard let url = ShortcutAutomation.importFile(for: preset) else { return }
+                shareURL = url
+                showShare = true
+            } label: {
+                Label("用文件导入", systemImage: "square.and.arrow.down")
+            }
+        } label: {
+            // 独立按钮：描边胶囊，与左侧文案分开，点它才出菜单
+            Text("添加")
+                .font(AppTheme.TypeScale.bodyMedium)
+                .foregroundStyle(AppTheme.accent)
+                .padding(.vertical, 5)
+                .padding(.horizontal, 14)
+                .overlay(
+                    Capsule().stroke(AppTheme.accent.opacity(0.45), lineWidth: 1)
+                )
         }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
     }
 
-    // MARK: 单个关键词
+    // MARK: 说明
 
-    private func presetCard(_ preset: ShortcutAutomation.Preset) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Text("包含「\(preset.keyword)」")
-                    .font(AppTheme.TypeScale.rowTitle)
-                if imported.contains(preset.keyword) {
-                    Text("已导入")
-                        .font(AppTheme.TypeScale.badge)
-                        .foregroundStyle(AppTheme.accent)
-                }
-                Spacer(minLength: 0)
-            }
-
-            Text(preset.hint)
-                .font(AppTheme.TypeScale.rowSubtitle)
+    private var note: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("添加后，请到「快捷指令 › 自动化」把它打开——系统导入的自动化默认是关闭的。")
+                .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.secondary)
+                .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
 
-            HStack(spacing: 10) {
-                if let link = ShortcutAutomation.icloudURL(for: preset.keyword) {
-                    Button { linkURL = link } label: {
-                        pill("iCloud 链接", symbol: "link", primary: true)
-                    }
-                    .buttonStyle(.plain)
-                }
-                Button {
-                    guard let url = ShortcutAutomation.importFile(for: preset) else { return }
-                    shareURL = url
-                    showShare = true
-                    ShortcutAutomation.markImported(preset.keyword)
-                    imported.insert(preset.keyword)
-                } label: {
-                    pill("用文件导入", symbol: "square.and.arrow.down", primary: ShortcutAutomation.icloudURL(for: preset.keyword) == nil)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(16)
-        .cardSurface()
-    }
-
-    private func pill(_ title: String, symbol: String, primary: Bool) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: symbol).font(.system(size: 12, weight: .semibold))
-            Text(title).font(AppTheme.TypeScale.bodyMedium)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 9)
-        .background(
-            RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .fill(primary ? AppTheme.accent.opacity(0.13) : Color(.secondarySystemFill))
-        )
-        .foregroundStyle(primary ? AppTheme.accent : Color.primary)
-    }
-
-    // MARK: 限制说明
-
-    private var limitation: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("为什么只有这几个关键词")
-                .font(AppTheme.TypeScale.rowTitleMedium)
-            Text("自动化文件必须由开发者签名后才能导入，App 里无法当场生成，所以只提供预制的几个关键词。想覆盖更多短信，可以导入多个关键词的自动化，它们互不冲突。")
+            Text("关键词可以多加几个，互不冲突。四个都加上最稳，能覆盖没有【的短信。")
                 .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.secondary)
                 .lineSpacing(3)
