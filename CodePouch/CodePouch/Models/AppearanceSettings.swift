@@ -68,6 +68,32 @@ enum FontSizeStep: Int, CaseIterable, Identifiable {
         }
     }
 
+    /// 档位名（设置行尾、字体页底部都用它）
+    var title: String {
+        switch self {
+        case .smallest:      return "最小"
+        case .small:         return "较小"
+        case .slightlySmall: return "偏小"
+        case .standard:      return "标准"
+        case .slightlyLarge: return "偏大"
+        case .large:         return "较大"
+        case .largest:       return "最大"
+        }
+    }
+
+    /// 对应到系统的 Dynamic Type 档位（改这个不会重建视图树）
+    var dynamicTypeSize: DynamicTypeSize {
+        switch self {
+        case .smallest:      return .xSmall
+        case .small:         return .small
+        case .slightlySmall: return .medium
+        case .standard:      return .large
+        case .slightlyLarge: return .xLarge
+        case .large:         return .xxLarge
+        case .largest:       return .xxxLarge
+        }
+    }
+
     static func nearest(to scale: CGFloat) -> FontSizeStep {
         allCases.min { abs($0.scale - scale) < abs($1.scale - scale) } ?? .standard
     }
@@ -108,9 +134,9 @@ final class AppearanceSettings {
         }
     }
 
-    /// 字号变化时自增。根视图用它做 `.id`，强制整棵树重建 —— 
-    /// SwiftUI 不会因为一个 static 常量变了就重算所有 body。
-    private(set) var generation: Int = 0
+    /// 🔴 2026-11-04：这里原来有个 `generation`，根视图拿它做 `.id(...)` 强制重建整棵树。
+    /// 结果是一拖滑块就整页重建、导航栈清空、弹回首页（主人报的 bug）。
+    /// 现在字号走 `dynamicTypeSize` 环境，**不需要重建**，这个字段已删除。
 
     private init() {
         // 初始化阶段不能读 `self.defaults`（存储属性还没全就位），先取一份局部变量
@@ -146,10 +172,8 @@ final class AppearanceSettings {
 
     /// 把倍率写进共享层，并让根视图重建一次。
     private func applyScale() {
-        // 跟随系统时先按「中号」占位；根视图会按当前 dynamicTypeSize 再算一次。
+        // 只落盘，不重建视图树 —— 界面靠 dynamicTypeSize 环境自己跟着变。
         let scale = followSystem ? Self.scale(for: .large) : step.scale
-        FontScale.value = scale
         defaults.set(Double(scale), forKey: Key.scale)
-        generation &+= 1
     }
 }

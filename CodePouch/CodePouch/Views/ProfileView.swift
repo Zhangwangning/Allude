@@ -550,7 +550,8 @@ struct SettingsView: View {
                     FontSizeView()
                 } label: {
                     SettingsRow(symbol: "textformat.size", title: "字体大小",
-                                detail: AppearanceSettings.shared.followSystem ? "跟随系统" : "标准",
+                                detail: AppearanceSettings.shared.followSystem
+                                    ? "跟随系统" : AppearanceSettings.shared.step.title,
                                 tint: AppTheme.sky)
                 }
                 .buttonStyle(.plain)

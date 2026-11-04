@@ -40,6 +40,13 @@ struct CodePouchApp: App {
         if let mode = env["APPEARANCE"].flatMap(AppearanceMode.init(rawValue:)) {
             AppearanceSettings.shared.mode = mode
         }
+        // 模拟"进二级页后再拖滑块"：延迟 3 秒改字号，用来验证不会把导航栈冲掉
+        if let raw = env["FONT_STEP_LATE"], let step = Int(raw), let value = FontSizeStep(rawValue: step) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                AppearanceSettings.shared.followSystem = false
+                AppearanceSettings.shared.step = value
+            }
+        }
         if let raw = env["FONT_STEP"], let step = Int(raw), let value = FontSizeStep(rawValue: step) {
             AppearanceSettings.shared.followSystem = false
             AppearanceSettings.shared.step = value

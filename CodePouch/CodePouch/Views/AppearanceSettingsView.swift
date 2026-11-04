@@ -30,19 +30,10 @@ struct AppearanceHost<Content: View>: View {
                 ProcessInfo.processInfo.environment["DARK"] == "1"
                 ? .dark : settings.mode.colorScheme
             )
-            .id(identity)
-            .onAppear { applyDynamicType(dynamicTypeSize) }
-            .onChange(of: dynamicTypeSize) { _, new in applyDynamicType(new) }
-    }
-
-    /// 外观或字号一变就换 id → 整棵树重建，`TypeScale` 的新倍率才会生效。
-    private var identity: String {
-        "\(settings.generation)-\(settings.followSystem ? String(describing: dynamicTypeSize) : "manual")"
-    }
-
-    private func applyDynamicType(_ size: DynamicTypeSize) {
-        guard settings.followSystem else { return }
-        FontScale.value = AppearanceSettings.scale(for: size)
+            // 字号通过 Dynamic Type 生效：只改环境值，**不会重建视图树**，
+            // 所以拖滑块时不会把导航栈清掉、弹回首页。
+            .environment(\.dynamicTypeSize,
+                         settings.followSystem ? dynamicTypeSize : settings.step.dynamicTypeSize)
     }
 }
 
@@ -132,9 +123,6 @@ struct FontSizeView: View {
                         .font(AppTheme.TypeScale.body)
                         .foregroundStyle(.primary)
 
-                    Text("如果在使用过程中存在问题或建议，可反馈给拾码。")
-                        .font(AppTheme.TypeScale.body)
-                        .foregroundStyle(.primary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(18)
@@ -163,7 +151,7 @@ struct FontSizeView: View {
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(.secondary)
                         Spacer()
-                        Text(settings.followSystem ? "跟随系统" : stepTitle)
+                        Text(settings.followSystem ? "跟随系统" : settings.step.title)
                             .font(AppTheme.TypeScale.note)
                             .foregroundStyle(.secondary)
                         Spacer()
@@ -185,7 +173,7 @@ struct FontSizeView: View {
                     .opacity(settings.followSystem ? 0.45 : 1)
 
                     HStack {
-                        Text(settings.followSystem ? "跟随系统字号" : "当前：\(stepTitle)")
+                        Text(settings.followSystem ? "跟随系统字号" : "当前：\(settings.step.title)")
                             .font(AppTheme.TypeScale.note)
                             .foregroundStyle(.secondary)
                         Spacer()
@@ -207,15 +195,4 @@ struct FontSizeView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private var stepTitle: String {
-        switch settings.step {
-        case .smallest:      return "最小"
-        case .small:         return "较小"
-        case .slightlySmall: return "偏小"
-        case .standard:      return "标准"
-        case .slightlyLarge: return "偏大"
-        case .large:         return "较大"
-        case .largest:       return "最大"
-        }
-    }
 }

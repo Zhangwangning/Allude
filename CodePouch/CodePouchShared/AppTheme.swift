@@ -85,29 +85,25 @@ enum AppTheme {
     //   行标题 17 · 行副标题 13 · 行尾值 17 · 正文/说明 15 · 分区标题 13 · 注解 12
     // 需要强调时**只加 weight，不加字号**。
     enum TypeScale {
-        /// 全局倍率：设置里的「字体大小」写它（见 `FontScale`）。
+        /// 🔴 2026-11-04 改为**文本样式**（.body / .subheadline …），不再写死点数。
         ///
-        /// 🔴 这里必须是 `var` + 计算属性，不能是 `static let`：
-        ///    字号要在运行时跟着设置变，常量的话改完设置整页不会动。
-        private static func scaled(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-            .system(size: (size * FontScale.value).rounded(), weight: weight)
-        }
-
-        /// 行标题、行尾值（与系统设置同尺寸）
-        static var rowTitle: Font { scaled(17) }
-        static var rowTitleMedium: Font { scaled(17, .medium) }
-        /// 行副标题
-        static var rowSubtitle: Font { scaled(13) }
-        /// 正文：教程步骤说明、卡片内长文（原来是 13，读着费劲）
-        static var body: Font { scaled(15) }
-        static var bodyMedium: Font { scaled(15, .medium) }
-        /// 分区标题
-        static var section: Font { scaled(13) }
-        /// 注解、页脚、卡片下方小字
-        static var note: Font { scaled(12) }
-        static var noteStrong: Font { scaled(12, .semibold) }
-        /// 徽章、角标这类极短标签
-        static var badge: Font { scaled(11, .semibold) }
+        /// 原因：设置里的「字体大小」要跟着系统字号体系走。
+        /// 写死 `.system(size: 17)` 的字体**不会随 Dynamic Type 缩放**，
+        /// 之前只能靠根视图 `.id(...)` 强制重建整棵树 —— 一拖滑块就整页重建，
+        /// 导航栈被清空、直接弹回首页（主人当场骂有病，确实是 bug）。
+        /// 换成样式后，字号由 `dynamicTypeSize` 环境驱动，改它不会重建视图树。
+        ///
+        /// 默认档位与原来的点数一一对应：body 17 / subheadline 15 / footnote 13 /
+        /// caption 12 / caption2 11。
+        static var rowTitle: Font { .system(.body) }
+        static var rowTitleMedium: Font { .system(.body, weight: .medium) }
+        static var rowSubtitle: Font { .system(.footnote) }
+        static var body: Font { .system(.subheadline) }
+        static var bodyMedium: Font { .system(.subheadline, weight: .medium) }
+        static var section: Font { .system(.footnote) }
+        static var note: Font { .system(.caption) }
+        static var noteStrong: Font { .system(.caption, weight: .semibold) }
+        static var badge: Font { .system(.caption2, weight: .semibold) }
     }
 
     // MARK: 付费面 · 香槟金（2026-10-31 主人定）
