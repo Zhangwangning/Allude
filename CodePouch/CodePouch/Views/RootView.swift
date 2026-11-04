@@ -63,6 +63,11 @@ struct RootView: View {
         .animation(.easeInOut(duration: 0.22), value: share.records?.first?.id)
         // 通知点击 → 切到这条记录所在的标签（待取 / 已取），
         // 具体打开详情由列表页消费同一个 `pendingRecordID`（2026-10-25）
+        // 没有具体记录的通知（每日提醒等）被点击 → 至少切回待取
+        .onChange(of: notificationRouter.shouldShowPendingTab) { _, show in
+            guard show else { return }
+            model.selection = .pending
+        }
         .onChange(of: notificationRouter.pendingRecordID) { _, id in
             guard let id,
                   let record = PickupStore.shared.records.first(where: { $0.id == id })

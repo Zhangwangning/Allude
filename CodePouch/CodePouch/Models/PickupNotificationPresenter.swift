@@ -43,8 +43,19 @@ final class PickupNotificationPresenter: NSObject, UNUserNotificationCenterDeleg
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                didReceive response: UNNotificationResponse) async {
         let info = response.notification.request.content.userInfo
-        guard let raw = info["recordID"] as? String,
-              let id = UUID(uuidString: raw) else { return }
-        await MainActor.run { NotificationRouter.shared.pendingRecordID = id }
+        let raw = info["recordID"] as? String
+
+        // 🔴 无论能不能定位到记录，都要让界面"有反应"：
+        //    之前 recordID 缺失就直接 return，用户体感就是"点了没反应"。
+        await MainActor.run {
+            if let raw, let id = UUID(uuidString: raw) {
+                NotificationRouter.shared.pendingRecordID = id
+                DiagnosticsLog.record("notify", "tapped record=\(id.uuidString.prefix(8))")
+            } else {
+                // 没有具体记录（比如每日提醒）→ 至少切回待取列表
+                NotificationRouter.shared.requestPendingTab()
+                DiagnosticsLog.record("notify", "tapped without recordID")
+            }
+        }
     }
 }

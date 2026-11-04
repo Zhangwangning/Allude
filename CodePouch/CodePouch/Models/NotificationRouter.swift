@@ -27,8 +27,15 @@ final class NotificationRouter: ObservableObject {
 
     /// 待消费的记录 id。列表页处理完必须置 nil。
     @Published var pendingRecordID: UUID?
+    /// 通知没有具体记录（例如每日提醒）时，也要把界面切回「待取」
+    @Published var shouldShowPendingTab = false
 
     private init() {}
+
+    /// 没有具体记录的通知被点击 → 请求切到待取标签
+    func requestPendingTab() {
+        shouldShowPendingTab = true
+    }
 
     /// 冷启动时 delegate 已经把 id 存下了，视图首帧就该消费它
     func takePendingRecordID() -> UUID? {

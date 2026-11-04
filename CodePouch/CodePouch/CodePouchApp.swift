@@ -1,8 +1,12 @@
 import ActivityKit
 import SwiftUI
+import UserNotifications
 
 @main
 struct CodePouchApp: App {
+    /// 通知点击的 delegate 要在启动最早期就位（见 AppDelegate 注释）
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     /// 全局唯一实例：与 App Intent（快捷指令调用）共用同一份数据
     @StateObject private var store = PickupStore.shared
 
@@ -79,6 +83,22 @@ struct CodePouchApp: App {
            UIApplication.shared.alternateIconName != AppIconStore.current.alternateName {
             let name = AppIconStore.current.alternateName
             UIApplication.shared.setAlternateIconName(name) { _ in }
+        }
+
+        // 通知点击的验证脚手架：PUSH_TEST=1 → 5 秒后发一条带 recordID 的本地通知，
+        // 退到桌面点它，看 App 是否打开并跳到对应记录（日志里有 [notify] tapped）。
+        if environment["PUSH_TEST"] == "1" {
+            let content = UNMutableNotificationContent()
+            content.title = "拾码测试通知"
+            content.body = "点我：应该打开拾码并跳到这条取件记录。"
+            content.sound = .default
+            if let record = PickupStore.shared.records.first {
+                content.userInfo = ["recordID": record.id.uuidString]
+            }
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+            UNUserNotificationCenter.current().add(
+                UNNotificationRequest(identifier: "codeclip.pushTest",
+                                      content: content, trigger: trigger))
         }
 
         // 签名到期提醒（没有描述文件的 App Store 版内部会直接返回）
