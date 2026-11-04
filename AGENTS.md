@@ -641,6 +641,31 @@ python3 tools/license-gen/issue-openssl.py --check "<凭证>"
 验收：`xcrun simctl launch ... -AppleLanguages "(zh-Hant)" -AppleLocale zh_TW`
 （`-AppleLanguages` 要放在 bundle id 之后，作为 App 参数传入）。
 
+## 快捷指令自动化（2026-11-05）
+
+设置 › 快捷指令自动化：把「收到短信 → 添加到拾码」的自动化导进系统。
+
+**能力边界（都是实测结论，别再重试）**：
+
+- 导出/导入的 `.shortcut` 文件**带触发器**（`WFWorkflowTriggers` = WFMessageTrigger
+  +「信息 包含 关键词」），所以整条自动化可以导入；导入后**默认关闭**，
+  必须用户自己去「快捷指令 › 自动化」打开开关。
+- **未签名文件导入失败** → 必须 `shortcuts sign` 签名；签名只能在 Mac 上做，
+  App 里无法当场生成自定义关键词的文件。
+- **`WFWorkflowImportQuestions` 对触发器不生效**（B1/B2 两种 Category 都试过，
+  能添加但不弹输入框）→ 自定义关键词这条路关闭，只能预定几个词。
+- `shortcuts sign` 会**剥掉 `WFWorkflowName`** → 导入后的名称只能靠**文件名**，
+  所以文件名必须是「快递取件码拾码解析「关键词」.shortcut」。
+- 🔴 生成脚本要**同时**写名称、关键词、UUID：2026-11-05 曾漏了关键词赋值，
+  四个文件全是「【」，导致主人分享出去的三条链接全是错的（下载回来验过才发现）。
+
+**关键词与通知**：`【` 是默认推荐，`取 / 快递 / 包裹` 收进「可选关键词」。
+理由：每多一条自动化就多一条系统「自动化已运行」通知，而 **iOS 27.2 起这条通知
+已无法关闭**（此前可在「设置 › 屏幕时间」里关），所以默认只推一条。
+
+**iCloud 链接**：四条都已填入 `ShortcutAutomation.icloudLinks`，
+每条都下载回来验过「名称 + 触发关键词 + 动作」三者一致。
+
 ## 提交规范
 
 署名 `极客ZHANG <zhang_wangning@126.com>`。提交信息用中文，

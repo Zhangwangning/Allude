@@ -153,7 +153,7 @@ struct AutoRecordSettingsView: View {
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text("每多一条自动化，iOS 就会多一条「自动化已运行」的系统通知——这是系统的，App 关不掉。想少一点，可以少加关键词，或在系统设置里关掉「快捷指令」的通知。")
+            Text("每多一条自动化，iOS 就会多一条「自动化已运行」的系统通知。iOS 27.2 起这条通知已经无法关闭（旧系统还能去「设置 › 屏幕时间」关掉），所以关键词加得越多、通知越频繁——只加「【」通常就够。")
                 .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.secondary)
                 .lineSpacing(3)
