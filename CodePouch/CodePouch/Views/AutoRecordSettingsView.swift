@@ -63,31 +63,46 @@ struct AutoRecordSettingsView: View {
     // MARK: 关键词列表
 
     private var keywordsCard: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(ShortcutAutomation.presets.enumerated()), id: \.element.id) { index, preset in
-                HStack(spacing: 12) {
-                    Text("信息 包含「\(preset.keyword)」")
-                        .font(AppTheme.TypeScale.rowTitle)
-                    if preset.recommended {
-                        Text("推荐")
-                            .font(AppTheme.TypeScale.badge)
-                            .foregroundStyle(AppTheme.accent)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Capsule().fill(AppTheme.accent.opacity(0.12)))
-                    }
-                    Spacer(minLength: 8)
-                    addMenu(preset)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(spacing: 0) {
+                keywordRow(ShortcutAutomation.presets[0], showsDivider: false)
+            }
+            .cardSurface()
 
-                if index < ShortcutAutomation.presets.count - 1 {
-                    SettingsDivider()
+            Text("可选关键词")
+                .font(AppTheme.TypeScale.section)
+                .foregroundStyle(.secondary)
+                .padding(.leading, 4)
+
+            VStack(spacing: 0) {
+                ForEach(Array(ShortcutAutomation.presets.dropFirst().enumerated()), id: \.element.id) { index, preset in
+                    keywordRow(preset, showsDivider: index < ShortcutAutomation.presets.count - 2)
                 }
             }
+            .cardSurface()
         }
-        .cardSurface()
+    }
+
+    @ViewBuilder
+    private func keywordRow(_ preset: ShortcutAutomation.Preset, showsDivider: Bool) -> some View {
+        HStack(spacing: 12) {
+            Text("信息 包含「\(preset.keyword)」")
+                .font(AppTheme.TypeScale.rowTitle)
+            if preset.recommended {
+                Text("推荐")
+                    .font(AppTheme.TypeScale.badge)
+                    .foregroundStyle(AppTheme.accent)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(AppTheme.accent.opacity(0.12)))
+            }
+            Spacer(minLength: 8)
+            addMenu(preset)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+
+        if showsDivider { SettingsDivider() }
     }
 
     /// 右侧「添加」：点开是弹出菜单（iCloud 链接 / 文件）
@@ -132,7 +147,13 @@ struct AutoRecordSettingsView: View {
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text("关键词可以多加几个，互不冲突。四个都加上最稳，能覆盖没有【的短信。")
+            Text("默认加「【」就够了。只有当你的快递短信里确实没有【时，再加下面的可选关键词。")
+                .font(AppTheme.TypeScale.note)
+                .foregroundStyle(.secondary)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("每多一条自动化，iOS 就会多一条「自动化已运行」的系统通知——这是系统的，App 关不掉。想少一点，可以少加关键词，或在系统设置里关掉「快捷指令」的通知。")
                 .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.secondary)
                 .lineSpacing(3)
