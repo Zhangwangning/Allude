@@ -323,7 +323,7 @@ struct SettingsView: View {
                         .listRowSeparator(.hidden)
                 }
             } header: {
-                Text(title)
+                Text(title.L)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .textCase(nil)
@@ -337,7 +337,7 @@ struct SettingsView: View {
         HStack(spacing: 10) {
             SettingsGlyph(symbol: item.symbol, tint: item.tint, size: 26)
 
-            Text(item.title)
+            Text(item.title.L)
                 .font(.system(size: 15))
                 .foregroundStyle(.primary)
 
@@ -802,7 +802,7 @@ struct SettingsView: View {
                 Text("邮件 App 不可用，已复制邮箱到剪贴板：")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                Text(FeedbackModel.mail)
+                Text(FeedbackModel.mail.L)
                     .font(.footnote.weight(.semibold).monospaced())
                     .foregroundStyle(AppTheme.accent)
             }
@@ -988,7 +988,7 @@ struct FullVersionView: View {
                 finePrint
 
                 if let message = purchase.message, !purchase.isOwned {
-                    Text(message)
+                    Text(message.L)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -1069,7 +1069,7 @@ struct FullVersionView: View {
             withAnimation(.snappy(duration: 0.2)) { selected = plan }
         } label: {
             VStack(spacing: 6) {
-                Text(plan.title)
+                Text(plan.title.L)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
 
@@ -1080,7 +1080,7 @@ struct FullVersionView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.55)
 
-                Text(plan.shortPeriod)
+                Text(plan.shortPeriod.L)
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
@@ -1150,9 +1150,9 @@ struct FullVersionView: View {
             SettingsGlyph(symbol: symbol, tint: AppTheme.champagneIcon, size: 26)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(title.L)
                     .font(.system(size: 15, weight: .semibold))
-                Text(note)
+                Text(note.L)
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1170,7 +1170,7 @@ struct FullVersionView: View {
         Button {
             Task { await purchase.purchase(selected) }
         } label: {
-            Text(primaryTitle)
+            Text(primaryTitle.L)
                 .font(.system(size: 15, weight: .semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 13)

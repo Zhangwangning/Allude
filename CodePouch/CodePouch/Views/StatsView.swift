@@ -25,11 +25,11 @@ struct StatCard<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(title)
+                Text(title.L)
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.secondary)
                 if let note {
-                    Text(note)
+                    Text(note.L)
                         .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
                 }
@@ -78,7 +78,7 @@ struct StatTriple: View {
 
     private func cell(_ item: Item) -> some View {
         VStack(spacing: 3) {
-            Text(item.value)
+            Text(item.value.L)
                 .font(.system(size: 22, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .lineLimit(1)
@@ -88,7 +88,7 @@ struct StatTriple: View {
             HStack(spacing: 3) {
                 Image(systemName: item.symbol)
                     .font(.system(size: 9, weight: .medium))
-                Text(item.title)
+                Text(item.title.L)
                     .font(.system(size: 10.5, weight: .medium))
             }
             .foregroundStyle(Color.secondary)
@@ -116,7 +116,7 @@ struct DailyBarChart: View {
                         .fill(fill(for: point))
                         .frame(height: height(for: point))
 
-                    Text(point.axisLabel)
+                    Text(point.axisLabel.L)
                         .font(.system(size: 9, weight: point.isToday ? .bold : .regular))
                         .foregroundStyle(point.isToday ? AppTheme.accent : Color.secondary)
                         .lineLimit(1)
@@ -207,7 +207,7 @@ struct CompanyRow: View {
             HStack(spacing: 10) {
                 CourierLogo(company: point.name, size: 22)
 
-                Text(point.name)
+                Text(point.name.L)
                     .font(.system(size: 14, weight: .medium))
                     .lineLimit(1)
 
@@ -226,7 +226,7 @@ struct CompanyRow: View {
             HStack(spacing: 8) {
                 RatioBar(ratio: ratio, tint: point.tint)
 
-                Text(percentText)
+                Text(percentText.L)
                     .font(.system(size: 10))
                     .monospacedDigit()
                     .foregroundStyle(.tertiary)

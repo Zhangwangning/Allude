@@ -333,9 +333,9 @@ private struct OnboardingPage<Points: View>: View {
             }
 
             VStack(spacing: 8) {
-                Text(title)
+                Text(title.L)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
-                Text(subtitle)
+                Text(subtitle.L)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -369,9 +369,9 @@ private struct OnboardingPoint: View {
                 .frame(width: 26)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(title.L)
                     .font(.system(size: 15, weight: .semibold))
-                Text(detail)
+                Text(detail.L)
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
                     .lineSpacing(2)

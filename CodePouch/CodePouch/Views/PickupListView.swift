@@ -835,7 +835,7 @@ struct PickupListView: View {
                     .font(.system(size: 15))
                     .foregroundStyle(AppTheme.doneTint)
 
-                Text(message)
+                Text(message.L)
                     .font(.subheadline)
                     .lineLimit(1)
 
@@ -1184,7 +1184,7 @@ struct PendingStatsCard: View {
             Image(systemName: symbol)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(tint)
-            Text(title)
+            Text(title.L)
                 .font(.system(size: 11.5, weight: .medium))
                 .foregroundStyle(.secondary)
             Text("\(value)")
@@ -1253,7 +1253,7 @@ struct PickupCard: View {
                     // 行 1：主名（快递公司 > 驿站 > 平台）+「| 取件平台」+ 入库时长
                     // （2026-10-14 主人定稿：删类别标签；图标从地址行首挪到主名行首）
                     HStack(spacing: 6) {
-                        Text(titlePrimary)
+                        Text(titlePrimary.L)
                             .font(.system(size: 15.5, weight: .semibold))
                             .lineLimit(1)
                             .foregroundStyle(isDone ? .secondary : .primary)
@@ -1262,7 +1262,7 @@ struct PickupCard: View {
                             Text("|")
                                 .font(.system(size: 13))
                                 .foregroundStyle(Color.secondary.opacity(0.45))
-                            Text(secondary)
+                            Text(secondary.L)
                                 .font(.system(size: 13))
                                 .lineLimit(1)
                                 .foregroundStyle(isDone ? .tertiary : .secondary)
@@ -1272,7 +1272,7 @@ struct PickupCard: View {
                         // 与行 2 的货架胶囊同规格（10.5pt semibold / 圆角 999）。
                         // fixedSize 保证它永不被主名或驿站名挤压变形。
                         if let lockerName {
-                            Text(lockerName)
+                            Text(lockerName.L)
                                 .font(.system(size: 10.5, weight: .semibold))
                                 .foregroundStyle(brand)
                                 .lineLimit(1)
@@ -1286,7 +1286,7 @@ struct PickupCard: View {
 
                         // 入库日期时间（2026-10-20 主人定：所有入库时间统一为日期时间格式，
                         // 不再用相对时长「已入库5天1小时40分」）
-                        Text(record.shortTime)
+                        Text(record.shortTime.L)
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                             .lineLimit(1)
@@ -1297,7 +1297,7 @@ struct PickupCard: View {
                     // 行 2：取件地址 + 货架号标签（图标已上移行 1，不再重复）
                     if !addressLine.isEmpty || record.shelf?.isEmpty == false {
                         HStack(spacing: 6) {
-                            Text(addressLine)
+                            Text(addressLine.L)
                                 .font(.system(size: 12.5))
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
@@ -1439,9 +1439,9 @@ struct EmptyStateView: View {
             }
 
             VStack(spacing: 7) {
-                Text(title)
+                Text(title.L)
                     .font(.headline)
-                Text(hint)
+                Text(hint.L)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

@@ -572,7 +572,7 @@ struct StatsTabView: View {
                 }
 
                 if let trend = weekOverWeekText {
-                    Text(trend)
+                    Text(trend.L)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -596,12 +596,12 @@ struct StatsTabView: View {
 
     private func summary(_ title: String, _ value: String) -> some View {
         VStack(spacing: 3) {
-            Text(value)
+            Text(value.L)
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-            Text(title)
+            Text(title.L)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }
@@ -617,7 +617,7 @@ struct StatsTabView: View {
                     Image(systemName: "clock.badge.checkmark")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(AppTheme.accent)
-                    Text(peakText)
+                    Text(peakText.L)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -735,7 +735,7 @@ struct HistoryRow: View {
         VStack(alignment: .leading, spacing: 0) {
                     // 行 1：主名（快递公司 > 驿站 > 平台）+「| 取件平台」+ 时间
                     HStack(spacing: 6) {
-                        Text(titlePrimary)
+                        Text(titlePrimary.L)
                             .font(.system(size: 15.5, weight: .semibold))
                             .lineLimit(1)
                             .foregroundStyle(record.isPickedUp ? .secondary : .primary)
@@ -744,7 +744,7 @@ struct HistoryRow: View {
                             Text("|")
                                 .font(.system(size: 13))
                                 .foregroundStyle(Color.secondary.opacity(0.45))
-                            Text(secondary)
+                            Text(secondary.L)
                                 .font(.system(size: 13))
                                 .lineLimit(1)
                                 .foregroundStyle(record.isPickedUp ? .tertiary : .secondary)
@@ -752,7 +752,7 @@ struct HistoryRow: View {
 
                         // 快递柜标签（2026-10-28 主人定）：紧跟快递驿站，胶囊样式
                         if let lockerName {
-                            Text(lockerName)
+                            Text(lockerName.L)
                                 .font(.system(size: 10.5, weight: .semibold))
                                 .foregroundStyle(brand)
                                 .lineLimit(1)
@@ -766,7 +766,7 @@ struct HistoryRow: View {
 
                         // 入库日期时间（2026-10-20 主人定：所有入库时间统一为日期时间格式；
                         // 由原来的 clockTime「HH:mm」升为 shortTime「M月d日 HH:mm」，跨天可辨）
-                        Text(record.shortTime)
+                        Text(record.shortTime.L)
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                             .monospacedDigit()
@@ -778,7 +778,7 @@ struct HistoryRow: View {
                     // 行 2：取件地址（图标已上移行 1，不再重复）
                     if !addressLine.isEmpty {
                         HStack(spacing: 6) {
-                            Text(addressLine)
+                            Text(addressLine.L)
                                 .font(.system(size: 12.5))
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)

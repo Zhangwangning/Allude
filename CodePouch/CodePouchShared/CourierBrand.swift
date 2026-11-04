@@ -717,7 +717,7 @@ struct CourierLogo: View {
                 .foregroundStyle(.white)
 
         case let .mark(text):
-            Text(text)
+            Text(text.L)
                 .font(.system(size: markFontSize(for: text), weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
                 .lineLimit(1)

@@ -280,7 +280,7 @@ struct CourierGalleryView: View {
                             Image(systemName: category.symbol)
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(AppTheme.accent)
-                            Text(category.rawValue)
+                            Text(category.rawValue.L)
                                 .font(.footnote.weight(.semibold))
                             // 驿站分类把自定义格子数并进去（网格里实际有多少格就显示多少）
                             Text(category == .station
@@ -379,7 +379,7 @@ struct CourierGalleryView: View {
     private func brandCell(_ item: CourierBrand.Info) -> some View {
         VStack(spacing: 7) {
             CourierLogo(info: item, size: 54, showsShadow: false)
-            Text(item.name)
+            Text(item.name.L)
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
@@ -426,7 +426,7 @@ struct CourierGalleryView: View {
         } label: {
             VStack(spacing: 7) {
                 StationLogo(name: name, size: 54, showsShadow: false)
-                Text(name)
+                Text(name.L)
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
@@ -523,11 +523,11 @@ struct SectionHeader: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(tint)
             }
-            Text(title)
+            Text(title.L)
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(.secondary)
             if let trailing {
-                Text(trailing)
+                Text(trailing.L)
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
@@ -570,7 +570,7 @@ struct UndoToast: View {
                 .font(.system(size: 16))
                 .foregroundStyle(AppTheme.doneTint)
 
-            Text(message)
+            Text(message.L)
                 .font(.subheadline)
 
             Spacer(minLength: 8)

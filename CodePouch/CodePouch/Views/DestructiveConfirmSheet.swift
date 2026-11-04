@@ -74,7 +74,7 @@ struct DestructiveConfirmDialog: View {
 
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(title)
+                    Text(title.L)
                         .font(.system(size: 17, weight: .semibold))
 
                     Text("\(message)请输入【\(code)】来执行此次操作")
@@ -128,7 +128,7 @@ struct DestructiveConfirmDialog: View {
                         onConfirm()
                         isPresented = false
                     } label: {
-                        Text(confirmLabel)
+                        Text(confirmLabel.L)
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(.red)
                             .frame(maxWidth: .infinity)

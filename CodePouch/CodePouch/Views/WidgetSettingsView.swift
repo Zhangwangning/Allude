@@ -169,11 +169,11 @@ struct WidgetSettingsView: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(field.title)
+                Text(field.title.L)
                     .font(.system(size: 16, weight: field == .complete ? .semibold : .regular))
                     .foregroundStyle(.primary)
 
-                Text(field.subtitle)
+                Text(field.subtitle.L)
                     .font(.system(size: 12))
                     .foregroundStyle(.tertiary)
                     .fixedSize(horizontal: false, vertical: true)

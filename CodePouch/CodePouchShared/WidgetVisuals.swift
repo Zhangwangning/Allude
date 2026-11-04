@@ -405,7 +405,7 @@ struct WidgetPickupRow: View {
                     // 柜位 / 货架（2026-10-27 主人）：有就显示，没有就空着。
                     // 它是到柜那一刻要用的信息，紧跟取件码最省眼动。
                     if let spot = record.widgetLockerLabel(options) {
-                        Text(spot)
+                        Text(spot.L)
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -420,7 +420,7 @@ struct WidgetPickupRow: View {
                 // 第二行：按显示设置拼（可能是「平台｜地址」「只有平台」「整行不画」）。
                 // 取件码那行不动 —— 它不参与配置。
                 if let subtitle = record.widgetSubtitle(options) {
-                    Text(subtitle)
+                    Text(subtitle.L)
                         .font(.system(size: 10.5))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -430,7 +430,7 @@ struct WidgetPickupRow: View {
 
             Spacer(minLength: 4)
 
-            Text(record.clockTime)
+            Text(record.clockTime.L)
                 .font(.system(size: 10))
                 .monospacedDigit()
                 .foregroundStyle(.tertiary)

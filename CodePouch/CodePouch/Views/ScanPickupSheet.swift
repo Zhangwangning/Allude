@@ -275,10 +275,10 @@ struct ScanPickupSheet: View {
 
             IconBadge(symbol: symbol, tint: tint, size: 56)
 
-            Text(title)
+            Text(title.L)
                 .font(.headline)
 
-            Text(detail)
+            Text(detail.L)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -338,7 +338,7 @@ struct ScanPickupSheet: View {
                         .foregroundStyle(.secondary)
                 }
             } else if let error = model.errorMessage {
-                Text(error)
+                Text(error.L)
                     .font(.footnote)
                     .foregroundStyle(AppTheme.pendingTint)
                     .padding(.horizontal, 30)
@@ -363,7 +363,7 @@ struct ScanPickupSheet: View {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 12))
                                 .foregroundStyle(AppTheme.doneTint)
-                            Text(resultSummary)
+                            Text(resultSummary.L)
                                 .font(.footnote.weight(.semibold))
                                 .foregroundStyle(.secondary)
                             Spacer(minLength: 0)
@@ -489,7 +489,7 @@ struct ScanPickupSheet: View {
     private func primaryButton(title: String, tint: Color,
                                action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(title)
+            Text(title.L)
                 .font(.system(size: 16, weight: .semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
@@ -696,7 +696,7 @@ struct EditableParseCard: View {
     }
 
     private func rowLabel(_ text: String) -> some View {
-        Text(text)
+        Text(text.L)
             .font(.system(size: 12))
             .foregroundStyle(.tertiary)
             .frame(width: 40, alignment: .leading)

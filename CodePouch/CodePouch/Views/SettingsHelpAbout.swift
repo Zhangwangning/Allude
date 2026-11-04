@@ -236,7 +236,7 @@ struct AboutView: View {
             Text("拾码 CodePouch")
                 .font(AppTheme.TypeScale.rowTitle.weight(.semibold))
 
-            Text(AppVersion.display)
+            Text(AppVersion.display.L)
                 .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.tertiary)
         }

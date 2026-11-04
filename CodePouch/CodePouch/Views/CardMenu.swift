@@ -354,7 +354,7 @@ struct CardMenuRowContent: View {
                 .font(.system(size: 15, weight: .medium))
                 .frame(width: 20)
 
-            Text(title)
+            Text(title.L)
                 .font(.system(size: 15))
                 .lineLimit(1)
 

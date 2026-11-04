@@ -78,7 +78,7 @@ struct StatementView: View {
 
     private func section(title: String, body: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
+            Text(title.L)
                 .font(AppTheme.TypeScale.rowSubtitle.weight(.semibold))
                 .foregroundStyle(.secondary)
 

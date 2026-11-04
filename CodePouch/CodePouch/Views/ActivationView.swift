@@ -155,7 +155,7 @@ struct ActivationView: View {
                 // 2026-10-31 主人：凭证有 7 天 / 30 天 / 180 天 / 一年 / 永久五档，
                 // 所以这里必须能看出"还剩多久"，只写"已解锁"用户不知道什么时候到期。
                 SettingsPlainRow(title: "有效期") {
-                    Text(validityText)
+                    Text(validityText.L)
                         .font(AppTheme.TypeScale.body)
                         .foregroundStyle(validityIsUrgent ? AppTheme.pendingTint : .secondary)
                         .fixedSize()
@@ -164,7 +164,7 @@ struct ActivationView: View {
             .cardSurface()
 
             if let result = model.result {
-                Text(result)
+                Text(result.L)
                     .font(AppTheme.TypeScale.rowSubtitle)
                     .foregroundStyle(model.isError ? AppTheme.todayTint : AppTheme.doneTint)
                     .fixedSize(horizontal: false, vertical: true)

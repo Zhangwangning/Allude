@@ -246,7 +246,7 @@ struct AddPickupSheet: View {
             IconBadge(symbol: symbol, tint: tint, size: 34)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
+                Text(title.L)
                     .font(.subheadline.weight(.semibold))
                 Text(detail.richText)
                     .font(.caption)
@@ -269,7 +269,7 @@ struct AddPickupSheet: View {
                 .foregroundStyle(AppTheme.doneTint)
                 .padding(.top, 36)
 
-            Text(message)
+            Text(message.L)
                 .font(.subheadline.weight(.medium))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
@@ -377,7 +377,7 @@ struct ParsePreviewCard: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text(naming.primary)
+                        Text(naming.primary.L)
                             .font(.system(size: 15, weight: .semibold))
                             .lineLimit(1)
                         if let secondary = naming.secondary {
@@ -391,7 +391,7 @@ struct ParsePreviewCard: View {
 
                 Spacer(minLength: 8)
 
-                Text(parsed.value)
+                Text(parsed.value.L)
                     .font(.system(size: 26, weight: .bold, design: .rounded))
                     .monospaced()
                     .lineLimit(1)
@@ -416,12 +416,12 @@ struct ParsePreviewCard: View {
     private func field(label: String, value: String,
                        mono: Bool, tint: Color) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            Text(label)
+            Text(label.L)
                 .font(.system(size: 12))
                 .foregroundStyle(.tertiary)
                 .frame(width: 58, alignment: .leading)
 
-            Text(value)
+            Text(value.L)
                 .font(.system(size: 13, weight: mono ? .semibold : .regular,
                               design: mono ? .rounded : .default))
                 .monospaced(mono)

@@ -306,7 +306,7 @@ struct VersionHistoryView: View {
     private func entryCard(_ entry: Entry) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(entry.version)
+                Text(entry.version.L)
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundStyle(entry.isCurrent ? AppTheme.accent : .primary)
 
@@ -321,13 +321,13 @@ struct VersionHistoryView: View {
 
                 Spacer(minLength: 8)
 
-                Text(entry.date)
+                Text(entry.date.L)
                     .font(.system(size: 12, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.tertiary)
             }
 
-            Text(entry.theme)
+            Text(entry.theme.L)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.secondary)
 
@@ -339,7 +339,7 @@ struct VersionHistoryView: View {
                             .frame(width: 4, height: 4)
                             .padding(.top, 6)
 
-                        Text(item)
+                        Text(item.L)
                             .font(.system(size: 13))
                             .foregroundStyle(.primary.opacity(0.82))
                             .lineSpacing(3)

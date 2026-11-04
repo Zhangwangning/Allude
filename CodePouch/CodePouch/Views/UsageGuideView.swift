@@ -227,7 +227,7 @@ struct UsageGuideView: View {
 
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 6) {
-                            Text(step.title)
+                            Text(step.title.L)
                                 .font(AppTheme.TypeScale.bodyMedium)
 
                             if step.isKey {
@@ -265,7 +265,7 @@ struct UsageGuideView: View {
                 Image(systemName: symbol)
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(tint)
-                Text(title)
+                Text(title.L)
                     .font(AppTheme.TypeScale.body.weight(.semibold))
                 Spacer()
             }

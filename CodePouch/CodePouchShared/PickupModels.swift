@@ -429,14 +429,14 @@ enum PickupCodeEmphasis {
                      headOpacity: Double = 0.45) -> Text {
         let tailColor = isDone ? Color.secondary : tint
         guard code.count > 4 else {
-            return Text(code).foregroundColor(tailColor)
+            return Text(code.L).foregroundColor(tailColor)
         }
         var attributed = AttributedString(code)
         attributed.foregroundColor = tailColor          // 默认整串 = 末四位色
         if let range = attributed.range(of: head(code)) {
             attributed[range].foregroundColor = isDone ? Color.secondary : tint.opacity(headOpacity)
         }
-        return Text(attributed)
+        return Text(attributed)   // AttributedString，不查表
     }
 }
 

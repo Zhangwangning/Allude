@@ -234,7 +234,7 @@ struct SwipeActionRow<Content: View>: View {
                 .animation(.interactiveSpring(response: 0.16, dampingFraction: 0.78),
                            value: stretch)
 
-                Text(item.title)
+                Text(item.title.L)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(item.tint)
                     .lineLimit(1)

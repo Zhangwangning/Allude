@@ -61,10 +61,10 @@ struct AppearanceSettingsView: View {
                         } label: {
                             HStack(spacing: 12) {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(mode.title)
+                                    Text(mode.title.L)
                                         .font(AppTheme.TypeScale.rowTitle)
                                         .foregroundStyle(.primary)
-                                    Text(mode.detail)
+                                    Text(mode.detail.L)
                                         .font(AppTheme.TypeScale.rowSubtitle)
                                         .foregroundStyle(.secondary)
                                 }
@@ -118,7 +118,7 @@ struct FontSizeView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Spacer(minLength: 0)
-                        Text(sampleTitle)
+                        Text(sampleTitle.L)
                             .font(AppTheme.TypeScale.rowSubtitle.weight(.medium))
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 12)
@@ -128,7 +128,7 @@ struct FontSizeView: View {
                             )
                     }
 
-                    Text(sampleBody)
+                    Text(sampleBody.L)
                         .font(AppTheme.TypeScale.body)
                         .foregroundStyle(.primary)
 

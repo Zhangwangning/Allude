@@ -493,7 +493,7 @@ struct ActivityPreviewGallery: View {
         VStack(alignment: .leading, spacing: 12) {
             // 标题/说明**瞬时替换**：它们跟着过渡交叉淡入的话，两个不同的句子
             // 会在中途叠印（慢放时看得很清楚）。机模要连贯、文字要干断。
-            Text(currentPageTitle)
+            Text(currentPageTitle.L)
                 .font(.headline)
                 .transaction { $0.animation = nil }
 
@@ -502,7 +502,7 @@ struct ActivityPreviewGallery: View {
             pagePicker
                 .frame(maxWidth: .infinity)
 
-            Text(currentPageNote)
+            Text(currentPageNote.L)
                 .font(.caption)
                 .transaction { $0.animation = nil }
                 .foregroundStyle(.secondary)
@@ -759,7 +759,7 @@ struct ActivityPreviewGallery: View {
                 Button {
                     withAnimation(.smooth(duration: transitionDuration)) { previewPage = index }
                 } label: {
-                    Text(page.title)
+                    Text(page.title.L)
                         .font(.system(size: 13, weight: on ? .semibold : .regular))
                         .foregroundStyle(on ? Color.white : Color.primary)
                         .lineLimit(1)
@@ -812,9 +812,9 @@ struct ActivityPreviewGallery: View {
 
     private func label(_ title: String, note: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title)
+            Text(title.L)
                 .font(.headline)
-            Text(note)
+            Text(note.L)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

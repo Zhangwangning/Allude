@@ -213,7 +213,7 @@ struct ActivityLockScreenCard: View {
                     //   ② 二者只有**一个**时不要管道符：`displayName` 取快递公司，
                     //      `platformSuffix` 仅在「公司 ≠ 平台」时才有值，
                     //      所以没有平台时这段整块不渲染，不会留下孤立的「|」。
-                    Text(state.item.displayName)
+                    Text(state.item.displayName.L)
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(.white)
                         .shadow(color: inkShadow, radius: 2, x: 0, y: 0.5)
@@ -252,7 +252,7 @@ struct ActivityLockScreenCard: View {
                         .shadow(color: inkShadow, radius: 2.5, x: 0, y: 0.5)
 
                     if let locker = state.item.locker, !locker.isEmpty {
-                        Text(locker)
+                        Text(locker.L)
                             .font(.system(size: 13, weight: .medium))
                             .lineLimit(1)
                             .foregroundStyle(secondaryInk)
@@ -265,7 +265,7 @@ struct ActivityLockScreenCard: View {
                 .padding(.top, 6)
 
                 if !state.item.address.isEmpty {
-                    Text(state.item.address)
+                    Text(state.item.address.L)
                         .font(.system(size: 12))
                         .foregroundStyle(secondaryInk)
                         .lineLimit(1)
@@ -418,7 +418,7 @@ struct IslandCompactTrailing: View {
             //    `.frame(maxWidth: .infinity)` 撑的是**内容**宽度、不是区域宽度，
             //    所以数字会贴着图标一侧。用 GeometryReader 拿到区域真实尺寸再居中。
             GeometryReader { proxy in
-                Text(cappedCount)
+                Text(cappedCount.L)
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(islandPrimary)
@@ -624,7 +624,7 @@ struct IslandExpandedLeading: View {
             CourierLogo(company: state.item.displayName, size: 18)
                 .fixedSize()
 
-            Text(state.item.displayName)
+            Text(state.item.displayName.L)
                 .font(.system(size: 13, weight: .semibold))
                 .lineLimit(1)
                 .truncationMode(.tail)
@@ -679,7 +679,7 @@ struct IslandExpandedBottom: View {
 
                 // 柜位跟在码后面（与小组件同一口径）：到柜那一刻要用的信息。
                 if let locker = state.item.locker, !locker.isEmpty {
-                    Text(locker)
+                    Text(locker.L)
                         .font(.system(size: 11, weight: .medium))
                         .lineLimit(1)
                         .foregroundStyle(islandSecondary)
@@ -694,7 +694,7 @@ struct IslandExpandedBottom: View {
             //    而上面的取件码是数字（字形左侧有 side bearing）——
             //    不补这 2.5pt，地址会比码凸出来一点，三行看着不齐。
             if !state.item.address.isEmpty {
-                Text(state.item.address)
+                Text(state.item.address.L)
                     // 12pt 用 semibold 会显得比 21pt 的码还"重"，
                     // 系统在这么小的字号上一律用 regular/medium。
                     .font(.system(size: 12, weight: .medium))

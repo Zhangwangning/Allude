@@ -297,7 +297,7 @@ struct WidgetGalleryContent: View {
     private func block<Content: View>(title: String,
                                       @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title)
+            Text(title.L)
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(.secondary)
             content()

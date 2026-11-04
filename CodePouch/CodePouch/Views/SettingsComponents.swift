@@ -209,7 +209,7 @@ struct SettingsCard<Content: View>: View {
                 .cardSurface()
 
             if let note {
-                Text(note)
+                Text(note.L)
                     .font(AppTheme.TypeScale.rowSubtitle)
                     .foregroundStyle(.secondary)
                     .lineSpacing(2)
@@ -272,7 +272,7 @@ struct SettingsValueLabel: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            Text(text)
+            Text(text.L)
                 .font(AppTheme.TypeScale.rowTitle)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)

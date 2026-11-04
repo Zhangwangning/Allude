@@ -261,7 +261,7 @@ struct RecordDetailView: View {
                     CourierLogo(company: titleIconSource, size: 26)
                 }
 
-                Text(titlePrimary)
+                Text(titlePrimary.L)
                     .font(.system(size: 16, weight: .semibold))
                     .lineLimit(1)
                     // 取色与列表卡主名同口径：主名一律 .primary（强调色只给图标与取件码）
@@ -272,7 +272,7 @@ struct RecordDetailView: View {
                     Text("|")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
-                    Text(secondary)
+                    Text(secondary.L)
                         .font(.system(size: 13))
                         .foregroundStyle(record.isPickedUp ? .tertiary : .secondary)
                         .lineLimit(1)
@@ -281,7 +281,7 @@ struct RecordDetailView: View {
                 // 快递柜标签（2026-10-28 与列表卡同款）：紧跟第二段，胶囊样式，
                 // 规格与行 1.5 的货架胶囊一致（10.5pt semibold / 999 圆角）。
                 if let lockerName {
-                    Text(lockerName)
+                    Text(lockerName.L)
                         .font(.system(size: 10.5, weight: .semibold))
                         .foregroundStyle(brand)
                         .lineLimit(1)
@@ -311,7 +311,7 @@ struct RecordDetailView: View {
                     .padding(.vertical, 3)
                     .background(AppTheme.doneTint, in: .capsule)
                 } else {
-                    Text(record.shortTime)
+                    Text(record.shortTime.L)
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                         .lineLimit(1)
@@ -324,7 +324,7 @@ struct RecordDetailView: View {
             if !addressLine.isEmpty || (record.shelf.map { !$0.isEmpty } ?? false) {
                 HStack(spacing: 6) {
                     if !addressLine.isEmpty {
-                        Text(addressLine)
+                        Text(addressLine.L)
                             .font(.system(size: 12.5))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -594,11 +594,11 @@ struct RecordDetailView: View {
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(label)
+                Text(label.L)
                     .font(.system(size: 12))
                     .foregroundStyle(.tertiary)
 
-                Text(value)
+                Text(value.L)
                     .font(.system(size: 16,
                                   weight: mono ? .semibold : .regular,
                                   design: mono ? .rounded : .default))
@@ -647,7 +647,7 @@ struct RecordDetailView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 5) {
-                        Text(label)
+                        Text(label.L)
                             .font(.system(size: 12))
                             .foregroundStyle(.tertiary)
 
@@ -677,7 +677,7 @@ struct RecordDetailView: View {
                                 .foregroundStyle(.tertiary)
                                 .lineLimit(1)
                         } else {
-                            Text(value)
+                            Text(value.L)
                                 .font(.system(size: 16,
                                               weight: mono ? .semibold : .regular,
                                               design: mono ? .rounded : .default))
@@ -730,7 +730,7 @@ struct RecordDetailView: View {
             }
             .foregroundStyle(.secondary)
 
-            Text(record.rawMessage)
+            Text(record.rawMessage.L)
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
                 .lineSpacing(4)

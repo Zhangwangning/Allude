@@ -105,7 +105,7 @@ struct PickupShareCard: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text(titlePrimary)
+                        Text(titlePrimary.L)
                             .font(.system(size: 20, weight: .semibold))
                             .foregroundStyle(Color(hex: 0x1C1C1E))
                             .lineLimit(1)
@@ -114,7 +114,7 @@ struct PickupShareCard: View {
                             Text("|")
                                 .font(.system(size: 15))
                                 .foregroundStyle(Color(hex: 0x8E8E93))
-                            Text(titleSecondary)
+                            Text(titleSecondary.L)
                                 .font(.system(size: 15))
                                 .foregroundStyle(Color(hex: 0x6E6E73))
                                 .lineLimit(1)
@@ -122,7 +122,7 @@ struct PickupShareCard: View {
 
                         // 快递柜标签（2026-10-28，与列表卡 / 详情页同一位置同一口径）
                         if let locker = record.locker, !locker.isEmpty {
-                            Text(locker)
+                            Text(locker.L)
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(tint)
                                 .lineLimit(1)
@@ -148,7 +148,7 @@ struct PickupShareCard: View {
                     .lineLimit(1)
 
                 if !record.address.isEmpty {
-                    Text(record.address)
+                    Text(record.address.L)
                         .font(.system(size: 15))
                         .lineLimit(2)
                         .truncationMode(.tail)
@@ -281,14 +281,14 @@ struct PickupShareCard: View {
                     CourierLogo(company: naming.iconSource, size: 22)
                 }
 
-                Text(naming.primary)
+                Text(naming.primary.L)
                     .font(.system(size: 15, weight: .semibold))
                     .lineLimit(1)
                     .foregroundStyle(Color(hex: 0x1C1C1E))
 
                 // 快递柜标签（2026-10-28 与卡片同款）
                 if let locker = line.record.locker, !locker.isEmpty {
-                    Text(locker)
+                    Text(locker.L)
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(tint)
                         .lineLimit(1)
@@ -319,7 +319,7 @@ struct PickupShareCard: View {
 
             let address = line.record.address.trimmingCharacters(in: .whitespaces)
             if !address.isEmpty {
-                Text(address)
+                Text(address.L)
                     .font(.system(size: 12))
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -985,7 +985,7 @@ struct QuickShareAction: View {
                                           : Color(.secondarySystemGroupedBackground),
                                 in: Circle())
                     .foregroundStyle(highlight ? Color.green : Color.primary)
-                Text(title)
+                Text(title.L)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }

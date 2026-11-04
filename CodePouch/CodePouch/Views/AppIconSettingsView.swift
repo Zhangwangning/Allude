@@ -110,7 +110,7 @@ struct AppIconSettingsView: View {
                         }
                     }
 
-                Text(choice.title)
+                Text(choice.title.L)
                     .font(.system(size: 10))
                     .foregroundStyle(isOn ? AppTheme.accent : .secondary)
                     .lineLimit(1)

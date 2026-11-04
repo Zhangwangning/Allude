@@ -107,7 +107,7 @@ struct StationEditView: View {
         .alert("无法保存", isPresented: $showError) {
             Button("好", role: .cancel) { }
         } message: {
-            Text(errorMessage)
+            Text(errorMessage.L)
         }
         .alert(isEdit ? "删除这个驿站？" : "放弃添加？", isPresented: $showDeleteConfirm) {
             Button("删除", role: .destructive) {

@@ -795,7 +795,7 @@ struct LockCardPreview: View {
 
     private func sample(title: String, background: some View) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
+            Text(title.L)
                 .font(.caption)
                 .foregroundStyle(.white.opacity(0.6))
 
@@ -856,7 +856,7 @@ struct ColorCheckView: View {
                             RoundedRectangle(cornerRadius: 6, style: .continuous)
                                 .fill(record.codeColor)
                                 .frame(width: 26, height: 26)
-                            Text(record.code).font(.system(size: 14, weight: .semibold, design: .monospaced))
+                            Text(record.code.L).font(.system(size: 14, weight: .semibold, design: .monospaced))
                             Spacer()
                             Text("卡面")
                                 .font(.system(size: 10))
@@ -886,7 +886,7 @@ struct ColorCheckView: View {
                             RoundedRectangle(cornerRadius: 6, style: .continuous)
                                 .fill(Color(hex: info.ink))
                                 .frame(width: 26, height: 26)
-                            Text(name).font(.system(size: 14, weight: .semibold))
+                            Text(name.L).font(.system(size: 14, weight: .semibold))
                             Spacer()
                             Text(hit ? "命中" : "⚠️ 兜底")
                                 .font(.system(size: 11))
