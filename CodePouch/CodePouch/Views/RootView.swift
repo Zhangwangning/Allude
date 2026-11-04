@@ -168,6 +168,10 @@ struct OnboardingView: View {
     // 宏规避：页码收进 ObservableObject（与全工程口径一致）
     @StateObject private var state = OnboardingPageState()
 
+    // 首启页里的「导入自动化」用的分享面板
+    @State private var automationURL: URL?
+    @State private var showAutomationShare = false
+
     var body: some View {
         // 🔴 必须自带 NavigationStack：引导住在 fullScreenCover 里，
         // 那是一层独立的表现上下文，没有栈的话第 2 页「查看完整使用教程」
@@ -184,6 +188,12 @@ struct OnboardingView: View {
             .safeAreaInset(edge: .bottom) { bottomBar }
         }
         .background(Color(.systemGroupedBackground))
+        .sheet(isPresented: $showAutomationShare) {
+            if let automationURL {
+                ActivitySheet(items: [automationURL])
+                    .presentationDetents([.medium, .large])
+            }
+        }
     }
 
     // MARK: ① 欢迎
@@ -221,16 +231,39 @@ struct OnboardingView: View {
         {
             OnboardingPoint(symbol: "1.circle.fill",
                             tint: AppTheme.amber,
-                            title: "获取快捷指令",
-                            detail: "设置 › 使用教程，按指引获取「快递取件码」")
+                            title: "导入自动化",
+                            detail: "点下面的按钮，把「收到短信 → 添加到拾码」导进系统")
             OnboardingPoint(symbol: "2.circle.fill",
                             tint: AppTheme.amber,
-                            title: "开启信息自动化",
-                            detail: "快捷指令 App › 自动化 › 信息：收到含关键词的短信时运行")
+                            title: "打开开关",
+                            detail: "快捷指令 › 自动化 里找到它，把开关打开（导入后默认关闭）")
             OnboardingPoint(symbol: "3.circle.fill",
                             tint: AppTheme.amber,
                             title: "完成",
                             detail: "之后收到取件短信，待取列表自动出现新记录并提醒")
+
+            Button {
+                guard let preset = ShortcutAutomation.presets.first,
+                      let url = ShortcutAutomation.importFile(for: preset) else { return }
+                automationURL = url
+                showAutomationShare = true
+                ShortcutAutomation.markImported(preset.keyword)
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "square.and.arrow.down.fill")
+                    Text("一键导入自动化（关键词：【）")
+                }
+                .font(AppTheme.TypeScale.bodyMedium)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(AppTheme.amber.opacity(0.14))
+                )
+                .foregroundStyle(AppTheme.amber)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4)
         }
     }
 

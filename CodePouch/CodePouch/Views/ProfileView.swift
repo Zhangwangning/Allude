@@ -28,6 +28,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     case appearance
     case fontSize
     case language
+    case automation
     case notification
     case widget
     case activity
@@ -48,6 +49,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .appearance:   return "外观"
         case .fontSize:     return "字体大小"
         case .language:     return "语言"
+        case .automation:   return "自动收录"
         case .notification: return "通知提醒"
         case .widget:       return "桌面小组件"
         case .activity:     return "实时活动与灵动岛"
@@ -68,6 +70,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .appearance:   return "circle.lefthalf.filled"
         case .fontSize:     return "textformat.size"
         case .language:     return "globe"
+        case .automation:   return "bolt.badge.automatic.fill"
         case .notification: return "bell.badge.fill"
         case .widget:       return "square.text.square.fill"
         case .activity:     return "platter.filled.top.iphone"
@@ -88,6 +91,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .appearance:   return AppTheme.accent
         case .fontSize:     return AppTheme.sky
         case .language:     return AppTheme.indigo
+        case .automation:   return AppTheme.amber
         case .notification: return AppTheme.pendingTint
         case .widget:       return AppTheme.sky
         case .activity:     return AppTheme.accent
@@ -104,7 +108,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     }
 
     /// 侧栏分组（顺序即显示顺序，与原来长页的分组一一对应）
-    static let generalGroup: [SettingsPane] = [.appearance, .fontSize, .language, .notification, .widget, .activity, .courier, .station, .guide, .license, .activation]
+    static let generalGroup: [SettingsPane] = [.appearance, .fontSize, .language, .automation, .notification, .widget, .activity, .courier, .station, .guide, .license, .activation]
     static let dataGroup: [SettingsPane] = [.storage]
     static let aboutGroup: [SettingsPane] = [.feedback, .version, .privacy]
 }
@@ -365,6 +369,7 @@ struct SettingsView: View {
         case .appearance: AppearanceSettingsView()
         case .fontSize:   FontSizeView()
         case .language:   languageDetailPane
+        case .automation: AutoRecordSettingsView()
         case .notification: NotificationSettingsView()
         case .widget:     WidgetSettingsView()
         case .activity:   ActivityPreviewGallery()
@@ -561,6 +566,16 @@ struct SettingsView: View {
                 Button { openAppLanguageSettings() } label: {
                     SettingsRow(symbol: "globe", title: "语言",
                                 detail: currentLanguageName, tint: AppTheme.indigo)
+                }
+                .buttonStyle(.plain)
+
+                SettingsDivider()
+
+                NavigationLink {
+                    AutoRecordSettingsView()
+                } label: {
+                    SettingsRow(symbol: "bolt.badge.automatic.fill", title: "自动收录",
+                                detail: "短信自动入库", tint: AppTheme.amber)
                 }
                 .buttonStyle(.plain)
 
