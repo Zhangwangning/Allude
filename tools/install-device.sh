@@ -154,6 +154,25 @@ perl -0pi -e "s/(CODE_SIGN_STYLE = Automatic;)/\$1\n\t\t\t\tDEVELOPMENT_TEAM = $
 cnt="$(grep -c 'DEVELOPMENT_TEAM' "$PBX" || true)"
 ok "已写入 DEVELOPMENT_TEAM（$cnt 处配置）"
 
+# ── 4.5 丢掉旧的描述文件缓存 ─────────────────────────────────────────
+# 🔴 免费 Personal Team 的描述文件**固定 7 天，从苹果签发那一刻算**，
+#    不是从装机那一刻算。Xcode 会复用缓存里的 profile，于是"装的时候就已经
+#    只剩 2 天"——2026-11-05 主人遇到的就是这个：10-27 签的 profile
+#    在 11-01 装，11-03 就失效了。
+#    这里在构建前删掉本 bundle 的缓存 profile，逼它重新签发一份新的。
+PROFILE_DIR="$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
+if [[ -d "$PROFILE_DIR" ]]; then
+  removed=0
+  for f in "$PROFILE_DIR"/*.mobileprovision; do
+    [[ -f "$f" ]] || continue
+    if security cms -D -i "$f" 2>/dev/null | grep -q "$BUNDLE_ID"; then
+      rm -f "$f"; removed=$((removed + 1))
+    fi
+  done
+  [[ $removed -gt 0 ]] && ok "已清理 $removed 个旧描述文件（强制重新签发 7 天）" \
+                        || say "  没有可清理的旧描述文件"
+fi
+
 # ── 5. 构建 ──────────────────────────────────────────────────────────
 say ""
 say "── 构建（首次会联网生成证书与描述文件，稍慢）─────────"
@@ -211,6 +230,14 @@ say "── 安装到 iPhone ─────────────────
 "$DEVICECTL" device install app --device "$DEV_UDID" "$APP"
 
 say ""
+PROFILE="$DD/Build/Products/Debug-iphoneos/CodePouch.app/embedded.mobileprovision"
+if [[ -f "$PROFILE" ]]; then
+  EXP="$(security cms -D -i "$PROFILE" 2>/dev/null \
+        | plutil -convert xml1 -o - - 2>/dev/null \
+        | awk '/<key>ExpirationDate<\/key>/{getline; gsub(/.*<date>|<\/date>.*/,""); print; exit}')"
+  [[ -n "$EXP" ]] && ok "描述文件到期：$EXP（免费个人团队固定 7 天）"
+fi
+
 ok "安装完成。首次打开若提示「不受信任的开发者」："
 # 🔴 必须写 ${TEAM}：`$TEAM」` 会把中文右引号的首字节算进变量名，
 #    在 `set -u` 下报 "TEAM<乱码>: unbound variable" 并以非 0 退出 ——

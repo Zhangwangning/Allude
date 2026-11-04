@@ -666,6 +666,35 @@ python3 tools/license-gen/issue-openssl.py --check "<凭证>"
 **iCloud 链接**：四条都已填入 `ShortcutAutomation.icloudLinks`，
 每条都下载回来验过「名称 + 触发关键词 + 动作」三者一致。
 
+## 免费签名的 7 天怎么算（2026-11-05 踩坑）
+
+主人问「为什么不到 7 天就不能用了」。真相：**7 天从苹果签发描述文件那一刻算，
+不是从装机算。**
+
+实测证据：导出的 0.3.3(80) 包里 profile
+
+```
+CreationDate   2026-10-27T16:08Z
+ExpirationDate 2026-11-03T16:08Z
+```
+
+11-01 装上去，11-03 就失效 —— 装机时只剩 2 天多。原因是 Xcode 会**复用缓存里的
+profile**，只要没过期就不重新签发。
+
+对策（已写进 `tools/install-device.sh`）：
+
+- 构建前删掉缓存里属于本 bundle 的 `.mobileprovision`，强制重新签发；
+- 安装完成后打印描述文件到期时间。
+
+另加 `tools/profile-expiry.sh`：
+
+```bash
+tools/profile-expiry.sh                      # 看真机构建产物还剩几天
+tools/profile-expiry.sh path/to/X.ipa         # 看某个 ipa
+```
+
+长期方案还是 SideStore / 付费开发者账号（1 年）。
+
 ## 提交规范
 
 署名 `极客ZHANG <zhang_wangning@126.com>`。提交信息用中文，
