@@ -169,7 +169,10 @@ if [[ -d "$PROFILE_DIR" ]]; then
       rm -f "$f"; removed=$((removed + 1))
     fi
   done
-  [[ $removed -gt 0 ]] && ok "已清理 $removed 个旧描述文件（强制重新签发 7 天）" \
+  # ⚠️ 2026-11-05 实测：删掉缓存并不会让苹果提前签发新的 —— 只要旧 profile 还没过期，
+  #    Xcode 重新下载时拿回的是**同一份**（到期日不变）。所以这一步只是"清掉过期的"，
+  #    真正续签必须等它过期后再装，或改用 SideStore / 付费开发者账号。
+  [[ $removed -gt 0 ]] && ok "已清理 $removed 个旧描述文件缓存（过期后重装才会签发新的）" \
                         || say "  没有可清理的旧描述文件"
 fi
 
@@ -235,7 +238,9 @@ if [[ -f "$PROFILE" ]]; then
   EXP="$(security cms -D -i "$PROFILE" 2>/dev/null \
         | plutil -convert xml1 -o - - 2>/dev/null \
         | awk '/<key>ExpirationDate<\/key>/{getline; gsub(/.*<date>|<\/date>.*/,""); print; exit}')"
-  [[ -n "$EXP" ]] && ok "描述文件到期：$EXP（免费个人团队固定 7 天）"
+  # 🔴 必须写 ${EXP}：紧跟着是全角括号，`$EXP（` 会把中文括号的字节算进变量名，
+  #    在 set -u 下报 unbound variable —— 与文件末尾 `$TEAM」` 是同一个坑。
+  [[ -n "${EXP:-}" ]] && ok "描述文件到期：${EXP}（免费个人团队固定 7 天）"
 fi
 
 ok "安装完成。首次打开若提示「不受信任的开发者」："
