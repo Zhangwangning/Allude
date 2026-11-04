@@ -25,6 +25,9 @@ import PhotosUI
 // 窄屏仍走原来的长页布局，与本枚举无关。
 
 enum SettingsPane: String, CaseIterable, Identifiable {
+    case appearance
+    case fontSize
+    case language
     case notification
     case widget
     case activity
@@ -42,6 +45,9 @@ enum SettingsPane: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .appearance:   return "外观"
+        case .fontSize:     return "字体大小"
+        case .language:     return "语言"
         case .notification: return "通知提醒"
         case .widget:       return "桌面小组件"
         case .activity:     return "实时活动与灵动岛"
@@ -59,6 +65,9 @@ enum SettingsPane: String, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
+        case .appearance:   return "circle.lefthalf.filled"
+        case .fontSize:     return "textformat.size"
+        case .language:     return "globe"
         case .notification: return "bell.badge.fill"
         case .widget:       return "square.text.square.fill"
         case .activity:     return "platter.filled.top.iphone"
@@ -76,6 +85,9 @@ enum SettingsPane: String, CaseIterable, Identifiable {
 
     var tint: Color {
         switch self {
+        case .appearance:   return AppTheme.accent
+        case .fontSize:     return AppTheme.sky
+        case .language:     return AppTheme.indigo
         case .notification: return AppTheme.pendingTint
         case .widget:       return AppTheme.sky
         case .activity:     return AppTheme.accent
@@ -92,7 +104,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     }
 
     /// 侧栏分组（顺序即显示顺序，与原来长页的分组一一对应）
-    static let generalGroup: [SettingsPane] = [.notification, .widget, .activity, .courier, .station, .guide, .license, .activation]
+    static let generalGroup: [SettingsPane] = [.appearance, .fontSize, .language, .notification, .widget, .activity, .courier, .station, .guide, .license, .activation]
     static let dataGroup: [SettingsPane] = [.storage]
     static let aboutGroup: [SettingsPane] = [.feedback, .version, .privacy]
 }
@@ -339,7 +351,10 @@ struct SettingsView: View {
                 .fill(pane == item ? Color(.systemGray5) : Color.clear)
         }
         .contentShape(.rect)
-        .onTapGesture { pane = item }
+        .onTapGesture {
+            // 语言没有 App 内页面：按主人要求直接跳到 设置 › App › 拾码
+            if item == .language { openAppLanguageSettings() } else { pane = item }
+        }
         .tag(item)
     }
 
@@ -347,6 +362,9 @@ struct SettingsView: View {
     @ViewBuilder
     private func paneContent(_ item: SettingsPane) -> some View {
         switch item {
+        case .appearance: AppearanceSettingsView()
+        case .fontSize:   FontSizeView()
+        case .language:   languageDetailPane
         case .notification: NotificationSettingsView()
         case .widget:     WidgetSettingsView()
         case .activity:   ActivityPreviewGallery()
@@ -360,6 +378,42 @@ struct SettingsView: View {
         case .feedback:   feedbackPane
         case .privacy:    privacyPane
         }
+    }
+
+    /// 语言：不在 App 内做切换，交给系统（跳 设置 › App › 拾码）
+    @ViewBuilder
+    private var languageDetailPane: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionHeader(title: "语言")
+
+                VStack(spacing: 0) {
+                    SettingsRow(symbol: "globe", title: "当前语言", detail: "简体中文",
+                                showsChevron: false, tint: AppTheme.indigo)
+                    SettingsDivider()
+                    Button { openAppLanguageSettings() } label: {
+                        SettingsRow(symbol: "arrow.up.forward.app.fill", title: "在系统设置中更改",
+                                    detail: nil, tint: AppTheme.accent)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .cardSurface()
+
+                Text("语言由 iOS 统一管理：设置 › App › 拾码 › 语言。\n首次安装时默认是简体中文。")
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 4)
+            }
+            .padding(.horizontal, AppTheme.hInset)
+            .padding(.vertical, 18)
+        }
+        .background(Color(.systemGroupedBackground))
+    }
+
+    /// 跳到 iOS 设置里本 App 的页面（语言项在那里）
+    private func openAppLanguageSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     /// 「已存记录 / 数据文件」面板（原 dataSection 的数据部分）
@@ -474,6 +528,37 @@ struct SettingsView: View {
             SectionHeader(title: "通用")
 
             VStack(spacing: 0) {
+                // ── 外观 / 字体大小 / 语言（2026-11-04 主人定） ──
+                NavigationLink {
+                    AppearanceSettingsView()
+                } label: {
+                    SettingsRow(symbol: "circle.lefthalf.filled", title: "外观",
+                                detail: AppearanceSettings.shared.mode.title,
+                                tint: AppTheme.accent)
+                }
+                .buttonStyle(.plain)
+
+                SettingsDivider()
+
+                NavigationLink {
+                    FontSizeView()
+                } label: {
+                    SettingsRow(symbol: "textformat.size", title: "字体大小",
+                                detail: AppearanceSettings.shared.followSystem ? "跟随系统" : "标准",
+                                tint: AppTheme.sky)
+                }
+                .buttonStyle(.plain)
+
+                SettingsDivider()
+
+                Button { openAppLanguageSettings() } label: {
+                    SettingsRow(symbol: "globe", title: "语言",
+                                detail: "简体中文", tint: AppTheme.indigo)
+                }
+                .buttonStyle(.plain)
+
+                SettingsDivider()
+
                 NavigationLink {
                     NotificationSettingsView()
                 } label: {

@@ -103,7 +103,9 @@ enum PickupNotifier {
         // 以前只在 `PickupListView` 的调用点判断，可是首帧会先渲染待取页
         // （之后才按 `SCREEN=` 跳走），于是拍设置页时弹窗照样糊在屏幕上、
         // 又没有触摸注入通道能点掉。判断收到这里，任何调用路径都挡住。
-        guard ProcessInfo.processInfo.environment["SKIP_PERM"] == nil else { return }
+        // 有 SCREEN 脚手架时也一律不弹：否则系统授权弹窗会盖住要截的页面
+        let env = ProcessInfo.processInfo.environment
+        guard env["SKIP_PERM"] == nil, env["SCREEN"] == nil else { return }
         let center = UNUserNotificationCenter.current()
         center.getNotificationSettings { settings in
             guard settings.authorizationStatus == .notDetermined else { return }

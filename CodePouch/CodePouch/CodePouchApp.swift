@@ -35,6 +35,16 @@ struct CodePouchApp: App {
         //
         // 注意它带副作用（首次会生成并持久化），所以**不能**塞进 `body` 或任何
         // 会被反复求值的位置 —— 这里 `init()` 只走一次，是正确的位置。
+        // 截图脚手架：APPEARANCE=system|light|dark、FONT_STEP=0…6 强制指定（仅调试用）
+        let env = ProcessInfo.processInfo.environment
+        if let mode = env["APPEARANCE"].flatMap(AppearanceMode.init(rawValue:)) {
+            AppearanceSettings.shared.mode = mode
+        }
+        if let raw = env["FONT_STEP"], let step = Int(raw), let value = FontSizeStep(rawValue: step) {
+            AppearanceSettings.shared.followSystem = false
+            AppearanceSettings.shared.step = value
+        }
+
         let deviceCode = LicenseDevice.current
         print("[codeclip-verify] device=\(deviceCode)")
 
@@ -488,6 +498,7 @@ struct CodePouchApp: App {
 
     var body: some Scene {
         WindowGroup {
+            AppearanceHost {
             Group {
                 // SCREEN 环境变量用于命令行截图验证（simctl launch 时以 SIMCTL_CHILD_SCREEN 注入）。
                 // 不注入时走正常入口 RootView()，对正式运行无影响。
@@ -630,6 +641,10 @@ struct CodePouchApp: App {
                     NavigationStack { WidgetPreviewGallery() }
                 case "activity":
                     NavigationStack { ActivityPreviewGallery() }
+                case "appearance":
+                    NavigationStack { AppearanceSettingsView() }
+                case "fontSize":
+                    NavigationStack { FontSizeView() }
                 case "colorCheck":
                     // 品牌取色体检（2026-10-28）：小组件里码的颜色与 App 不一致，
                     // 先把「每个品牌名解析到哪一条、最终色是多少」打成一份表，
@@ -664,12 +679,13 @@ struct CodePouchApp: App {
                     RootView()
                 }
             }
+            }
             .environmentObject(store)
             .tint(AppTheme.accent)
             // DARK=1 截图脚手架：模拟器 `simctl ui appearance dark` 在部分环境
             // 不传导给无头启动的 App（实测外观仍浅色），强制 colorScheme 才能拍到暗色。
-            .preferredColorScheme(ProcessInfo.processInfo.environment["DARK"] == "1"
-                                  ? .dark : nil)
+            // 🔴 外观由根上的 AppearanceHost 统一管（`.preferredColorScheme`），
+            //    这里**不能再设一次**：子层设 nil 会把父层的「深色」重置回跟随系统。
             .onChange(of: scenePhase) { _, phase in
                 // 桌面小组件的勾选框会在后台直接改共享文件，回前台时对齐一次
                 if phase == .active {

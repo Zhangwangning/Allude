@@ -591,6 +591,29 @@ python3 tools/license-gen/issue-openssl.py --check "<凭证>"
   （凭证仍绑设备码，改动也签不出新凭证）。
 - 真正的风险是**私钥泄漏**，不是二进制被看。私钥只在本机 `tools/license-gen/`。
 
+## 外观 / 字体大小 / 语言（2026-11-04 主人定）
+
+设置页「通用」最前面三行：
+
+1. **外观**：自动（跟随系统）/ 浅色 / 深色，二级页三选一，打勾。
+   实现：`AppearanceSettings.mode` 存 App Group，根视图 `AppearanceHost`
+   用 `.preferredColorScheme` 生效。
+   🔴 **不能在子层再设一次 `preferredColorScheme`**：子层设 nil 会把父层的
+   "深色"重置回跟随系统（踩过一次，页面明明选了深色却不黑）。
+2. **字体大小**：二级页 = 预览卡（右上"预览文字大小"气泡 + 两行示例）+
+   「跟随系统」开关 + A—A 滑块（7 档，1.0 标准）+ 当前档位文案。
+   实现：**全局倍率** `FontScale.value`，`AppTheme.TypeScale` 每档都乘它。
+   🔴 `TypeScale` 由 `static let` 改成 `static var` 计算属性，否则设置改完不生效；
+   🔴 SwiftUI 不会因为 static 变量变了就重算 body，根视图用 `.id(generation)` 强制重建。
+   「跟随系统」把 `DynamicTypeSize` 映射成同一量级倍率（0.88…1.62）。
+3. **语言**：不在 App 内做切换。点行 → `UIApplication.openSettingsURLString`
+   跳到 设置 › App › 拾码 › 语言。界面显示「简体中文」。
+   注：系统里那条语言项只有当 App 带多个本地化时才有可选项；当前只有简体中文，
+   所以入口是"能到那儿"，暂时没有可切换项。
+
+截图脚手架：`SCREEN=appearance` / `SCREEN=fontSize`，配 `APPEARANCE=system|light|dark`、
+`FONT_STEP=0…6` 强制取值。
+
 ## 提交规范
 
 署名 `极客ZHANG <zhang_wangning@126.com>`。提交信息用中文，

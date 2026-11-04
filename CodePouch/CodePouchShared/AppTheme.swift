@@ -85,21 +85,29 @@ enum AppTheme {
     //   行标题 17 · 行副标题 13 · 行尾值 17 · 正文/说明 15 · 分区标题 13 · 注解 12
     // 需要强调时**只加 weight，不加字号**。
     enum TypeScale {
+        /// 全局倍率：设置里的「字体大小」写它（见 `FontScale`）。
+        ///
+        /// 🔴 这里必须是 `var` + 计算属性，不能是 `static let`：
+        ///    字号要在运行时跟着设置变，常量的话改完设置整页不会动。
+        private static func scaled(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
+            .system(size: (size * FontScale.value).rounded(), weight: weight)
+        }
+
         /// 行标题、行尾值（与系统设置同尺寸）
-        static let rowTitle = Font.system(size: 17)
-        static let rowTitleMedium = Font.system(size: 17, weight: .medium)
+        static var rowTitle: Font { scaled(17) }
+        static var rowTitleMedium: Font { scaled(17, .medium) }
         /// 行副标题
-        static let rowSubtitle = Font.system(size: 13)
+        static var rowSubtitle: Font { scaled(13) }
         /// 正文：教程步骤说明、卡片内长文（原来是 13，读着费劲）
-        static let body = Font.system(size: 15)
-        static let bodyMedium = Font.system(size: 15, weight: .medium)
+        static var body: Font { scaled(15) }
+        static var bodyMedium: Font { scaled(15, .medium) }
         /// 分区标题
-        static let section = Font.system(size: 13)
+        static var section: Font { scaled(13) }
         /// 注解、页脚、卡片下方小字
-        static let note = Font.system(size: 12)
-        static let noteStrong = Font.system(size: 12, weight: .semibold)
+        static var note: Font { scaled(12) }
+        static var noteStrong: Font { scaled(12, .semibold) }
         /// 徽章、角标这类极短标签
-        static let badge = Font.system(size: 11, weight: .semibold)
+        static var badge: Font { scaled(11, .semibold) }
     }
 
     // MARK: 付费面 · 香槟金（2026-10-31 主人定）
