@@ -20,12 +20,17 @@ enum ShortcutAutomation {
     struct Preset: Identifiable, Hashable {
         let keyword: String
         let file: String
+        /// 是否推荐（界面打「推荐」标签）
+        var recommended: Bool = false
         var id: String { keyword }
+
+        /// 导入后显示的名称：快递取件码拾码解析「关键词」
+        var displayName: String { "快递取件码拾码解析「\(keyword)」" }
         /// 一句话说明适用场景
         var hint: String {
             switch keyword {
             case "【": return "大多数快递短信的取件码都包在全角方括号里"
-            case "取件": return "短信里写了「取件」就触发"
+            case "取": return "只匹配一个「取」字，覆盖没有【的短信"
             case "快递": return "短信里写了「快递」两个字就触发"
             case "包裹": return "短信里写了「包裹」就触发"
             default: return ""
@@ -35,8 +40,8 @@ enum ShortcutAutomation {
 
     /// 预设关键词（顺序即界面顺序）
     static let presets: [Preset] = [
-        Preset(keyword: "【", file: "auto-【"),
-        Preset(keyword: "取件", file: "auto-取件"),
+        Preset(keyword: "【", file: "auto-【", recommended: true),
+        Preset(keyword: "取", file: "auto-取", recommended: true),
         Preset(keyword: "快递", file: "auto-快递"),
         Preset(keyword: "包裹", file: "auto-包裹"),
     ]
@@ -45,7 +50,7 @@ enum ShortcutAutomation {
     /// 为空时界面只给「用文件导入」。
     static let icloudLinks: [String: String] = [
         "【": "",
-        "取件": "",
+        "取": "",
         "快递": "",
         "包裹": "",
     ]

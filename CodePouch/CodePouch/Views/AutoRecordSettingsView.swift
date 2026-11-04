@@ -68,6 +68,14 @@ struct AutoRecordSettingsView: View {
                 HStack(spacing: 12) {
                     Text("信息 包含「\(preset.keyword)」")
                         .font(AppTheme.TypeScale.rowTitle)
+                    if preset.recommended {
+                        Text("推荐")
+                            .font(AppTheme.TypeScale.badge)
+                            .foregroundStyle(AppTheme.accent)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(AppTheme.accent.opacity(0.12)))
+                    }
                     Spacer(minLength: 8)
                     addMenu(preset)
                 }
