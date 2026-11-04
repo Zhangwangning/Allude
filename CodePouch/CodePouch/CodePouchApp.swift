@@ -81,6 +81,9 @@ struct CodePouchApp: App {
             UIApplication.shared.setAlternateIconName(name) { _ in }
         }
 
+        // 签名到期提醒（没有描述文件的 App Store 版内部会直接返回）
+        SigningExpiryNotifier.reschedule()
+
         DiagnosticsLog.record("signing",
                               "days=\(SigningProfile.daysRemaining.map(String.init) ?? "nil") "
                               + "expires=\(SigningProfile.expirationDate.map { ISO8601DateFormatter().string(from: $0) } ?? "nil")")

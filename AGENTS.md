@@ -697,6 +697,15 @@ tools/profile-expiry.sh path/to/X.ipa         # 看某个 ipa
 
 长期方案还是 SideStore / 付费开发者账号（1 年）。
 
+**App 内也能看到剩余天数**：设置 › 激活 › 当前状态 ›「iOS 签名」。
+实现是 `SigningProfile` 直接读 bundle 里的 `embedded.mobileprovision`
+（CMS 里原样嵌着 XML plist，切出 `<?xml … </plist>` 解析 `ExpirationDate`，不联网）。
+App Store 版没有这个文件 → 整行自动不显示。
+
+**到期前一天会推本地通知**（`SigningExpiryNotifier`）：每次冷启动用固定 identifier
+重排一次「到期前 24 小时」的提醒，重复启动不会堆叠。
+真机日志可验证：`[signingNotify] scheduled at=2026-11-10T17:07:24Z`（到期 11-11）。
+
 ## 提交规范
 
 署名 `极客ZHANG <zhang_wangning@126.com>`。提交信息用中文，
