@@ -48,15 +48,14 @@ enum ShortcutAutomation {
 
     /// iCloud 链接（推荐方式）。在 Shortcuts 里「共享 › 拷贝 iCloud 链接」拿到后填这里；
     /// 为空时界面只给「用文件导入」。
-    /// 🔴 只填**已验证触发关键词正确**的链接。
-    /// 2026-11-05 主人提供的四条里，取/快递/包裹三条上传的文件
-    /// 触发器仍是「【」（那一版生成脚本漏了赋值），所以先不填，
-    /// 等重新导入修正版再分享。填错链接等于让用户装一条永不触发的自动化。
+    /// iCloud 链接（推荐方式）。
+    /// 🔴 每一条都**下载回来验过**：名称与触发关键词都对得上。
+    /// 2026-11-05 第一版曾有三条链接的触发器仍是「【」，现已全部修正。
     static let icloudLinks: [String: String] = [
         "【": "https://www.icloud.com/shortcuts/d784aa0874414c289977f4b7ee4efc0b",
-        "取": "",
-        "快递": "",
-        "包裹": "",
+        "取": "https://www.icloud.com/shortcuts/43de0243d32347789c1c8730f4148154",
+        "快递": "https://www.icloud.com/shortcuts/1df8675b3c8e4ca68a787b83fb71da65",
+        "包裹": "https://www.icloud.com/shortcuts/d6d646342e5340798d05966f94a3fb76",
     ]
 
     static func icloudURL(for keyword: String) -> URL? {
