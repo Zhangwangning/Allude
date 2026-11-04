@@ -410,6 +410,12 @@ struct SettingsView: View {
         .background(Color(.systemGroupedBackground))
     }
 
+    /// 当前界面语言名（跟着系统走，不在 App 内切换）
+    private var currentLanguageName: String {
+        let code = Bundle.main.preferredLocalizations.first ?? "zh-Hans"
+        return code.hasPrefix("zh-Hant") ? "繁體中文" : "简体中文"
+    }
+
     /// 跳到 iOS 设置里本 App 的页面（语言项在那里）
     private func openAppLanguageSettings() {
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
@@ -553,7 +559,7 @@ struct SettingsView: View {
 
                 Button { openAppLanguageSettings() } label: {
                     SettingsRow(symbol: "globe", title: "语言",
-                                detail: "简体中文", tint: AppTheme.indigo)
+                                detail: currentLanguageName, tint: AppTheme.indigo)
                 }
                 .buttonStyle(.plain)
 

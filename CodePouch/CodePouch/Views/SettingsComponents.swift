@@ -118,12 +118,13 @@ struct SettingsRow: View {
 
     private var labels: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(title)
+            // 标题多为动态 String（来自枚举），必须显式查表才会跟随语言
+            Text(title.L)
                 .font(AppTheme.TypeScale.rowTitle)
                 .foregroundStyle(.primary)
 
             if let subtitle {
-                Text(subtitle)
+                Text(subtitle.L)
                     .font(AppTheme.TypeScale.rowSubtitle)
                     .foregroundStyle(.tertiary)
                     .lineLimit(subtitleOneLine ? 1 : nil)
@@ -134,7 +135,7 @@ struct SettingsRow: View {
     }
 
     private func detailText(_ text: String) -> some View {
-        Text(text)
+        Text(text.L)
             .font(AppTheme.TypeScale.rowTitle)
             .foregroundStyle(.secondary)
             // 行尾值不允许被压成两行：它多是「关闭 / 80% / 顶部」这类短词，
@@ -243,7 +244,8 @@ struct SettingsPlainRow<Trailing: View>: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Text(title)
+            // 标题多为动态 String（来自枚举），必须显式查表才会跟随语言
+            Text(title.L)
                 .font(AppTheme.TypeScale.rowTitle)
                 .fixedSize(horizontal: false, vertical: true)
 

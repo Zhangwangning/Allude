@@ -614,6 +614,33 @@ python3 tools/license-gen/issue-openssl.py --check "<凭证>"
 截图脚手架：`SCREEN=appearance` / `SCREEN=fontSize`，配 `APPEARANCE=system|light|dark`、
 `FONT_STEP=0…6` 强制取值。
 
+## 繁体中文（zh-Hant，2026-11-04）
+
+系统语言是繁體中文时界面显示繁体；简体环境完全不受影响。
+
+做法（自动化，非人工润色）：
+
+- 文案表：`CodePouch/CodePouch/zh-Hant.lproj/Localizable.strings`（App）
+  与 `CodePouch/CodePouchWidget/zh-Hant.lproj/Localizable.strings`（小组件）。
+  **键 = 简体原文，值 = 繁体**。来源脚本：扫全部 Swift 里不带 `\(` 插值的中文字面量，
+  用 `StringTransform("Hans-Hant")` 转换，再过一张术语表
+  （設置→設定、短信→簡訊、默認→預設、保存→儲存、文件→檔案、信息→訊息、網絡→網路…）。
+  当前 789 条映射 / 913 条候选 ≈ 86%。
+- `Info.plist` 增加 `CFBundleLocalizations = [zh-Hans, zh-Hant]`，
+  系统「设置 › App › 拾码 › 语言」里才会出现两个选项。
+
+🔴 **坑：`Text(String)` 不查表**。`Text("字面量")` 会用 `LocalizedStringKey` 查表，
+但我们的标题/详情/卡片多是**动态 String**（枚举、模型），必须显式 `x.L`。
+目前已经接上的：`SettingsRow`（title/subtitle/detail）、`SectionHeader`。
+其余页面里的动态字符串仍是简体 —— 要扩覆盖就在处加 `.L`（helper 在
+`CodePouchShared/Localization.swift`）。
+
+🔴 业务数据**不能进表**：快递公司名、驿站名、解析正则、OCR 关键词。
+生成脚本已跳过 `PickupParser.swift` / `CourierBrand.swift` / `BrandPalette.swift` / `PickupAICheck.swift`。
+
+验收：`xcrun simctl launch ... -AppleLanguages "(zh-Hant)" -AppleLocale zh_TW`
+（`-AppleLanguages` 要放在 bundle id 之后，作为 App 参数传入）。
+
 ## 提交规范
 
 署名 `极客ZHANG <zhang_wangning@126.com>`。提交信息用中文，
