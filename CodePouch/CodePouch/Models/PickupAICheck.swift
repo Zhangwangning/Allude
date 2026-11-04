@@ -1,4 +1,5 @@
 import Foundation
+import FoundationModels
 
 // MARK: ============================================================================
 // AI 辅助解析 · 真机自检（2026-10-28）
@@ -37,6 +38,15 @@ enum PickupAICheck {
     static func run() async {
         print("[ai-check] ===== 开始 =====")
         print("[ai-check] 可用性 = \(PickupAI.statusText)")
+        // 原始枚举：statusText 只有三档，排查时要看系统到底返回哪个 reason
+        let raw = String(describing: SystemLanguageModel.default.availability)
+        print("[ai-check] 原始 = \(raw)")
+        print("[ai-check] 机型 = \(DeviceProfile.machineID) 系统 = "
+              + "\(ProcessInfo.processInfo.operatingSystemVersionString) "
+              + "地区 = \(Locale.current.region?.identifier ?? "-") "
+              + "语言 = \(Locale.preferredLanguages.prefix(2).joined(separator: ",")) "
+              + "支持语言 = \(SystemLanguageModel.default.supportedLanguages.map(\.minimalIdentifier).prefix(3).joined(separator: ",")) "
+              + "是否含中文 = \(SystemLanguageModel.default.supportsLocale(Locale(identifier: "zh_CN")))")
 
         guard PickupAI.isAvailable else {
             print("[ai-check] 模型不可用，跳过（纯正则链路不受影响）")

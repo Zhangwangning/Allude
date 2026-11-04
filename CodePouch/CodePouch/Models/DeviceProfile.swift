@@ -31,6 +31,9 @@ enum DeviceProfile {
         #endif
     }()
 
+    /// 机型标识（`iPhone17,1` 这类）。给自检/诊断用，别拿它做功能分支。
+    static var machineID: String { machine }
+
     /// iPhone 14 Pro 起才有灵动岛；白名单 + 「iPhone17/18/19 及以后全系」规则。
     /// iPhone 15 全系、16 全系（含 16e）、17 全系都有岛；14 / 13 及更早全系没有。
     static var hasDynamicIsland: Bool {
