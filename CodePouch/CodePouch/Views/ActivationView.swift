@@ -160,8 +160,30 @@ struct ActivationView: View {
                         .foregroundStyle(validityIsUrgent ? AppTheme.pendingTint : .secondary)
                         .fixedSize()
                 }
+
+                // iOS 签名（描述文件）的倒计时：免费账号 7 天，到期 App 直接打不开。
+                // App Store 版没有 embedded.mobileprovision，这一行自然不显示。
+                if let signing = SigningProfile.statusText {
+                    SettingsDivider()
+
+                    SettingsPlainRow(title: "iOS 签名") {
+                        Text(signing)
+                            .font(AppTheme.TypeScale.body)
+                            .foregroundStyle(signingIsUrgent ? AppTheme.pendingTint : .secondary)
+                            .fixedSize()
+                    }
+                }
             }
             .cardSurface()
+
+            if SigningProfile.expirationDate != nil {
+                Text("iOS 签名是系统的安装签名，和上面的授权凭证是两回事：签名过期后 App 打不开，重新安装即可，凭证与数据都不受影响。")
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.secondary)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 4)
+            }
 
             if let result = model.result {
                 Text(result.L)
@@ -186,6 +208,12 @@ struct ActivationView: View {
     }
 
     /// 剩余不到 7 天时标红，提醒续期。
+    /// 签名剩余 ≤ 1 天时标黄提醒
+    private var signingIsUrgent: Bool {
+        guard let days = SigningProfile.daysRemaining else { return false }
+        return days <= 1
+    }
+
     private var validityIsUrgent: Bool {
         guard store.isPro, let expiry = EntitlementSnapshot.load().expiresAt else { return false }
         return remainingDays(until: expiry) <= 7

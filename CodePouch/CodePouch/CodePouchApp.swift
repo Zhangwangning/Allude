@@ -81,6 +81,10 @@ struct CodePouchApp: App {
             UIApplication.shared.setAlternateIconName(name) { _ in }
         }
 
+        DiagnosticsLog.record("signing",
+                              "days=\(SigningProfile.daysRemaining.map(String.init) ?? "nil") "
+                              + "expires=\(SigningProfile.expirationDate.map { ISO8601DateFormatter().string(from: $0) } ?? "nil")")
+
         DiagnosticsLog.record("launch",
                               "version=\(AppVersion.display) plan=\(bootEntitlement.plan.rawValue)"
                               + " isPro=\(bootEntitlement.isPro)")
