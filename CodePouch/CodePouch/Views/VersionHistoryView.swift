@@ -21,13 +21,17 @@ struct VersionHistoryView: View {
         let version: String
         let date: String
         let theme: String
-        /// 是否为当前发行版本（首项恒 true）
-        var isCurrent: Bool = false
         let highlights: [String]
     }
 
+    /// 🔴 谁在最上面谁就是当前版本：不再手写 isCurrent，避免每发一版都要记得改上一个，
+    ///    漏改就会出现两个"当前版本"（2026-11-05 主人发现 0.3.1 还挂着标记）。
+    private func isCurrent(_ entry: Entry) -> Bool {
+        entries.first?.id == entry.id
+    }
+
     private let entries: [Entry] = [
-        Entry(version: "0.3.5", date: "2026-11-05", theme: "短信自动收录 · 签名倒计时", isCurrent: true, highlights: [
+        Entry(version: "0.3.5", date: "2026-11-05", theme: "短信自动收录 · 签名倒计时", highlights: [
             "新增「快捷指令自动化」：一键把「收到短信 → 添加到拾码」导进系统，导入后到「快捷指令 › 自动化」打开开关即可",
             "预设四个关键词：【（推荐）、取、快递、包裹；每多一条自动化会多一条系统通知，默认只推【",
             "支持 iCloud 链接与文件两种导入方式，链接在 App 内打开",
@@ -61,7 +65,7 @@ struct VersionHistoryView: View {
             "新增诊断日志：反馈时可附带本机日志（只含版本、系统与操作记录，不含短信内容），也可单独导出",
             "修复灵动岛折叠态的图标显示为灰色方块的问题",
         ]),
-        Entry(version: "0.3.1", date: "2026-10-31", theme: "订阅页重做：三档横排、一屏看完", isCurrent: true, highlights: [
+        Entry(version: "0.3.1", date: "2026-10-31", theme: "订阅页重做：三档横排、一屏看完", highlights: [
             "订阅页重做：三档横排比较，价格放大成主角，选中的那档描边并打勾，一眼看不出选错",
             "整页压进一屏：标题、方案、解锁清单、购买键、恢复购买与条款链接不用翻页就能看全",
             "配色改回 App 主题蓝，和全局一致（此前付费面用的是单独的橙色）",
@@ -296,11 +300,11 @@ struct VersionHistoryView: View {
             }
 
             Circle()
-                .fill(entry.isCurrent ? AppTheme.accent : Color(.tertiaryLabel).opacity(0.6))
-                .frame(width: entry.isCurrent ? 12 : 8,
-                       height: entry.isCurrent ? 12 : 8)
+                .fill(isCurrent(entry) ? AppTheme.accent : Color(.tertiaryLabel).opacity(0.6))
+                .frame(width: isCurrent(entry) ? 12 : 8,
+                       height: isCurrent(entry) ? 12 : 8)
                 .overlay {
-                    if entry.isCurrent {
+                    if isCurrent(entry) {
                         Circle()
                             .stroke(AppTheme.accent.opacity(0.25), lineWidth: 4)
                     }
@@ -323,9 +327,9 @@ struct VersionHistoryView: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(entry.version.L)
                     .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(entry.isCurrent ? AppTheme.accent : .primary)
+                    .foregroundStyle(isCurrent(entry) ? AppTheme.accent : .primary)
 
-                if entry.isCurrent {
+                if isCurrent(entry) {
                     Text("当前版本")
                         .font(.system(size: 10, weight: .bold))
                         .padding(.horizontal, 7)
@@ -350,7 +354,7 @@ struct VersionHistoryView: View {
                 ForEach(entry.highlights, id: \.self) { item in
                     HStack(alignment: .top, spacing: 8) {
                         Circle()
-                            .fill(entry.isCurrent ? AppTheme.accent : Color(.tertiaryLabel))
+                            .fill(isCurrent(entry) ? AppTheme.accent : Color(.tertiaryLabel))
                             .frame(width: 4, height: 4)
                             .padding(.top, 6)
 
