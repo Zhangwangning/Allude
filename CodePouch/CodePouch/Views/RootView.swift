@@ -226,7 +226,7 @@ struct OnboardingView: View {
         OnboardingPage(
             symbol: "bolt.badge.automatic.fill",
             tint: AppTheme.amber,
-            title: "开启短信自动化",
+            title: "开启快捷指令自动化",
             subtitle: "一次配置，之后每一单都自动进来")
         {
             OnboardingPoint(symbol: "1.circle.fill",

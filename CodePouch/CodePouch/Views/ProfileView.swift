@@ -49,7 +49,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .appearance:   return "外观"
         case .fontSize:     return "字体大小"
         case .language:     return "语言"
-        case .automation:   return "自动收录"
+        case .automation:   return "快捷指令自动化"
         case .notification: return "通知提醒"
         case .widget:       return "桌面小组件"
         case .activity:     return "实时活动与灵动岛"
@@ -415,6 +415,12 @@ struct SettingsView: View {
         .background(Color(.systemGroupedBackground))
     }
 
+    /// 「快捷指令自动化」行尾：已导入几个
+    private var shortcutAutomationDetail: String {
+        let done = ShortcutAutomation.importedKeywords.count
+        return done == 0 ? "未设置" : "已导入 \(done)"
+    }
+
     /// 当前界面语言名（跟着系统走，不在 App 内切换）
     private var currentLanguageName: String {
         let code = Bundle.main.preferredLocalizations.first ?? "zh-Hans"
@@ -574,8 +580,8 @@ struct SettingsView: View {
                 NavigationLink {
                     AutoRecordSettingsView()
                 } label: {
-                    SettingsRow(symbol: "bolt.badge.automatic.fill", title: "自动收录",
-                                detail: "短信自动入库", tint: AppTheme.amber)
+                    SettingsRow(symbol: "bolt.badge.automatic.fill", title: "快捷指令自动化",
+                                detail: shortcutAutomationDetail, tint: AppTheme.amber)
                 }
                 .buttonStyle(.plain)
 

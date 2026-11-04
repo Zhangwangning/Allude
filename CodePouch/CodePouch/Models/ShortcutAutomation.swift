@@ -25,18 +25,36 @@ enum ShortcutAutomation {
         var hint: String {
             switch keyword {
             case "【": return "大多数快递短信的取件码都包在全角方括号里"
-            case "快递": return "短信里写了「快递」两个字就触发"
             case "取件": return "短信里写了「取件」就触发"
+            case "快递": return "短信里写了「快递」两个字就触发"
+            case "包裹": return "短信里写了「包裹」就触发"
             default: return ""
             }
         }
     }
 
+    /// 预设关键词（顺序即界面顺序）
     static let presets: [Preset] = [
         Preset(keyword: "【", file: "auto-【"),
-        Preset(keyword: "快递", file: "auto-快递"),
         Preset(keyword: "取件", file: "auto-取件"),
+        Preset(keyword: "快递", file: "auto-快递"),
+        Preset(keyword: "包裹", file: "auto-包裹"),
     ]
+
+    /// iCloud 链接（推荐方式）。在 Shortcuts 里「共享 › 拷贝 iCloud 链接」拿到后填这里；
+    /// 为空时界面只给「用文件导入」。
+    static let icloudLinks: [String: String] = [
+        "【": "",
+        "取件": "",
+        "快递": "",
+        "包裹": "",
+    ]
+
+    static func icloudURL(for keyword: String) -> URL? {
+        guard let raw = icloudLinks[keyword], !raw.isEmpty,
+              let url = URL(string: raw) else { return nil }
+        return url
+    }
 
     /// 已导入过哪些关键词（本地记录，仅用于界面显示"已导入"）
     private static let key = "codeclip.automation.imported"
