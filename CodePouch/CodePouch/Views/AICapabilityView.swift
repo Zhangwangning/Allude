@@ -17,6 +17,10 @@ import FoundationModels
 
 struct AICapabilityView: View {
     @State private var refreshToken = 0
+    /// 检测中的状态（2026-11-05 主人：点了没反应，以为没生效）
+    @State private var isChecking = false
+    /// 检测完成后短暂闪一下，让用户知道"刷新了"
+    @State private var justChecked = false
 
     private var availability: SystemLanguageModel.Availability {
         _ = refreshToken
@@ -63,25 +67,59 @@ struct AICapabilityView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             Button {
-                refreshToken &+= 1
-                logOnce()
+                guard !isChecking else { return }
+                Task { await recheck() }
             } label: {
-                Text("重新检测")
-                    .font(AppTheme.TypeScale.bodyMedium)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 9)
-                    .background(
-                        RoundedRectangle(cornerRadius: 11, style: .continuous)
-                            .fill(AppTheme.accent.opacity(0.13))
-                    )
-                    .foregroundStyle(AppTheme.accent)
+                HStack(spacing: 8) {
+                    if isChecking {
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(AppTheme.accent)
+                    } else if justChecked {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
+                    Text(isChecking ? "检测中…" : (justChecked ? "已检测" : "重新检测"))
+                        .font(AppTheme.TypeScale.bodyMedium)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 9)
+                .background(
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        .fill(AppTheme.accent.opacity(isChecking ? 0.20 : 0.13))
+                )
+                .foregroundStyle(AppTheme.accent)
+                .scaleEffect(isChecking ? 0.98 : 1)
             }
             .buttonStyle(.plain)
+            .disabled(isChecking)
+            .animation(.easeInOut(duration: 0.18), value: isChecking)
+            .animation(.easeInOut(duration: 0.18), value: justChecked)
             .padding(.top, 4)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardSurface()
+        .opacity(isChecking ? 0.55 : 1)
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AppTheme.accent.opacity(justChecked ? 0.55 : 0), lineWidth: 1.5)
+        }
+        .animation(.easeInOut(duration: 0.22), value: isChecking)
+        .animation(.easeOut(duration: 0.35), value: justChecked)
+    }
+
+    /// 真正"重新检测"：给一点可见的耗时，否则瞬间返回用户无法感知
+    private func recheck() async {
+        isChecking = true
+        justChecked = false
+        defer { isChecking = false }
+        try? await Task.sleep(for: .milliseconds(700))
+        refreshToken &+= 1
+        logOnce()
+        withAnimation(.easeOut(duration: 0.25)) { justChecked = true }
+        try? await Task.sleep(for: .milliseconds(1200))
+        withAnimation(.easeOut(duration: 0.3)) { justChecked = false }
     }
 
     // MARK: 设备信息
