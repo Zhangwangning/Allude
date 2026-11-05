@@ -46,6 +46,19 @@ python3 tools/annotation/address-report.py 标注模板_合并.tsv
 会打印**地址准确率**与差异分类（未抓到 / 截断多余 / 缺行政区 / 完全不同），
 并写出 `地址差异.md`（含每条原文与两版地址），据此改地址公式。
 
+## 2.8 并入用户从 App 导出的样本
+
+用户在 App 里「设置 › 帮助与反馈 › 帮助改进拾码」添加的样本，
+导出后是一份 `codepouch-training.jsonl`。直接并入标注集：
+
+```bash
+python3 tools/annotation/import-training.py codepouch-training.jsonl
+```
+
+- 默认并入 `标注模板_定稿.tsv`，已有原文按「删空白后全等」去重；
+- 新增行的「预填」留空（用户标注优先），人工列填用户给的值；
+- 并入后会提示条数，可直接 `retrain`。
+
 ## 3. 重训
 
 ```bash
