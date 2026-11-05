@@ -65,12 +65,10 @@ final class PickupNotificationPresenter: NSObject, UNUserNotificationCenterDeleg
         completionHandler()
 
         // 再跳到主线程、下一轮 runloop 改路由状态
+        // 主人定稿（2026-11-05）：点通知只进「待取」列表，**不**自动弹某条卡片详情。
+        // 锁屏上看完码就走的人，被推进详情页反而多一步返回。
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            if let pendingID {
-                NotificationRouter.shared.pendingRecordID = pendingID
-            } else {
-                NotificationRouter.shared.requestPendingTab()
-            }
+            NotificationRouter.shared.requestPendingTab()
         }
     }
 }

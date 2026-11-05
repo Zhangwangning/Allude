@@ -701,12 +701,14 @@ struct CourierLogo: View {
         //    · 拿不到图就明确走渐变兜底（不会画成一个灰占位）；
         //    · `Image(uiImage:)` 走位图路径，accented 管线不会把它当模板重涂。
         if let asset = info.asset, let image = UIImage(named: asset) {
+            let _ = BrandDebug.trace("name=\(info.name) asset=\(asset) loaded=true")
             Image(uiImage: image)
                 .renderingMode(.original)
                 .resizable()
                 .widgetAccentedRenderingMode(.fullColor)
                 .scaledToFill()
         } else {
+            let _ = BrandDebug.trace("name=\(info.name) asset=\(info.asset ?? "nil") loaded=false")
             ZStack {
                 LinearGradient(colors: [Color(hex: info.from), Color(hex: info.to)],
                                startPoint: .topLeading, endPoint: .bottomTrailing)
