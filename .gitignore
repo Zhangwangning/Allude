@@ -50,3 +50,5 @@ tools/license-gen/*.pem
 # 人工标注（含真实短信内容，不入库）
 标注模板.tsv
 标注模板_*.tsv
+标注模板*.xlsx
+地址差异.md
