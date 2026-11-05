@@ -8,6 +8,12 @@ import Foundation
 // Live Activity 从 iOS 17 起支持交互：卡面上的 `Button(intent:)` 被点后，
 // 系统会**在后台**执行这个 App Intent，不需要打开 App，也不需要解锁。
 //
+// 🔴 必须实现 **`LiveActivityIntent`**（不是普通 `AppIntent`）：
+//    苹果对「实时活动里的按钮」有专门约束 —— 只有实现该协议的意图，
+//    系统才会在点击时把请求交给 App 执行。用普通 AppIntent 时按钮可点、
+//    但 `perform()` 永远不会被调用（2026-11-05 真机实测：App Group 里
+//    连一条诊断记录都写不出来）。
+//
 // 放在 shared 层：卡面视图（编译进小组件扩展）要能引用到这两个类型。
 // 真正干活的数据（PickupStore）在 App target，控制器通过 `pendingProvider`
 // 注入 —— 扩展进程里没有这份数据，点了就是空操作，不会崩。
@@ -32,7 +38,7 @@ enum IntentDebug {
     }
 }
 
-struct NextPickupIntent: AppIntent {
+struct NextPickupIntent: LiveActivityIntent {
     static var title: LocalizedStringResource { "显示下一件待取" }
     static var description: IntentDescription {
         IntentDescription("在锁屏实时活动里切换到下一件待取快递。")
@@ -51,7 +57,7 @@ struct NextPickupIntent: AppIntent {
     }
 }
 
-struct PreviousPickupIntent: AppIntent {
+struct PreviousPickupIntent: LiveActivityIntent {
     static var title: LocalizedStringResource { "显示上一件待取" }
     static var description: IntentDescription {
         IntentDescription("在锁屏实时活动里切换到上一件待取快递。")
