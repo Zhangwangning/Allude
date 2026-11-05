@@ -23,6 +23,15 @@ struct Gen {
            "原文", "人工判定(pickup/other)", "人工取件码", "人工地址", "人工备注"]
             .joined(separator: "\t"))
     
+    // 🔴 语料里有大量重复段（同一模板反复出现），不去重会让标注量翻倍，
+    //    还会让训练集被少数模板主导。去重口径：**去掉所有空白后完全一致**才算重复；
+    //    只差数字的样本保留（那是有价值的不同样本）。
+    func collapse(_ s: String) -> String {
+        s.replacingOccurrences(of: "\u{3000}", with: " ")
+         .components(separatedBy: .whitespacesAndNewlines)
+         .joined()
+    }
+    var seen = Set<String>()
     var seq = 0
     for line in corpus.split(separator: "\n", omittingEmptySubsequences: false) {
         var t = String(line).trimmingCharacters(in: .whitespaces)
@@ -32,6 +41,10 @@ struct Gen {
         if let r = t.range(of: #"^\d+\.\s*"#, options: .regularExpression) { t.removeSubrange(r) }
         if t.count < 8 { continue }
     
+        let key = collapse(t)
+        guard !seen.contains(key) else { continue }
+        seen.insert(key)
+
         seq += 1
         let r = PickupParser.parse(t)
         let row = [
