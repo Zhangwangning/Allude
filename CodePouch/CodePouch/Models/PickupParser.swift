@@ -515,6 +515,10 @@ enum PickupParser {
             result.address = ""
         }
 
+        // 地址展示口径（2026-11-05 主人定 B 方案）：
+        //   去行政前缀、括号别名前置、去掉「站点/店」冗余尾巴，与人工标注一致。
+        result.address = normalizeAddressText(result.address)
+
         // 平台与快递公司彻底分离（2026-10-18 主人定）：平台=【】内（无则空），
         // 快递公司=正文优先→【】内兜底→空，两者各算各的，不再互为回填。
 
@@ -779,3 +783,79 @@ extension PickupParser {
         return !arrivedWords.contains(where: { text.contains($0) })
     }
 }
+
+
+private let stationBrandWords = [
+    "菜鸟驿站", "菜鸟", "兔喜生活", "兔喜快递", "兔喜", "妈妈驿站", "多多代收点",
+    "快宝驿站", "驿收发", "中邮驿站", "邮政驿站", "蜂站", "递管家", "快递驿站",
+    "快递超市", "韵达快递超市", "韵达超市", "圆通超市", "超市", "便利店", "驿站", "快递柜"
+]
+
+/// 地址展示规整（B 方案）：`张掖市甘州区馨月湖小区南门兴裕隆超市` → `馨月湖小区南门兴裕隆超市`
+/// `菜鸟驿站甘州院子店（家佳福超市）店` → `家佳福超市甘州院子店`
+func normalizeAddressText(_ raw: String) -> String {
+    var s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !s.isEmpty else { return s }
+
+    // ① 去行政前缀：省 / 市 / 区县（「小区」「园区」「新区」「景区」「校区」不算）
+    s = stripAdminPrefix(s)
+    // ② 括号别名前置：`<品牌><小区>店（<别名>）…` → `<别名><小区>店`
+    if let open = s.firstIndex(where: { $0 == "（" || $0 == "(" }) {
+        let closeChars: [Character] = ["）", ")"]
+        if let close = s[open...].firstIndex(where: { closeChars.contains($0) }) {
+            let alias = String(s[s.index(after: open)..<close])
+            var head = String(s[..<open])
+            var tail = String(s[s.index(after: close)...])
+            for brand in stationBrandWords where head.hasPrefix(brand) {
+                head.removeFirst(brand.count)
+                break
+            }
+            tail = tail.replacingOccurrences(of: "站点", with: "")
+                          .replacingOccurrences(of: "店面", with: "店")
+            head = head.trimmingCharacters(in: .whitespaces)
+            tail = tail.trimmingCharacters(in: .whitespaces)
+            if !alias.isEmpty {
+                var merged = alias + head + tail
+                while merged.hasSuffix("店店") { merged.removeLast() }
+                merged = merged.replacingOccurrences(of: "店站点", with: "店")
+                if merged.count >= 2 { s = merged }
+            }
+        }
+    }
+
+    // ②.5 括号合并后可能又带上了行政前缀（「甘肃省张掖市甘州区…」），再剥一次
+    s = stripAdminPrefix(s)
+
+    // ③ 去掉孤零零的「站点」尾巴
+    s = s.replacingOccurrences(of: "店站点", with: "店")
+    return s.trimmingCharacters(in: .whitespaces)
+}
+
+/// 反复剥离开头的省 / 市 / 区县，直到剥不动（最多 3 轮，避免死循环）
+func stripAdminPrefix(_ input: String) -> String {
+    var s = input
+    let patterns = [
+        #"^[\u4E00-\u9FA5]{2,4}(?:省|自治区|特别行政区)"#,
+        #"^[\u4E00-\u9FA5]{2,4}(?:市|自治州|地区)"#,
+        #"^[\u4E00-\u9FA5]{2,4}(?:区|县|旗)"#
+    ]
+    let notAdmin = ["小区", "园区", "新区", "景区", "校区", "社区",
+                    "超市", "夜市", "城市", "都市", "市场", "门市", "集市"]
+    for _ in 0..<3 {
+        var changed = false
+        for pattern in patterns {
+            guard let re = try? NSRegularExpression(pattern: pattern) else { continue }
+            let range = NSRange(s.startIndex..., in: s)
+            guard let m = re.firstMatch(in: s, range: range),
+                  let r = Range(m.range, in: s) else { continue }
+            let token = String(s[r])
+            if notAdmin.contains(where: { token.contains($0) }) { continue }
+            s.removeSubrange(r)
+            changed = true
+            break
+        }
+        if !changed { break }
+    }
+    return s
+}
+
