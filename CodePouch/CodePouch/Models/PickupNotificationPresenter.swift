@@ -45,16 +45,23 @@ final class PickupNotificationPresenter: NSObject, UNUserNotificationCenterDeleg
         let info = response.notification.request.content.userInfo
         let raw = info["recordID"] as? String
 
-        // 🔴 无论能不能定位到记录，都要让界面"有反应"：
-        //    之前 recordID 缺失就直接 return，用户体感就是"点了没反应"。
-        await MainActor.run {
-            if let raw, let id = UUID(uuidString: raw) {
-                NotificationRouter.shared.pendingRecordID = id
-                DiagnosticsLog.record("notify", "tapped record=\(id.uuidString.prefix(8))")
+        // 🔴 2026-11-05 真机崩溃（build 98）：
+        //    在 didReceive 里**同步**改 @Published → 触发 UI 更新，
+        //    而此刻 UIKit 正在做 `_updateSnapshotAndStateRestoration…`，
+        //    于是抛出 NSAssertion 并 SIGABRT —— 用户看到的就是"点了通知，
+        //    桌面一闪又回到主屏幕"。
+        //    修法：**先返回、下一轮主线程再改状态**，绝不插进 UIKit 的恢复事务。
+        let pendingID: UUID? = raw.flatMap(UUID.init(uuidString:))
+        DiagnosticsLog.record("notify",
+                              pendingID.map { "tapped record=\($0.uuidString.prefix(8))" }
+                              ?? "tapped without recordID")
+
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(250))
+            if let pendingID {
+                NotificationRouter.shared.pendingRecordID = pendingID
             } else {
-                // 没有具体记录（比如每日提醒）→ 至少切回待取列表
                 NotificationRouter.shared.requestPendingTab()
-                DiagnosticsLog.record("notify", "tapped without recordID")
             }
         }
     }

@@ -696,8 +696,14 @@ struct CourierLogo: View {
     @ViewBuilder
     private var content: some View {
         if let asset = info.asset {
+            // 🔴 锁屏卡 / 灵动岛属于 WidgetKit 渲染管线，系统会在 **accented（着色）**
+            //    模式下把图片当蒙版单色填充（2026-11-05 主人真机截图：锁屏卡右上角
+            //    的兔喜图标变成一个灰方块）。`renderingMode` + `widgetAccentedRenderingMode`
+            //    两行缺一不可，与 `AppMarkIcon` 同一个坑。
             Image(asset)
+                .renderingMode(.original)
                 .resizable()
+                .widgetAccentedRenderingMode(.fullColor)
                 .scaledToFill()
         } else {
             ZStack {
