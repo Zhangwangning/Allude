@@ -37,8 +37,11 @@ struct NextPickupIntent: AppIntent {
     static var description: IntentDescription {
         IntentDescription("在锁屏实时活动里切换到下一件待取快递。")
     }
-    /// 后台执行：不把 App 拉到前台（点箭头只想翻页，不想跳走）
-    static var supportedModes: IntentModes { .background }
+    // 🔴 不要在这里写 `supportedModes = .background`：
+    //    真机实测（2026-11-05，build 107）锁屏卡上的按钮点了**完全没反应**，
+    //    诊断文件里连一条记录都没写 —— 说明 Intent 根本没被执行。
+    //    小组件/实时活动里的交互按钮要求 Intent 处于可交互执行目标，
+    //    声明 background-only 会被系统静默忽略。这里保持默认。
 
     func perform() async throws -> some IntentResult {
         IntentDebug.trace("next tapped; provider=\(PickupActivityController.pendingProvider != nil) "
@@ -53,8 +56,6 @@ struct PreviousPickupIntent: AppIntent {
     static var description: IntentDescription {
         IntentDescription("在锁屏实时活动里切换到上一件待取快递。")
     }
-    static var supportedModes: IntentModes { .background }
-
     func perform() async throws -> some IntentResult {
         IntentDebug.trace("prev tapped; provider=\(PickupActivityController.pendingProvider != nil) "
                           + "activities=\(Activity<PickupActivityAttributes>.activities.count)")
