@@ -66,7 +66,10 @@ enum PickupAI {
             return "可用"
         case .unavailable(let reason):
             switch reason {
-            case .deviceNotEligible: return "本机不支持（需 iPhone 15 Pro 及以上）"
+            // 🔴 2026-11-05 主人指正：原来写「本机不支持（需 iPhone 15 Pro 及以上）」，
+            //    括号里那句是"最低要求"，摆在 16 Pro 用户面前读起来像"你的手机不够格"。
+            //    现在只陈述系统给的事实，最低要求另起一行说明（见 Apple 智能页的说明卡）。
+            case .deviceNotEligible: return "系统未向本机开放端侧模型"
             case .appleIntelligenceNotEnabled: return "未开启 Apple 智能"
             case .modelNotReady: return "模型未就绪（系统在后台下载）"
             @unknown default: return "不可用"
