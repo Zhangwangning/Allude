@@ -48,6 +48,19 @@ struct HelpCenterView: View {
 
                     SettingsDivider()
 
+                    // 帮助改进拾码（2026-11-05 主人 A+B 方案：手动提供样本 → 本地存 → 用户主动导出）
+                    NavigationLink {
+                        TrainingDataView()
+                    } label: {
+                        SettingsRow(symbol: "sparkles.rectangle.stack.fill",
+                                    title: "帮助改进拾码",
+                                    subtitle: "添加短信样本，帮我提升识别准确率",
+                                    tint: AppTheme.violet)
+                    }
+                    .buttonStyle(.plain)
+
+                    SettingsDivider()
+
                     // 联系方式（2026-11-01 从「关于」移到这里：它属于"找我们"，不是"关于产品"）
                     NavigationLink {
                         ContactView()
