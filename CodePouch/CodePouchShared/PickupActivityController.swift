@@ -116,7 +116,11 @@ enum PickupActivityController {
     /// 由 App Intent 在**后台**调用（App 不必打开）。只允许一个活动实例，
     /// 所以直接 update 当前那张，不新建。
     static func cycle(offset: Int) async {
-        guard let pending = pendingProvider?(), pending.count > 1 else { return }
+        // 🔴 不依赖 App 进程：翻页 Intent 可能跑在**小组件扩展**里（那里没有 PickupStore）。
+        //    共享层本来就能读 App Group 里的记录文件，直接用它兜底。
+        let all = pendingProvider?() ?? PickupStorage.load().filter { !$0.isPickedUp }
+        let pending = all
+        guard pending.count > 1 else { return }
         let sorted = pending.sorted { $0.receivedAt > $1.receivedAt }
         guard let current = Activity<PickupActivityAttributes>.activities.first else { return }
         let currentID = current.content.state.item.id
