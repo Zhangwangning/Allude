@@ -101,6 +101,22 @@ struct CodePouchApp: App {
                                       content: content, trigger: trigger))
         }
 
+        // 🔴 每次装新构建后，强制结束旧的实时活动：
+        //    锁屏卡的视图会被系统**缓存**，只改代码不换活动实例时，截到的/看到的
+        //    永远是旧渲染（2026-10-28 已踩过一次）。这里用构建号做标记，
+        //    构建号变了就把在册活动全部收掉，让 sync 重新创建一个新的。
+        let buildKey = "codeclip.lastBuildForActivity"
+        let currentBuild = (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String) ?? "0"
+        let shared = UserDefaults(suiteName: PickupStorage.appGroupID) ?? .standard
+        if shared.string(forKey: buildKey) != currentBuild {
+            shared.set(currentBuild, forKey: buildKey)
+            Task {
+                for activity in Activity<PickupActivityAttributes>.activities {
+                    await activity.end(nil, dismissalPolicy: .immediate)
+                }
+            }
+        }
+
         // 签名到期提醒（没有描述文件的 App Store 版内部会直接返回）
         SigningExpiryNotifier.reschedule()
 

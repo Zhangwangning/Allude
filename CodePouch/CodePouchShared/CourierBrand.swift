@@ -695,12 +695,13 @@ struct CourierLogo: View {
     /// 已收录的品牌直接用官方图标；未收录的退回「品牌色渐变方块 + 白色图形」
     @ViewBuilder
     private var content: some View {
-        if let asset = info.asset {
-            // 🔴 锁屏卡 / 灵动岛属于 WidgetKit 渲染管线，系统会在 **accented（着色）**
-            //    模式下把图片当蒙版单色填充（2026-11-05 主人真机截图：锁屏卡右上角
-            //    的兔喜图标变成一个灰方块）。`renderingMode` + `widgetAccentedRenderingMode`
-            //    两行缺一不可，与 `AppMarkIcon` 同一个坑。
-            Image(asset)
+        // 🔴 2026-11-05 锁屏卡图标仍是灰方块的第二轮调查：
+        //    上一版补了 `.renderingMode(.original)` 与 `.widgetAccentedRenderingMode(.fullColor)`，
+        //    真机仍灰。改用 `UIImage(named:)` 在**当前进程的 bundle** 里取图再交给 SwiftUI：
+        //    · 拿不到图就明确走渐变兜底（不会画成一个灰占位）；
+        //    · `Image(uiImage:)` 走位图路径，accented 管线不会把它当模板重涂。
+        if let asset = info.asset, let image = UIImage(named: asset) {
+            Image(uiImage: image)
                 .renderingMode(.original)
                 .resizable()
                 .widgetAccentedRenderingMode(.fullColor)

@@ -40,8 +40,13 @@ final class PickupNotificationPresenter: NSObject, UNUserNotificationCenterDeleg
     ///
     /// 异步版本：iOS 15+ 若实现了 `didReceive ... async`，系统优先走它，
     /// 不必再写 completionHandler 那版。
+    /// 🔴 用**闭包版**而不是 async 版：async 版本会被 Swift 并发桥接成 Task，
+    ///    真机崩溃栈显示它是在 UIKit `_updateSnapshotAndStateRestoration…` 期间被调起的，
+    ///    任何后续工作都会撞上事务断言（SIGABRT，用户看到"点通知黑屏/回桌面"）。
+    ///    闭包版可以先调用 completionHandler 让 UIKit 收尾，再在下一轮主线程做跳转。
     func userNotificationCenter(_ center: UNUserNotificationCenter,
-                               didReceive response: UNNotificationResponse) async {
+                               didReceive response: UNNotificationResponse,
+                               withCompletionHandler completionHandler: @escaping () -> Void) {
         let info = response.notification.request.content.userInfo
         let raw = info["recordID"] as? String
 
@@ -56,8 +61,11 @@ final class PickupNotificationPresenter: NSObject, UNUserNotificationCenterDeleg
                               pendingID.map { "tapped record=\($0.uuidString.prefix(8))" }
                               ?? "tapped without recordID")
 
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(250))
+        // 先交还控制权，让 UIKit 走完状态恢复
+        completionHandler()
+
+        // 再跳到主线程、下一轮 runloop 改路由状态
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             if let pendingID {
                 NotificationRouter.shared.pendingRecordID = pendingID
             } else {
