@@ -240,7 +240,10 @@ struct ActivityLockScreenCard: View {
 
                 // 取件码 + 快递柜（有柜位才跟在后面，没有就什么都不显示）。
                 // 与灵动岛、桌面小组件同一口径：到柜那一刻要用的信息，紧贴主角。
-                HStack(alignment: .lastTextBaseline, spacing: 8) {
+                HStack(alignment: .center, spacing: 10) {
+                    // 品牌图标挪到取件码左侧（2026-11-05 主人）：一眼看出是哪家
+                    CourierLogo(company: state.item.displayName, size: 28, showsShadow: false)
+
                     PickupCodeEmphasis.text(state.item.code, tint: tint, headOpacity: 0.78)
                         .font(.system(size: 31, weight: .bold, design: .rounded))
                         .monospaced()
@@ -277,30 +280,31 @@ struct ActivityLockScreenCard: View {
             }
 
             VStack(spacing: 10) {
-                CourierLogo(company: state.item.displayName, size: 30)
-
-                // 翻页箭头：竖直排列，只在多于一条时出现
+                // 翻页箭头：竖直排列，只在多于一条时出现（图标已挪到取件码左侧，这里整列留给箭头）
+                // 右侧只有箭头时上下留白会自动撑高卡片，所以用 Spacer 把它垂直居中
+                Spacer(minLength: 0)
                 if state.pendingCount > 1 {
-                    VStack(spacing: 6) {
+                    VStack(spacing: 8) {
                         Button(intent: PreviousPickupIntent()) {
                             Image(systemName: "chevron.up")
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(secondaryInk)
-                                .frame(width: 26, height: 24)
+                                .frame(width: 40, height: 32)
                                 .background(Capsule().fill(.white.opacity(0.16)))
                         }
                         .buttonStyle(.plain)
 
                         Button(intent: NextPickupIntent()) {
                             Image(systemName: "chevron.down")
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(secondaryInk)
-                                .frame(width: 26, height: 24)
+                                .frame(width: 40, height: 32)
                                 .background(Capsule().fill(.white.opacity(0.16)))
                         }
                         .buttonStyle(.plain)
                     }
                 }
+                Spacer(minLength: 0)
             }
         }
         .padding(.vertical, 2)
