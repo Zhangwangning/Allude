@@ -214,14 +214,14 @@ struct ActivityLockScreenCard: View {
                     //      `platformSuffix` 仅在「公司 ≠ 平台」时才有值，
                     //      所以没有平台时这段整块不渲染，不会留下孤立的「|」。
                     Text(state.item.displayName.L)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(.white)
                         .shadow(color: inkShadow, radius: 2, x: 0, y: 0.5)
                         .lineLimit(1)
 
                     if let platform = state.item.platformSuffix {
                         Text("| \(platform)")
-                            .font(.system(size: 12))
+                            .font(.system(size: 14))
                             .lineLimit(1)
                             .foregroundStyle(secondaryInk)
                     }
@@ -230,7 +230,7 @@ struct ActivityLockScreenCard: View {
 
                     if state.pendingCount > 1 {
                         Text("还有 \(state.pendingCount - 1) 条")
-                            .font(.caption2)
+                            .font(.system(size: 13))
                             .foregroundStyle(secondaryInk)
                             .lineLimit(1)
                             .fixedSize(horizontal: true, vertical: false)
@@ -242,7 +242,7 @@ struct ActivityLockScreenCard: View {
                 // 与灵动岛、桌面小组件同一口径：到柜那一刻要用的信息，紧贴主角。
                 HStack(alignment: .lastTextBaseline, spacing: 8) {
                     PickupCodeEmphasis.text(state.item.code, tint: tint, headOpacity: 0.78)
-                        .font(.system(size: 27, weight: .bold, design: .rounded))
+                        .font(.system(size: 31, weight: .bold, design: .rounded))
                         .monospaced()
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
@@ -253,7 +253,7 @@ struct ActivityLockScreenCard: View {
 
                     if let locker = state.item.locker, !locker.isEmpty {
                         Text(locker.L)
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 14, weight: .medium))
                             .lineLimit(1)
                             .foregroundStyle(secondaryInk)
                             .fixedSize(horizontal: true, vertical: false)
@@ -264,34 +264,11 @@ struct ActivityLockScreenCard: View {
                 }
                 .padding(.top, 6)
 
-                // 翻页箭头：只在有多条待取时出现（一条时翻了也没变化）
-                if state.pendingCount > 1 {
-                    HStack(spacing: 14) {
-                        Spacer(minLength: 0)
-                        Button(intent: PreviousPickupIntent()) {
-                            Image(systemName: "chevron.up")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(secondaryInk)
-                                .frame(width: 26, height: 26)
-                                .background(Circle().fill(.white.opacity(0.16)))
-                        }
-                        .buttonStyle(.plain)
 
-                        Button(intent: NextPickupIntent()) {
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(secondaryInk)
-                                .frame(width: 26, height: 26)
-                                .background(Circle().fill(.white.opacity(0.16)))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(.top, 8)
-                }
 
                 if !state.item.address.isEmpty {
                     Text(state.item.address.L)
-                        .font(.system(size: 12))
+                        .font(.system(size: 14))
                         .foregroundStyle(secondaryInk)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -299,7 +276,32 @@ struct ActivityLockScreenCard: View {
                 }
             }
 
-            CourierLogo(company: state.item.displayName, size: 30)
+            VStack(spacing: 10) {
+                CourierLogo(company: state.item.displayName, size: 30)
+
+                // 翻页箭头：竖直排列，只在多于一条时出现
+                if state.pendingCount > 1 {
+                    VStack(spacing: 6) {
+                        Button(intent: PreviousPickupIntent()) {
+                            Image(systemName: "chevron.up")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(secondaryInk)
+                                .frame(width: 26, height: 24)
+                                .background(Capsule().fill(.white.opacity(0.16)))
+                        }
+                        .buttonStyle(.plain)
+
+                        Button(intent: NextPickupIntent()) {
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(secondaryInk)
+                                .frame(width: 26, height: 24)
+                                .background(Capsule().fill(.white.opacity(0.16)))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
         }
         .padding(.vertical, 2)
     }
