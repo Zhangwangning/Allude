@@ -776,6 +776,19 @@ struct SettingsView: View {
                                 tint: AppTheme.todayTint)
                 }
                 .buttonStyle(.plain)
+
+                SettingsDivider()
+
+                // 🔴 iPhone 用的是这一份**手写**的「更多」组，不走 SettingsPane.aboutGroup
+                //    （那是 iPad / Duo 宽屏分栏用的）。2026-11-05 加了 AI 能力检测却漏了这处，
+                //    真机上完全看不到 —— 两套布局都要各加一次。
+                NavigationLink {
+                    AICapabilityView()
+                } label: {
+                    SettingsRow(symbol: "brain.head.profile", title: "AI 能力检测",
+                                tint: AppTheme.violet)
+                }
+                .buttonStyle(.plain)
             }
             .cardSurface()
         }
