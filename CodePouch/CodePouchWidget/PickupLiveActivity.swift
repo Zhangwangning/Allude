@@ -37,7 +37,7 @@ struct PickupLiveActivity: Widget {
 
                 ActivityLockScreenCard(state: context.state)
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 14)
+                    .padding(.vertical, 18)
                     .zIndex(1)          // 明确压到玻璃之上，避免被玻璃层遮掉
             }
             .activityBackgroundTint(.clear)

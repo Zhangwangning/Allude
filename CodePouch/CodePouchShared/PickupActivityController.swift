@@ -87,6 +87,46 @@ enum PickupActivityController {
     /// 🔴 **单飞 + 合并**：已有收敛在跑时，本次只把最新待办记下就返回 ——
     ///    正在跑的那一轮收尾前会拿最新值再跑一遍。于是无论调用多密集，
     ///    任一时刻**只有一条收敛链**在动，`converge` 不可能与另一个自己重叠。
+    /// 待办列表的提供者（App 侧注入）。锁屏卡翻页要用它按当前顺序取上/下一条。
+    /// 共享层拿不到 `PickupStore`（在 App target），所以走注入，与
+    /// `stationResolver` 同一套路；扩展进程里为 nil，翻页自然变成空操作。
+    nonisolated(unsafe) static var pendingProvider: (() -> [PickupRecord])?
+
+    /// 把一条记录装配成活动状态（原 converge 里的映射，抽出来给翻页复用）
+    static func state(for record: PickupRecord, pendingCount: Int) -> PickupActivityAttributes.ContentState {
+        let stationName = stationResolver?(record)
+        let nameSource = PickupNaming(courier: record.courierDisplay,
+                                      platform: record.company,
+                                      station: stationName).iconSource
+        return PickupActivityAttributes.ContentState(
+            item: .init(id: record.id.uuidString,
+                        company: record.company,
+                        courier: record.courier,
+                        station: stationName,
+                        code: record.code,
+                        address: record.address,
+                        tint: CourierBrand.info(for: nameSource).resolvedFrom,
+                        locker: record.widgetLockerLabel(WidgetDisplayOptions.load())),
+            pendingCount: pendingCount
+        )
+    }
+
+    /// 锁屏卡的「上一件 / 下一件」：在待取列表里循环切换当前展示的那一条。
+    ///
+    /// 由 App Intent 在**后台**调用（App 不必打开）。只允许一个活动实例，
+    /// 所以直接 update 当前那张，不新建。
+    static func cycle(offset: Int) async {
+        guard let pending = pendingProvider?(), pending.count > 1 else { return }
+        let sorted = pending.sorted { $0.receivedAt > $1.receivedAt }
+        guard let current = Activity<PickupActivityAttributes>.activities.first else { return }
+        let currentID = current.content.state.item.id
+        let index = sorted.firstIndex { $0.id.uuidString == currentID } ?? 0
+        let next = sorted[(index + offset + sorted.count) % sorted.count]
+        let newState = state(for: next, pendingCount: sorted.count)
+        guard newState != current.content.state else { return }
+        await current.update(ActivityContent(state: newState, staleDate: nil))
+    }
+
     static func sync(pending: [PickupRecord]) {
         Task { @MainActor in
             latest = pending

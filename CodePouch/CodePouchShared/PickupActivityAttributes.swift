@@ -264,6 +264,31 @@ struct ActivityLockScreenCard: View {
                 }
                 .padding(.top, 6)
 
+                // 翻页箭头：只在有多条待取时出现（一条时翻了也没变化）
+                if state.pendingCount > 1 {
+                    HStack(spacing: 14) {
+                        Spacer(minLength: 0)
+                        Button(intent: PreviousPickupIntent()) {
+                            Image(systemName: "chevron.up")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(secondaryInk)
+                                .frame(width: 26, height: 26)
+                                .background(Circle().fill(.white.opacity(0.16)))
+                        }
+                        .buttonStyle(.plain)
+
+                        Button(intent: NextPickupIntent()) {
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(secondaryInk)
+                                .frame(width: 26, height: 26)
+                                .background(Circle().fill(.white.opacity(0.16)))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.top, 8)
+                }
+
                 if !state.item.address.isEmpty {
                     Text(state.item.address.L)
                         .font(.system(size: 12))
