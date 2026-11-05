@@ -487,6 +487,16 @@ final class PickupStore: ObservableObject {
         let results = PickupParser.parseAll(text, ocrSource: false)
         // 只记「发生了什么」：来源、原文长度、解析出几条。**不记内容**。
         DiagnosticsLog.record("parse", "source=sms len=\(text.count) results=\(results.count)")
+        // 分类器旁路观察（2026-11-05）：**只看不改**。
+        // 快递短信漏一条就少一个码，模型在测试集里仍误杀 1 条 ——
+        // 先在真实短信上积累对照，确认零误杀再考虑启用过滤。
+        let verdict = PickupClassifier.classify(text)
+        if verdict.verdict != .unavailable, results.isEmpty != (verdict.verdict == .other) {
+            DiagnosticsLog.record("classifier",
+                                  "disagree verdict=\(verdict.verdict.rawValue) "
+                                  + "conf=\(String(format: "%.2f", verdict.confidence)) "
+                                  + "parsed=\(results.count)")
+        }
         return commitAll(results)
     }
 
