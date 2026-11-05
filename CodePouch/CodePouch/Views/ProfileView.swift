@@ -41,6 +41,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     case feedback
     case version
     case privacy
+    case aiCapability
 
     var id: String { rawValue }
 
@@ -62,6 +63,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .feedback:     return "反馈"
         case .version:      return "版本"
         case .privacy:      return "隐私"
+        case .aiCapability: return "AI 能力检测"
         }
     }
 
@@ -83,6 +85,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .feedback:     return "envelope.fill"
         case .version:      return "info.circle.fill"
         case .privacy:      return "hand.raised.fill"
+        case .aiCapability: return "brain.head.profile"
         }
     }
 
@@ -104,13 +107,14 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .feedback:     return AppTheme.doneTint
         case .version:      return AppTheme.todayTint
         case .privacy:      return AppTheme.doneTint
+        case .aiCapability: return AppTheme.violet
         }
     }
 
     /// 侧栏分组（顺序即显示顺序，与原来长页的分组一一对应）
     static let generalGroup: [SettingsPane] = [.appearance, .fontSize, .language, .automation, .notification, .widget, .activity, .courier, .station, .guide, .license, .activation]
     static let dataGroup: [SettingsPane] = [.storage]
-    static let aboutGroup: [SettingsPane] = [.feedback, .version, .privacy]
+    static let aboutGroup: [SettingsPane] = [.feedback, .version, .privacy, .aiCapability]
 }
 
 struct SettingsView: View {
@@ -382,6 +386,7 @@ struct SettingsView: View {
         case .storage:    dataDetailPane
         case .feedback:   feedbackPane
         case .privacy:    privacyPane
+        case .aiCapability: AICapabilityView()
         }
     }
 

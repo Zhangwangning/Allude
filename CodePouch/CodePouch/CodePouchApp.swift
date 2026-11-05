@@ -696,6 +696,8 @@ struct CodePouchApp: App {
                     NavigationStack { ActivityPreviewGallery() }
                 case "appearance":
                     NavigationStack { AppearanceSettingsView() }
+                case "aiCapability":
+                    NavigationStack { AICapabilityView() }
                 case "autoRecord":
                     // 注意：`SCREEN=automation` 已被「使用教程」占用，这里换个名字
                     NavigationStack { AutoRecordSettingsView() }
