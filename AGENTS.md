@@ -706,6 +706,29 @@ App Store 版没有这个文件 → 整行自动不显示。
 重排一次「到期前 24 小时」的提醒，重复启动不会堆叠。
 真机日志可验证：`[signingNotify] scheduled at=2026-11-10T17:07:24Z`（到期 11-11）。
 
+## 端侧 AI 与地址兜底（2026-11-05）
+
+**端侧大模型（FoundationModels）在国内机型上不可用**：`SystemLanguageModel.default.availability`
+返回 `.unavailable(.deviceNotEligible)`，机型 iPhone17,1 / iOS 27.3 / 地区 CN，
+`supportsLocale(zh_CN)` 为 true —— 排除语言问题，是系统层面的资格判定。
+
+- 写作工具在**任何 App** 都能用，那是系统级能力；与第三方 App 调用端侧模型是两条通道。
+- 设置 › 关于 ›「AI 能力检测」可随时查看（`SCREEN=aiCapability` 截图脚手架）。
+- 不可用时解析链自动退回纯正则，功能不受影响。
+
+**地址兜底改用 NaturalLanguage**（不依赖 AI 资格、纯本地）：
+`PickupParser.naturalLanguageAddress(from:)` 用 `NLTagger(.nameType)` 找地名锚点，
+向右扩展到句读/取件码关键字，**只在公式没抓到地址时**启用。
+
+回归结果（改前 → 改后）：
+
+```
+全量库  识别 193/514 不变，地址 190 → 191
+精选库  识别 64/64  不变，地址 60 → 62
+```
+
+🔴 改这里的铁律：兜底**只能填空**，不得覆盖已抓到的地址 —— 否则语料命中数会掉。
+
 ## 提交规范
 
 署名 `极客ZHANG <zhang_wangning@126.com>`。提交信息用中文，

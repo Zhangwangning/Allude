@@ -1,4 +1,5 @@
 import Foundation
+import NaturalLanguage
 
 // MARK: ============================================================================
 // 解析引擎：把 iOS 快捷指令「快递取件码」V7.3.0 的六套正则与优先级链移植进 App。
@@ -44,6 +45,45 @@ struct PickupParseResult: Equatable {
 // MARK: ============================================================================
 // （行程字段 TravelFields 已随出行功能下线一并移除 —— 拾码回归快递单一主业。）
 // ============================================================================
+
+
+// MARK: - 地址兜底（NaturalLanguage）
+
+/// 公式没抓到地址时，用**系统分词 + 地名标注**补一段。
+///
+/// 取舍：
+///   · 只在 `address.isEmpty` 时调用，不动已命中的结果 —— 保证语料回归不回退；
+///   · 取「第一个地名锚点」向右扩展到句读 / 取件码关键字之前，长度 ≥4 才采用；
+///   · 纯本地运算（NaturalLanguage 不上传、不联网）。
+func naturalLanguageAddress(from text: String) -> String? {
+    let tagger = NLTagger(tagSchemes: [.nameType])
+    tagger.string = text
+    tagger.setLanguage(.simplifiedChinese, range: text.startIndex..<text.endIndex)
+
+    var anchor: Range<String.Index>?
+    tagger.enumerateTags(in: text.startIndex..<text.endIndex, unit: .word,
+                         scheme: .nameType,
+                         options: [.omitWhitespace, .omitPunctuation, .joinNames]) { tag, range in
+        if tag == .placeName, anchor == nil {
+            anchor = range
+            return false
+        }
+        return true
+    }
+    guard let start = anchor?.lowerBound else { return nil }
+
+    let stops = CharacterSet(charactersIn: "，。；！,;\n")
+    var end = anchor!.upperBound
+    while end < text.endIndex {
+        let rest = text[end...]
+        if text[end].unicodeScalars.contains(where: { stops.contains($0) }) { break }
+        if rest.hasPrefix("取件码") || rest.hasPrefix("取货码") || rest.hasPrefix("请") { break }
+        end = text.index(after: end)
+    }
+    let candidate = String(text[start..<end]).trimmingCharacters(in: .whitespaces)
+    guard candidate.count >= 4, candidate.count <= 40 else { return nil }
+    return candidate
+}
 
 enum PickupParser {
 
@@ -431,6 +471,16 @@ enum PickupParser {
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             ?? ""
 
+        // ⑤.5 地址为空时的兜底：用系统分词 + 地名识别补一段（2026-11-05）
+        //
+        // 只在公式没抓到地址时启用，**绝不覆盖**已抓到的结果 —— 这条约束保证
+        // 现有语料的地址命中数只可能持平或增加，不会因为兜底而变差。
+        // 纯本地：NaturalLanguage 不联网、不上传，符合「数据不出手机」。
+        var resolvedAddress = address
+        if resolvedAddress.isEmpty, let guess = naturalLanguageAddress(from: text) {
+            resolvedAddress = guess
+        }
+
         // ⑥ 次要凭证与快递公司（2026-09-23 扩展：字段尽量全，没有就留空）：
         //    主凭证之外的运单号 / 尾号落进次要字段（「凭A-9182…取运单尾号7872包裹」
         //    主凭证是取件码，运单尾号 7872 也要带上）；快递公司按平台 / 正文两级判别。
@@ -438,7 +488,7 @@ enum PickupParser {
         var result = PickupParseResult(kind: outcome.0,
                                        value: outcome.1,
                                        company: platform,
-                                       address: address,
+                                       address: resolvedAddress,
                                        rawText: rawText)
         result.waybill = outcome.0 == .waybill ? outcome.1 : (waybill ?? "")
         result.tail = outcome.0 == .tail ? outcome.1 : (tail ?? "")
