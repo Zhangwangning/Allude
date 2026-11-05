@@ -240,6 +240,16 @@ struct RecordDetailView: View {
             pickedUpAt: record.pickedUpAt
         )
         store.update(edited)
+
+        // 记住这次纠正（同一驿站下次直接套用）。只在地址**真的改了**时才记，
+        // 并且必须有驿站名可作 key —— 没有驿站的短信（纯快递公司）不记，避免串味。
+        if edited.address != record.address {
+            if let station = StationDirectory.shared.matchedName(in: [record.rawMessage]),
+               !station.isEmpty {
+                PickupAddressMemory.remember(station: station, address: edited.address)
+            }
+        }
+
         edit.isEditing = false
     }
 

@@ -518,6 +518,15 @@ final class PickupStore: ObservableObject {
     /// 若在循环里逐条 append，`records` 的 `didSet` 会触发 N 次 —— N 次写盘 +
     /// N 次请小组件重画，5 条短信就是 5 遍，纯属浪费。
     private func commitAll(_ parsed: [PickupParseResult]) -> IngestOutcome {
+        // 🔴 地址记忆：用户改过的驿站地址，优先于本次解析结果（2026-11-05）
+        let parsed = parsed.map { result -> PickupParseResult in
+            var copy = result
+            if let station = StationDirectory.shared.matchedName(in: [result.rawText]),
+               let remembered = PickupAddressMemory.address(for: station) {
+                copy.address = remembered
+            }
+            return copy
+        }
         var outcome = IngestOutcome()
         guard !parsed.isEmpty else {
             outcome.pendingCount = pending.count
