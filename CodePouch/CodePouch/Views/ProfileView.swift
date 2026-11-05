@@ -63,7 +63,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .feedback:     return "反馈"
         case .version:      return "版本"
         case .privacy:      return "隐私"
-        case .aiCapability: return "AI 能力检测"
+        case .aiCapability: return "Apple 智能"
         }
     }
 
@@ -785,7 +785,7 @@ struct SettingsView: View {
                 NavigationLink {
                     AICapabilityView()
                 } label: {
-                    SettingsRow(symbol: "brain.head.profile", title: "AI 能力检测",
+                    SettingsRow(symbol: "brain.head.profile", title: "Apple 智能",
                                 tint: AppTheme.violet)
                 }
                 .buttonStyle(.plain)

@@ -34,7 +34,7 @@ struct AICapabilityView: View {
             .padding(.vertical, 18)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("AI 能力检测")
+        .navigationTitle("Apple 智能")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: logOnce)
     }
