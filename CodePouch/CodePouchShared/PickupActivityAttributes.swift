@@ -281,8 +281,10 @@ struct ActivityLockScreenCard: View {
 
             VStack(spacing: 10) {
                 // 翻页箭头：竖直排列，只在多于一条时出现（图标已挪到取件码左侧，这里整列留给箭头）
-                // 右侧只有箭头时上下留白会自动撑高卡片，所以用 Spacer 把它垂直居中
-                Spacer(minLength: 0)
+                // 🔴 **不要用 Spacer 做垂直居中**：Spacer 会让这个 HStack 变成"贪婪"布局，
+                //    在 App 内预览（父级给了固定 920pt 高）时整张卡被撑成一整块，
+                //    文字全被挤没（2026-11-05 主人截图：只剩两个箭头悬在壁纸上）。
+                //    用固定上间距代替，高度始终由内容决定。
                 if state.pendingCount > 1 {
                     VStack(spacing: 8) {
                         Button(intent: PreviousPickupIntent()) {
@@ -303,8 +305,8 @@ struct ActivityLockScreenCard: View {
                         }
                         .buttonStyle(.plain)
                     }
+                    .padding(.top, 2)
                 }
-                Spacer(minLength: 0)
             }
         }
         .padding(.vertical, 2)
