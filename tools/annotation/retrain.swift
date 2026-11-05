@@ -19,7 +19,10 @@ struct Retrain {
         guard let raw = try? String(contentsOfFile: path, encoding: .utf8) else {
             print("读不到标注文件：\(path)"); exit(1)
         }
-        var lines = raw.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        // 🔴 兼容 CRLF：Excel / csv 写出来的 TSV 常带 \r\n，
+        //    只按 \n 切会得到一整行，然后被判成"没有数据"（2026-11-05 实测）。
+        var lines = raw.split(whereSeparator: \.isNewline).map(String.init)
+        lines = lines.map { $0.replacingOccurrences(of: "\r", with: "") }
         guard lines.count > 1 else { print("没有数据"); exit(1) }
         lines.removeFirst()   // 表头
 
