@@ -87,7 +87,7 @@ struct TrainingDataView: View {
         VStack(spacing: 0) {
             Button { showComposer = true } label: {
                 SettingsRow(symbol: "plus.circle.fill", title: "添加一条样本",
-                            subtitle: "从已有短信里挑，或手动输入", showsChevron: false,
+                            showsChevron: false,
                             tint: AppTheme.accent)
             }
             .buttonStyle(.plain)
@@ -158,8 +158,8 @@ struct TrainingDataView: View {
     private var exportCard: some View {
         VStack(spacing: 0) {
             ShareLink(item: TrainingExportFile.url()) {
-                SettingsRow(symbol: "square.and.arrow.up.fill", title: "导出样本（分享）",
-                            subtitle: "可发微信、AirDrop、存文件 App", showsChevron: false,
+                SettingsRow(symbol: "square.and.arrow.up.fill", title: "导出样本",
+                            showsChevron: false,
                             tint: AppTheme.sky)
             }
             .buttonStyle(.plain)
@@ -169,7 +169,7 @@ struct TrainingDataView: View {
 
             Button { pendingMail = true } label: {
                 SettingsRow(symbol: "envelope.fill", title: "用邮件发送",
-                            subtitle: "附件为样本文件", showsChevron: false,
+                            showsChevron: false,
                             tint: AppTheme.doneTint)
             }
             .buttonStyle(.plain)

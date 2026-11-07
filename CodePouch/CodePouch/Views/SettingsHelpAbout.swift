@@ -97,8 +97,6 @@ struct HelpCenterView: View {
                     .buttonStyle(.plain)
                 }
                 .cardSurface()
-
-                PageFooter()
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 12)
@@ -201,7 +199,6 @@ struct AboutView: View {
                         VersionHistoryView()
                     } label: {
                         SettingsRow(symbol: "clock.arrow.circlepath", title: "版本历史",
-                                    detail: AppVersion.display,
                                     tint: AppTheme.amber)
                     }
                     .buttonStyle(.plain)
@@ -218,8 +215,6 @@ struct AboutView: View {
                     .buttonStyle(.plain)
                 }
                 .cardSurface()
-
-                PageFooter()
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 12)
@@ -235,35 +230,10 @@ struct AboutView: View {
     /// 顶部标识：名称 + 版本号。参考图里这一块都是居中的图标 + 名字 + 版本。
     // MARK: 软件说明（2026-11-07 主人要求写清楚）
 
-    /// 三句话说清 App 的性质：离线、不联网、不收数据；外加最低系统版本。
-    /// 放在「关于」页最顶上 —— 这是用户与审核最常看的一屏。
+    /// 这一屏只留一条入口：离线 / 数据 / 系统要求的完整说明在 `SoftwareInfoView`。
+    /// 🔴 2026-11-07 主人：不要把同样几句话在两处各写一遍（之前四行与二级页完全重复）。
     private var offlineCard: some View {
         VStack(spacing: 0) {
-            SettingsRow(symbol: "wifi.slash", title: "纯离线运行，不联网",
-                        showsChevron: false,
-                        tint: AppTheme.doneTint)
-
-            SettingsDivider()
-
-            SettingsRow(symbol: "hand.raised.fill", title: "不获取任何用户数据",
-                        showsChevron: false,
-                        tint: AppTheme.sky)
-
-            SettingsDivider()
-
-            SettingsRow(symbol: "internaldrive.fill", title: "数据只存在本机",
-                        showsChevron: false,
-                        tint: AppTheme.todayTint)
-
-            SettingsDivider()
-
-            SettingsRow(symbol: "iphone", title: "最低系统版本",
-                        detail: Self.minimumOS,
-                        showsChevron: false,
-                        tint: AppTheme.violet)
-
-            SettingsDivider()
-
             NavigationLink {
                 SoftwareInfoView()
             } label: {

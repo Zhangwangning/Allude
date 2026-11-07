@@ -168,16 +168,9 @@ struct WidgetSettingsView: View {
                     .foregroundStyle(field.tint)
             }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(field.title.L)
-                    .font(.system(size: 16, weight: field == .complete ? .semibold : .regular))
-                    .foregroundStyle(.primary)
-
-                Text(field.subtitle.L)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text(field.title.L)
+                .font(.system(size: 16, weight: field == .complete ? .semibold : .regular))
+                .foregroundStyle(.primary)
 
             Spacer(minLength: 8)
 
@@ -241,16 +234,6 @@ private enum WidgetField: CaseIterable {
         case .company:  "显示快递公司"
         case .station:  "显示驿站"
         case .locker:   "显示快递柜/货架"
-        }
-    }
-
-    var subtitle: String {
-        switch self {
-        case .complete: "四项全开，与下面的开关互斥"
-        case .address:  "完整门牌，如「馨月湖小区南门」"
-        case .company:  "如「圆通快递」；判别不出时显示短信平台"
-        case .station:  "如「菜鸟驿站」「兔喜生活」，取自短信原文"
-        case .locker:   "取件码后面的定位信息，如「2号柜」「货架3」"
         }
     }
 

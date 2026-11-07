@@ -114,7 +114,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     /// 侧栏分组（顺序即显示顺序，与原来长页的分组一一对应）
     static let generalGroup: [SettingsPane] = [.automation, .notification, .widget, .activity, .courier, .station, .guide, .license, .appearance, .fontSize, .language]
     static let dataGroup: [SettingsPane] = [.storage]
-    static let aboutGroup: [SettingsPane] = [.feedback, .version, .privacy, .aiCapability]
+    static let aboutGroup: [SettingsPane] = [.version, .aiCapability]
 }
 
 struct SettingsView: View {
