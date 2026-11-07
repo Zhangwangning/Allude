@@ -271,7 +271,7 @@ struct WidgetGalleryContent: View {
                     .font(AppTheme.TypeScale.rowSubtitle.weight(.semibold))
             }
 
-            Text("**拾码 CodePouch**：可用**小、中**两种尺寸，最多显示 4 条待取。\n\n**拾码 Pro**：解锁全部尺寸（大尺寸与竖版超大），一页最多 14 条。\n\n这里把每种尺寸都画出来，方便你判断要不要解锁；标着「拾码 Pro」的那些，在系统小组件库里加不出来。")
+            Text("小尺寸最多 4 条，中尺寸 3 条一页。\n\n大尺寸与竖版超大只在这里展示效果，系统小组件库里加不出来（标着「拾码 Pro」的那些）。")
                 .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

@@ -85,32 +85,12 @@ struct NotificationSettingsView: View {
     /// 不定期提醒的可选等待时长（小时）。
     private let hourOptions = [3, 6, 12, 24, 48]
 
-    // MARK: 免费版门禁（2026-11-07 主人）
-    //
-    // 定期提醒 / 超时未取提醒都是 Pro 功能。免费用户**看得到、点得到**，
-    // 点了弹「此功能为拾码 Pro 版功能」；他可以选「仅预览效果」——
-    // 界面按他的操作变化，但**不落库、不排通知**（App 本身不生效）。
-    @State private var proPrompt: ProPrompt?
-    @State private var showSubscription = false
-    @State private var previewDaily: Bool?
-    @State private var previewPending: Bool?
-    @State private var previewHours: Int?
-
-    private var isPro: Bool { store.isPro }
-    private var effectiveDaily: Bool { isPro ? model.dailyEnabled : (previewDaily ?? false) }
-    private var effectivePending: Bool { isPro ? model.pendingEnabled : (previewPending ?? false) }
-    private var effectiveHours: Int { isPro ? model.pendingHours : (previewHours ?? model.pendingHours) }
-    private var isPreviewing: Bool {
-        !isPro && (previewDaily != nil || previewPending != nil || previewHours != nil)
-    }
-
     var body: some View {
         ScrollView {
             // 组间距 24：iOS 设置页的分组留白比卡内行距大得多，
             // 分组标题 + 卡 + 卡外说明构成一个"块"，块与块之间必须能一眼断开。
             VStack(spacing: 24) {
                 toggleSection
-                if isPreviewing { previewBanner }
                 dailySection
                 pendingSection
             }
@@ -119,7 +99,6 @@ struct NotificationSettingsView: View {
             .padding(.bottom, 60)
         }
         .background(Color(.systemGroupedBackground))
-        .proGate(prompt: $proPrompt, showSubscription: $showSubscription)
         .navigationTitle("通知提醒")
         .cloaksTabBar()
         .navigationBarTitleDisplayMode(.inline)
@@ -188,47 +167,25 @@ struct NotificationSettingsView: View {
         .padding(.vertical, 12)
     }
 
-    /// 免费用户选了「仅预览效果」时的提示条（明确告诉他不生效）
-    private var previewBanner: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "eye.fill")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(AppTheme.accent)
-            Text("仅预览：下面的取件提醒只在本页展示效果，订阅后才会真正发送通知。")
-                .font(AppTheme.TypeScale.note)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(AppTheme.accent.opacity(0.10)))
-    }
-
     // MARK: 定期提醒
 
     private var dailySection: some View {
         SettingsGroup(title: "取件提醒 · 定期",
                       note: "每天固定时间数一遍待取件，有没取的才响；全部取完不会打扰。") {
             SettingsPlainRow(title: "每天定时提醒") {
-                Toggle("", isOn: Binding(get: { effectiveDaily }, set: { newValue in
-                    if isPro { model.setDailyEnabled(newValue); return }
-                    proPrompt = ProPrompt(feature: "daily-reminder") { previewDaily = newValue }
-                }))
+                Toggle("", isOn: Binding(get: { model.dailyEnabled },
+                                         set: { model.setDailyEnabled($0) }))
                     .labelsHidden()
                     .tint(AppTheme.accent)
             }
 
-            if effectiveDaily {
+            if model.dailyEnabled {
                 SettingsDivider(style: .plain)
 
                 SettingsPlainRow(title: "提醒时间") {
                     DatePicker("",
                                selection: Binding(get: { model.dailyTime },
-                                                  set: { newValue in
-                                                      if isPro { model.setDailyTime(newValue) }
-                                                  }),
+                                                  set: { model.setDailyTime($0) }),
                                displayedComponents: .hourAndMinute)
                         .labelsHidden()
                         .datePickerStyle(.compact)
@@ -249,11 +206,7 @@ struct NotificationSettingsView: View {
         VStack(spacing: 0) {
             ForEach(hourOptions, id: \.self) { hours in
                 Button {
-                    if isPro {
-                        model.setPendingHours(hours)
-                    } else {
-                        proPrompt = ProPrompt(feature: "overdue-hours") { previewHours = hours }
-                    }
+                    model.setPendingHours(hours)
                     showHoursMenu = false
                 } label: {
                     HStack(spacing: 12) {
@@ -263,7 +216,7 @@ struct NotificationSettingsView: View {
 
                         Spacer(minLength: 20)
 
-                        if hours == effectiveHours {
+                        if hours == model.pendingHours {
                             Image(systemName: "checkmark")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(Color(.systemBlue))
@@ -285,15 +238,13 @@ struct NotificationSettingsView: View {
         SettingsGroup(title: "取件提醒 · 不定期",
                       note: "入库超过设定时长还没取，单独催一次；取走或删除后自动撤回。") {
             SettingsPlainRow(title: "超时未取提醒") {
-                Toggle("", isOn: Binding(get: { effectivePending }, set: { newValue in
-                    if isPro { model.setPendingEnabled(newValue); return }
-                    proPrompt = ProPrompt(feature: "overdue-reminder") { previewPending = newValue }
-                }))
+                Toggle("", isOn: Binding(get: { model.pendingEnabled },
+                                         set: { model.setPendingEnabled($0) }))
                     .labelsHidden()
                     .tint(AppTheme.accent)
             }
 
-            if effectivePending {
+            if model.pendingEnabled {
                 SettingsDivider(style: .plain)
 
                 SettingsPlainRow(title: "等待时长") {
@@ -312,7 +263,7 @@ struct NotificationSettingsView: View {
                     Button {
                         showHoursMenu = true
                     } label: {
-                        SettingsValueLabel(text: "\(effectiveHours) 小时")
+                        SettingsValueLabel(text: "\(model.pendingHours) 小时")
                     }
                     .buttonStyle(.plain)
                     .popover(isPresented: $showHoursMenu, arrowEdge: .top) {

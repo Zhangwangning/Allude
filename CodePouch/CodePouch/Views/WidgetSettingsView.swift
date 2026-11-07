@@ -73,16 +73,6 @@ final class WidgetSettingsModel: ObservableObject {
 
 struct WidgetSettingsView: View {
     @StateObject private var model = WidgetSettingsModel()
-    @EnvironmentObject private var store: PickupStore
-
-    // MARK: 免费版门禁（2026-11-07 主人）
-    //
-    // 免费版不允许自定义显示开关：开关**照常显示、照常可点**，
-    // 点了弹「此功能为拾码 Pro 版功能」；可选「仅预览效果」——
-    // 本页预览会按他的选择变，但**小组件本身不生效**（不落库）。
-    @State private var proPrompt: ProPrompt?
-    @State private var showSubscription = false
-    @State private var previewOptions: WidgetDisplayOptions?
 
     var body: some View {
         ScrollView {
@@ -98,7 +88,6 @@ struct WidgetSettingsView: View {
             .padding(.bottom, 60)
         }
         .background(Color(.systemGroupedBackground))
-        .proGate(prompt: $proPrompt, showSubscription: $showSubscription)
         .navigationTitle("桌面小组件")
         .cloaksTabBar()
         .navigationBarTitleDisplayMode(.inline)
@@ -124,14 +113,6 @@ struct WidgetSettingsView: View {
                                    options: effectiveOptions)
             }
             .frame(maxWidth: .infinity, alignment: .center)
-
-            if isPreviewingWidget {
-                Text("仅预览：上面的效果只在本页展示，订阅后才会真正应用到桌面小组件。")
-                    .font(.system(size: 12))
-                    .foregroundStyle(AppTheme.accent)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .multilineTextAlignment(.center)
-            }
 
             Text("示例数据 · 桌面小组件会按这套显示设置渲染你自己的记录")
                 .font(.system(size: 12))
@@ -213,41 +194,17 @@ struct WidgetSettingsView: View {
 
     private func binding(for field: WidgetField) -> Binding<Bool> {
         if field == .complete {
-            return Binding(get: { effectiveOptions.isComplete }, set: { newValue in
-                guard store.isPro else {
-                    proPrompt = ProPrompt(feature: "widget-complete") { applyPreview { $0 = WidgetDisplayOptions.full } }
-                    return
-                }
-                model.setComplete(newValue)
-            })
+            return Binding(get: { effectiveOptions.isComplete },
+                           set: { model.setComplete($0) })
         }
         guard let keyPath = field.keyPath else { return .constant(false) }
-        return Binding(get: { effectiveOptions[keyPath: keyPath] }, set: { newValue in
-            guard store.isPro else {
-                proPrompt = ProPrompt(feature: "widget-\(field)") {
-                    applyPreview { $0[keyPath: keyPath] = newValue }
-                }
-                return
-            }
-            model.set(keyPath, to: newValue)
-        })
+        return Binding(get: { effectiveOptions[keyPath: keyPath] },
+                       set: { model.set(keyPath, to: $0) })
     }
 
     /// 🔴 **实际生效**的显示组合 —— 这一页里所有"描述当前状态"的地方都以它为准。
-    /// 免费用户「仅预览」时用本地副本，**不写入** `WidgetDisplayOptions`。
     private var effectiveOptions: WidgetDisplayOptions {
-        store.isPro ? model.options : (previewOptions ?? model.options)
-    }
-
-    /// 免费用户预览：只改本页的副本，小组件读的还是库里的旧值
-    private func applyPreview(_ mutate: (inout WidgetDisplayOptions) -> Void) {
-        var copy = previewOptions ?? model.options
-        mutate(&copy)
-        previewOptions = copy
-    }
-
-    private var isPreviewingWidget: Bool {
-        !store.isPro && previewOptions != nil
+        model.options
     }
 
     // MARK: 全部尺寸效果（直接铺开，不再跳转）
