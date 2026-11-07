@@ -204,11 +204,17 @@ enum WidgetPageSize {
         EntitlementSnapshot.licensedPro ? allFamilies : freeFamilies
     }
 
-    /// 付费档：五档全开。部署目标已是 iOS 27，`systemExtraLargePortrait` 无需可用性分支。
-    private static let allFamilies: [WidgetFamily] = [
-        .systemSmall, .systemMedium, .systemLarge,
-        .systemExtraLarge, .systemExtraLargePortrait,
-    ]
+    /// 付费档：全部尺寸。
+    /// 🔴 部署目标已降到 iOS 26：`systemExtraLargePortrait`（竖版超大）是 iOS 27 新增，
+    ///    低版本系统上取这个枚举会崩，所以按可用性拼装。
+    private static var allFamilies: [WidgetFamily] {
+        var families: [WidgetFamily] = [.systemSmall, .systemMedium,
+                                        .systemLarge, .systemExtraLarge]
+        if #available(iOS 27.0, *) {
+            families.append(.systemExtraLargePortrait)
+        }
+        return families
+    }
 
     /// 免费档：只有小 / 中。
     private static let freeFamilies: [WidgetFamily] = [.systemSmall, .systemMedium]

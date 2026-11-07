@@ -80,7 +80,14 @@ struct WidgetCanvas: View {
             case .medium: .systemMedium
             case .large: .systemLarge
             case .extraLarge: .systemExtraLarge
-            case .extraLargePortrait: .systemExtraLargePortrait
+            case .extraLargePortrait:
+                // 竖版超大是 iOS 27 新增；低版本回落到同尺寸的横版枚举只为比对档位，
+                // 实际展示由 `supportedFamilies` 过滤掉，不会出现在系统小组件库里。
+                if #available(iOS 27.0, *) {
+                    .systemExtraLargePortrait
+                } else {
+                    .systemExtraLarge
+                }
             }
         }
     }
