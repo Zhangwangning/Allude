@@ -401,6 +401,11 @@ struct EntitlementSnapshot: Codable, Equatable {
     ///
     /// 与 App 侧 `PickupStore.refreshEntitlement()` 是同一条判断，别各写一份。
     static var licensedPro: Bool {
+        // 🧪 调试脚手架（仅 Debug）：`FORCE_FREE=1` 强制按免费档跑，
+        // 方便真机上验收付费墙 —— 不必删凭证、也不用重装。
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["FORCE_FREE"] == "1" { return false }
+        #endif
         let snapshot = load()
         let backed = !(snapshot.license ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
