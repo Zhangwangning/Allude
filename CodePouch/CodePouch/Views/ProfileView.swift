@@ -302,6 +302,11 @@ struct SettingsView: View {
                 // 侧栏顶部搜索框（照 iPad 设置：胶囊输入框 + 放大镜）
                 settingsSearchField
 
+                // 🔴 2026-11-07 主人：拾码 Pro 入口要和直板机一样放在设置最上面
+                proBanner
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 8)
+
                 List {
                     settingsGroup("通用", items: filtered(SettingsPane.generalGroupAll))
                     settingsGroup("本机数据", items: filtered(SettingsPane.dataGroup))

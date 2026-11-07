@@ -18,6 +18,11 @@ struct HelpCenterView: View {
     @StateObject private var feedback = FeedbackModel()
     @State private var showClearConfirm = false
     @State private var showCleared = false
+    // 🔴 2026-11-07：分栏布局（Duo 展开 / iPad）里，这个页是 NavigationSplitView 的
+    //    详情列，直接放 `NavigationLink` 有时点不动（push 不落地）。
+    //    改成显式状态 + `navigationDestination(isPresented:)`，两种布局都能进。
+    @State private var showTraining = false
+    @State private var showContact = false
 
     var body: some View {
         ScrollView {
@@ -47,9 +52,7 @@ struct HelpCenterView: View {
                     SettingsDivider()
 
                     // 帮助改进拾码（2026-11-05 主人 A+B 方案：手动提供样本 → 本地存 → 用户主动导出）
-                    NavigationLink {
-                        TrainingDataView()
-                    } label: {
+                    Button { showTraining = true } label: {
                         SettingsRow(symbol: "sparkles.rectangle.stack.fill",
                                     title: "帮助改进拾码",
                                     tint: AppTheme.violet)
@@ -59,9 +62,7 @@ struct HelpCenterView: View {
                     SettingsDivider()
 
                     // 联系方式（2026-11-01 从「关于」移到这里：它属于"找我们"，不是"关于产品"）
-                    NavigationLink {
-                        ContactView()
-                    } label: {
+                    Button { showContact = true } label: {
                         SettingsRow(symbol: "at", title: "联系方式",
                                     tint: AppTheme.indigo)
                     }
@@ -115,6 +116,8 @@ struct HelpCenterView: View {
             }
         }
         .overlay(alignment: .bottom) { feedbackToast }
+        .navigationDestination(isPresented: $showTraining) { TrainingDataView() }
+        .navigationDestination(isPresented: $showContact) { ContactView() }
         .alert("清除诊断日志？", isPresented: $showClearConfirm) {
             Button("取消", role: .cancel) {}
             Button("清除", role: .destructive) {
