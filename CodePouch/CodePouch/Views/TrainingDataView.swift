@@ -67,7 +67,7 @@ struct TrainingDataView: View {
                 Text("导出前请先看这一段")
                     .font(AppTheme.TypeScale.rowTitleMedium)
             }
-            Text("· 导出内容 = **你手动添加的短信样本** + **App 诊断日志**，仅此两项。\n"
+            Text("· 导出内容 = 你手动添加的短信样本 + App 诊断日志，仅此两项。\n"
                  + "· 训练样本由你主动提供并授权使用；手机号、身份证、邮箱会自动脱敏。\n"
                  + "· 不含：你的全部取件记录、位置、通讯录、相册、设备码、账号信息。\n"
                  + "· App 不会自动上传：只有你点「导出」或「邮件发送」时，数据才离开这台手机。")
@@ -191,29 +191,30 @@ enum TrainingExportFile {
     }
 }
 
-// MARK: 添加样板的编辑页
+// MARK: 添加样本（解析结果即时可见、可改）
 
 struct TrainingSampleComposer: View {
     @Environment(\.dismiss) private var dismiss
+
     @State private var text = ""
     @State private var label = "pickup"
     @State private var code = ""
     @State private var address = ""
     @State private var note = ""
-    @State private var fromRecords = false
-    @State private var pickedID: UUID?
+    @State private var showPicker = false
+    /// 解析结果（按下「解析」或选完短信后填）
+    @State private var parsed: ParsedFields?
 
     let onSave: (String, String, String?, String?, String?) -> Void
-    private let records = PickupStore.shared.records
 
-    private var pickerTitle: String {
-        records.isEmpty ? "没有可用短信" : "选择一条"
-    }
-
-    private func recordTitle(_ record: PickupRecord) -> String {
-        let name = record.courierDisplay ?? record.company
-        let base = name.isEmpty ? String(record.rawMessage.prefix(18)) : name
-        return "\(base) · \(record.code)"
+    struct ParsedFields {
+        var isPickup: Bool
+        var code: String
+        var address: String
+        var courier: String
+        var station: String
+        var shelf: String
+        var locker: String
     }
 
     var body: some View {
@@ -221,31 +222,73 @@ struct TrainingSampleComposer: View {
             Form {
                 Section("短信原文") {
                     TextEditor(text: $text)
-                        .frame(minHeight: 120)
+                        .frame(minHeight: 110)
                         .font(AppTheme.TypeScale.body)
+                    Button {
+                        runParse()
+                    } label: {
+                        Label("解析这条短信", systemImage: "sparkle.magnifyingglass")
+                    }
+                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).count < 6)
                 }
+
                 Section("从已有短信挑选") {
-                    Menu(pickerTitle) {
-                        ForEach(records.prefix(20)) { record in
-                            Button(recordTitle(record)) {
-                                text = record.rawMessage
-                                code = record.code
-                                address = record.address
+                    Button {
+                        showPicker = true
+                    } label: {
+                        HStack {
+                            Text("打开取件卡片列表")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+
+                if let parsed {
+                    Section {
+                        if parsed.isPickup {
+                            parsedRow("判定", "快递短信")
+                            parsedRow("快递公司", parsed.courier.isEmpty ? "未识别" : parsed.courier)
+                            parsedRow("取件码", parsed.code.isEmpty ? "未识别" : parsed.code)
+                            parsedRow("地址", parsed.address.isEmpty ? "未识别" : parsed.address)
+                            if !parsed.shelf.isEmpty { parsedRow("货架", parsed.shelf) }
+                            if !parsed.locker.isEmpty { parsedRow("柜位", parsed.locker) }
+                            if !parsed.station.isEmpty { parsedRow("驿站", parsed.station) }
+                        } else {
+                            parsedRow("判定", "不是取件短信（内容里没有可用的取件凭证）")
+                        }
+                    } header: {
+                        Text("拾码的解析结果")
+                    } footer: {
+                        Text("下面是拾码自己解析出来的值。可以在「标注」里直接改成正确的，导出时会带上你改的版本。")
+                    }
+                    if parsed.isPickup {
+                        Section {
+                            Button {
+                                code = parsed.code
+                                address = parsed.address
+                                label = "pickup"
+                            } label: {
+                                Label("用解析结果填充下方标注", systemImage: "arrow.down.doc")
                             }
                         }
                     }
-                    .disabled(records.isEmpty)
                 }
-                Section("标注") {
+
+                Section("标注（可修改）") {
                     Picker("这是快递短信吗", selection: $label) {
                         Text("是（取件通知）").tag("pickup")
                         Text("不是").tag("other")
                     }
                     .pickerStyle(.segmented)
                     TextField("正确取件码（可空）", text: $code)
+                        .textInputAutocapitalization(.never)
                     TextField("正确地址（可空）", text: $address)
                     TextField("备注（可空）", text: $note)
                 }
+
                 Section {
                     Text("手机号、身份证、邮箱会自动脱敏。若原文含姓名，请自行改成「张三」这类占位。")
                         .font(AppTheme.TypeScale.note)
@@ -264,6 +307,108 @@ struct TrainingSampleComposer: View {
                         dismiss()
                     }
                     .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).count < 6)
+                }
+            }
+            .sheet(isPresented: $showPicker) {
+                TrainingRecordPickerView { record in
+                    text = record.rawMessage
+                    runParse()
+                    showPicker = false
+                }
+            }
+        }
+    }
+
+    private func parsedRow(_ title: String, _ value: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(title)
+                .font(AppTheme.TypeScale.body)
+                .foregroundStyle(.secondary)
+                .frame(width: 76, alignment: .leading)
+            Text(value)
+                .font(AppTheme.TypeScale.body)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func runParse() {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 6 else { parsed = nil; return }
+        guard let result = PickupParser.parse(trimmed) else {
+            parsed = ParsedFields(isPickup: false, code: "", address: "",
+                                  courier: "", station: "", shelf: "", locker: "")
+            return
+        }
+        let station = StationDirectory.shared.matchedName(in: [trimmed]) ?? ""
+        parsed = ParsedFields(isPickup: true,
+                              code: result.value,
+                              address: result.address,
+                              courier: result.courier.isEmpty ? result.company : result.courier,
+                              station: station,
+                              shelf: result.shelf,
+                              locker: result.locker)
+    }
+}
+
+// MARK: 取件卡片列表（整屏挑选）
+
+struct TrainingRecordPickerView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+    let onPick: (PickupRecord) -> Void
+
+    private var records: [PickupRecord] {
+        let all = PickupStore.shared.records
+        guard !query.isEmpty else { return all }
+        return all.filter { $0.rawMessage.localizedCaseInsensitiveContains(query) }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if records.isEmpty {
+                    Text("还没有取件记录。")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(records) { record in
+                    Button {
+                        onPick(record)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 8) {
+                                Text(record.courierDisplay ?? record.company)
+                                    .font(AppTheme.TypeScale.rowTitleMedium)
+                                Text(record.code)
+                                    .font(AppTheme.TypeScale.body.weight(.semibold))
+                                    .monospaced()
+                                Spacer(minLength: 0)
+                                Text(record.isPickedUp ? "已取" : "待取")
+                                    .font(AppTheme.TypeScale.badge)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if !record.address.isEmpty {
+                                Text(record.address)
+                                    .font(AppTheme.TypeScale.note)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                            Text(record.rawMessage)
+                                .font(AppTheme.TypeScale.note)
+                                .foregroundStyle(.tertiary)
+                                .lineLimit(2)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .listStyle(.plain)
+            .searchable(text: $query, prompt: "搜索短信内容")
+            .navigationTitle("选择一条短信")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
                 }
             }
         }
