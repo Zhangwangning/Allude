@@ -145,7 +145,7 @@ struct SettingsRow: View {
 
     private var chevron: some View {
         Image(systemName: "chevron.right")
-            .font(.system(size: 13, weight: .semibold))
+            .font(AppTheme.TypeScale.rowSubtitle.weight(.semibold))
             .foregroundStyle(.quaternary)
     }
 
@@ -154,7 +154,7 @@ struct SettingsRow: View {
     /// 与用户名旁边那枚 VIP 徽章同色，两处互相对得上。
     private var lockGlyph: some View {
         Image(systemName: "lock.fill")
-            .font(.system(size: 12, weight: .semibold))
+            .font(AppTheme.TypeScale.note.weight(.semibold))
             .foregroundStyle(AppTheme.amber)
     }
 }
@@ -280,7 +280,7 @@ struct SettingsValueLabel: View {
 
             if showsChevron {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(AppTheme.TypeScale.rowSubtitle.weight(.semibold))
                     .foregroundStyle(.quaternary)
             }
         }

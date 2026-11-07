@@ -62,7 +62,7 @@ struct AppearanceSettingsView: View {
                                 Spacer(minLength: 0)
                                 if settings.mode == mode {
                                     Image(systemName: "checkmark")
-                                        .font(.system(size: 15, weight: .semibold))
+                                        .font(AppTheme.TypeScale.body.weight(.semibold))
                                         .foregroundStyle(AppTheme.accent)
                                 }
                             }
@@ -148,7 +148,7 @@ struct FontSizeView: View {
                 VStack(spacing: 10) {
                     HStack {
                         Text("A")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(AppTheme.TypeScale.rowSubtitle.weight(.medium))
                             .foregroundStyle(.secondary)
                         Spacer()
                         Text(settings.followSystem ? "跟随系统" : settings.step.title)

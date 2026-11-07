@@ -395,11 +395,11 @@ struct SettingsView: View {
     private var settingsSearchField: some View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 14, weight: .medium))
+                .font(AppTheme.TypeScale.rowSubtitle.weight(.medium))
                 .foregroundStyle(.secondary)
 
             TextField("搜索", text: $query)
-                .font(.system(size: 15))
+                .font(AppTheme.TypeScale.body)
                 .textFieldStyle(.plain)
                 .submitLabel(.search)
 
@@ -408,7 +408,7 @@ struct SettingsView: View {
                     query = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 14))
+                        .font(AppTheme.TypeScale.rowSubtitle)
                         .foregroundStyle(.tertiary)
                 }
                 .buttonStyle(.plain)
@@ -449,7 +449,7 @@ struct SettingsView: View {
             SettingsGlyph(symbol: item.symbol, tint: item.tint, size: 26)
 
             Text(item.title.L)
-                .font(.system(size: 15))
+                .font(AppTheme.TypeScale.body)
                 .foregroundStyle(.primary)
 
             Spacer(minLength: 0)
@@ -604,9 +604,9 @@ struct SettingsView: View {
                     Toggle(isOn: $feedback.includeLog) {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("附带诊断日志")
-                                .font(.system(size: 15))
+                                .font(AppTheme.TypeScale.body)
                             Text("版本、系统、最近的操作记录，不含短信内容")
-                                .font(.system(size: 11))
+                                .font(AppTheme.TypeScale.badge)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -691,7 +691,7 @@ struct SettingsView: View {
                         Text("拾码")
                             .font(.system(size: 23, weight: .bold))
                         Text("PRO")
-                            .font(.system(size: 12, weight: .heavy))
+                            .font(AppTheme.TypeScale.note.weight(.heavy))
                             .padding(.horizontal, 7)
                             .padding(.vertical, 3)
                             .background(.white.opacity(0.55), in: .rect(cornerRadius: 6))
@@ -699,14 +699,14 @@ struct SettingsView: View {
                     .foregroundStyle(AppTheme.champagneInk)
 
                     Text(store.isPro ? "拾码 Pro 已开通" : "了解拾码 Pro")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(AppTheme.TypeScale.rowSubtitle.weight(.medium))
                         .foregroundStyle(AppTheme.champagneInk.opacity(0.8))
                 }
 
                 Spacer(minLength: 8)
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(AppTheme.TypeScale.body.weight(.semibold))
                     .foregroundStyle(AppTheme.champagneInk.opacity(0.75))
             }
             .padding(.horizontal, 18)
@@ -910,9 +910,9 @@ struct SubscriptionUnavailablePane: View {
                 .font(.system(size: 34, weight: .light))
                 .foregroundStyle(.tertiary)
             Text("暂不支持订阅")
-                .font(.system(size: 17, weight: .semibold))
+                .font(AppTheme.TypeScale.rowTitle.weight(.semibold))
             Text("敬请期待……")
-                .font(.system(size: 14))
+                .font(AppTheme.TypeScale.rowSubtitle)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1043,7 +1043,7 @@ struct FullVersionView: View {
         } label: {
             VStack(spacing: 6) {
                 Text(plan.title.L)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(AppTheme.TypeScale.note.weight(.medium))
                     .foregroundStyle(.secondary)
 
                 // 价格是这个卡片的主角：三档之间要比的是这个数
@@ -1054,7 +1054,7 @@ struct FullVersionView: View {
                     .minimumScaleFactor(0.55)
 
                 Text(plan.shortPeriod.L)
-                    .font(.system(size: 10))
+                    .font(AppTheme.TypeScale.badge)
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -1075,7 +1075,7 @@ struct FullVersionView: View {
                 // 加一个勾，选中与否有形状上的差别。
                 if on {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 15))
+                        .font(AppTheme.TypeScale.body)
                         .foregroundStyle(AppTheme.champagne)
                         .padding(7)
                 }
@@ -1083,7 +1083,7 @@ struct FullVersionView: View {
             .overlay(alignment: .top) {
                 if plan.isRecommended {
                     Text("推荐")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(AppTheme.TypeScale.badge.weight(.semibold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(AppTheme.champagneInk, in: .capsule)
@@ -1124,9 +1124,9 @@ struct FullVersionView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title.L)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(AppTheme.TypeScale.body.weight(.semibold))
                 Text(note.L)
-                    .font(.system(size: 12))
+                    .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -1144,7 +1144,7 @@ struct FullVersionView: View {
             Task { await purchase.purchase(selected) }
         } label: {
             Text(primaryTitle.L)
-                .font(.system(size: 15, weight: .semibold))
+                .font(AppTheme.TypeScale.body.weight(.semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 13)
                 .background(canBuy ? AppTheme.champagne : Color(.tertiarySystemFill), in: .capsule)
@@ -1171,7 +1171,7 @@ struct FullVersionView: View {
             Task { await purchase.restore() }
         } label: {
             Text("恢复购买")
-                .font(.system(size: 15, weight: .medium))
+                .font(AppTheme.TypeScale.body.weight(.medium))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 11)
                 .overlay {
@@ -1195,7 +1195,7 @@ struct FullVersionView: View {
                 Text("·").foregroundStyle(.tertiary)
                 Button("使用条款") { legalSheet = .terms }
             }
-            .font(.system(size: 12))
+            .font(AppTheme.TypeScale.note)
             // 付费面上统一用橙，别让两条蓝色链接在整页里跳出来
             .tint(AppTheme.champagneInk)
             .foregroundStyle(AppTheme.champagneInk)
@@ -1216,7 +1216,7 @@ struct FullVersionView: View {
                 .foregroundStyle(AppTheme.champagneInk)
 
             Text(store.plan == .lifetime ? "已买断 · 永久有效" : "拾码 Pro 已开通")
-                .font(.system(size: 13))
+                .font(AppTheme.TypeScale.rowSubtitle)
                 .foregroundStyle(AppTheme.champagneInk.opacity(0.75))
         }
         .frame(maxWidth: .infinity)

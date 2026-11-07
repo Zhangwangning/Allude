@@ -62,7 +62,7 @@ struct TrainingDataView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.shield.fill")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(AppTheme.TypeScale.body.weight(.semibold))
                     .foregroundStyle(AppTheme.pendingTint)
                 Text("导出前请先看这一段")
                     .font(AppTheme.TypeScale.rowTitleMedium)
@@ -133,7 +133,7 @@ struct TrainingDataView: View {
                                 samples = TrainingSampleStore.load()
                             } label: {
                                 Image(systemName: "trash")
-                                    .font(.system(size: 12))
+                                    .font(AppTheme.TypeScale.note)
                                     .foregroundStyle(.secondary)
                             }
                             .buttonStyle(.plain)
@@ -240,7 +240,7 @@ struct TrainingSampleComposer: View {
                             Text("打开取件卡片列表")
                             Spacer()
                             Image(systemName: "chevron.right")
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(AppTheme.TypeScale.rowSubtitle.weight(.semibold))
                                 .foregroundStyle(.tertiary)
                         }
                     }

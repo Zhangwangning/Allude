@@ -347,7 +347,7 @@ struct SoftwareInfoView: View {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(spacing: 10) {
                                 Image(systemName: item.symbol)
-                                    .font(.system(size: 15, weight: .semibold))
+                                    .font(AppTheme.TypeScale.body.weight(.semibold))
                                     .foregroundStyle(item.tint)
                                     .frame(width: 24)
                                 Text(item.title)
