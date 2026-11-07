@@ -5,7 +5,7 @@ SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 
 商业模式：**免费下载 + 订阅解锁**（参照 Infuse），三档同一权益：
 `com.jikezhang.codeclip.pro.monthly`（¥1/月）、`.yearly`（¥9/年）、
-`.lifetime`（¥28，非消耗型买断，**主推**）。走 StoreKit 2，价格一律取 `Product.displayPrice`。
+`.lifetime`（¥18，非消耗型买断，**主推**；≈ 两年年费）。走 StoreKit 2，价格一律取 `Product.displayPrice`。
 订阅会过期 → 权益快照必须写 `expiresAt`，否则小组件会一直按完整版渲染。
 
 > 隐私政策与使用条款有**三份副本要同步**：GitHub Pages（`Zhangwangning/codepouch-legal`，
@@ -735,7 +735,9 @@ App Store 版没有这个文件 → 整行自动不显示。
 陇ICP备2026011130号       审核通过 2026-11-06
 ```
 
-- App 内页脚（`PageFooter`，设置各二级页底部）显示备案号，改号要同步这里。
+- 🔴 **App 内不显示备案号**（2026-11-07 主人定）：拾码是无服务器、不联网的单机 App，
+  唯一网络行为是 StoreKit（仅连 Apple），按官方口径「单机不联网的 App 无需备案」，
+  走苹果豁免即可 —— 因此 `PageFooter` 只显示版本号。网站备案号仍留在开发者网站。
 - 🔴 **网站备案 ≠ App 备案**：这次通过的是**网站/域名**备案（GitHub Pages、Gitee 镜像等
   HTTP 服务用它）。App Store 中国区上架还需要另外提交**移动互联网应用程序备案（App 备案）**，
   由接入服务商（云厂商/应用商店）通道提交，两者编号通常不同。
