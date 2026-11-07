@@ -508,11 +508,16 @@ struct SettingsView: View {
             VStack(spacing: 16) {
                 VStack(spacing: 0) {
                     SettingsRow(symbol: "hand.raised.fill", title: "隐私",
-                                subtitle: "无账号、无联网；取件数据全程只在本机",
                                 showsChevron: false,
                                 tint: AppTheme.doneTint)
                 }
                 .cardSurface()
+
+                Text("无账号、无联网；取件数据全程只在本机。")
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 4)
 
                 footer
             }
