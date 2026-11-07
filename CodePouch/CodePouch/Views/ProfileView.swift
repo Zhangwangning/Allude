@@ -142,7 +142,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     /// 单列布局与 iPad 分栏都从这三个数组渲染，不要再各写一份。
     static let generalGroupAll: [SettingsPane] = [
         .automation, .notification, .widget, .activity, .courier, .station,
-        .guide, .appIcon, .appearance, .fontSize, .language, .license,
+        .guide, .appIcon, .appearance, .fontSize, .language,
     ]
     static let aboutGroupAll: [SettingsPane] = [
         .help, .softwareInfo, .privacyDoc, .termsDoc, .version, .disclaimer, .aiCapability,
@@ -636,14 +636,22 @@ struct SettingsView: View {
     /// 为什么放到最顶上：App 免费下载、靠订阅解锁，**入口必须显眼**；
     /// 藏起来既不厚道，也会被审核按「付费功能没有明显入口」挑刺。
     /// 已购时同一块横幅改口径为「完整版已开通」，不摆第二次购买。
+    @ViewBuilder
     private var proBanner: some View {
-        // 🔴 2026-11-07 主人：恢复订阅页 —— 横幅直接进 FullVersionView，
-        //    不再弹「暂不支持订阅」。
-        //    （2026-10-31 之所以拦住，是商品还没在 App Store Connect 建好；
-        //      现在准备上架，入口必须能进，否则审核按「付费功能无入口」挑刺。）
-        NavigationLink {
-            FullVersionView()
-        } label: {
+        // 🔴 2026-11-07 主人：恢复订阅页 —— 横幅直接进 FullVersionView。
+        // 🔴 同一天又发现：分栏侧栏里放 `NavigationLink` 点了没反应
+        //    （侧栏是 List + 选中状态，push 会被吞）。所以分栏改用 Button 切右栏。
+        if horizontalSizeClass == .regular {
+            Button { pane = .license } label: { proBannerLabel }
+                .buttonStyle(.plain)
+        } else {
+            NavigationLink { FullVersionView() } label: { proBannerLabel }
+                .buttonStyle(.plain)
+        }
+    }
+
+    private var proBannerLabel: some View {
+        Group {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 8) {
