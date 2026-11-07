@@ -272,12 +272,12 @@ struct AboutView: View {
 // MARK: - 二级页共用页脚
 
 /// 版本号 + 备案号。参考里这几个 App 都把它固定在二级页底部。
-/// 备案号还没下来，先写「备案中」——上架前换成真实号。
+/// 备案号已于 2026-11-06 通过（陇ICP备2026011130号），上架前若变更需同步这里。
 struct PageFooter: View {
     var body: some View {
         VStack(spacing: 4) {
             Text("拾码 CodePouch \(AppVersion.display)")
-            Text("ICP 备案号：备案中")
+            Text("陇ICP备2026011130号")
         }
         .font(AppTheme.TypeScale.note)
         .foregroundStyle(.tertiary)
