@@ -112,7 +112,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     }
 
     /// 侧栏分组（顺序即显示顺序，与原来长页的分组一一对应）
-    static let generalGroup: [SettingsPane] = [.appearance, .fontSize, .language, .automation, .notification, .widget, .activity, .courier, .station, .guide, .license]
+    static let generalGroup: [SettingsPane] = [.automation, .notification, .widget, .activity, .courier, .station, .guide, .license, .appearance, .fontSize, .language]
     static let dataGroup: [SettingsPane] = [.storage]
     static let aboutGroup: [SettingsPane] = [.feedback, .version, .privacy, .aiCapability]
 }
@@ -537,38 +537,6 @@ struct SettingsView: View {
             SectionHeader(title: "通用")
 
             VStack(spacing: 0) {
-                // ── 外观 / 字体大小 / 语言（2026-11-04 主人定） ──
-                NavigationLink {
-                    AppearanceSettingsView()
-                } label: {
-                    SettingsRow(symbol: "circle.lefthalf.filled", title: "外观",
-                                detail: AppearanceSettings.shared.mode.title,
-                                tint: AppTheme.accent)
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
-
-                NavigationLink {
-                    FontSizeView()
-                } label: {
-                    SettingsRow(symbol: "textformat.size", title: "字体大小",
-                                detail: AppearanceSettings.shared.followSystem
-                                    ? "跟随系统" : AppearanceSettings.shared.step.title,
-                                tint: AppTheme.sky)
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
-
-                Button { openAppLanguageSettings() } label: {
-                    SettingsRow(symbol: "globe", title: "语言",
-                                detail: currentLanguageName, tint: AppTheme.indigo)
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
-
                 NavigationLink {
                     AutoRecordSettingsView()
                 } label: {
@@ -653,6 +621,38 @@ struct SettingsView: View {
                     SettingsRow(symbol: "app.badge.fill", title: "App 图标",
                                 detail: AppIconStore.current.title,
                                 tint: AppTheme.doneTint)
+                }
+                .buttonStyle(.plain)
+
+                SettingsDivider()
+
+                // 外观 / 字体大小 / 语言（2026-11-07 主人：不常用，挪到「通用」最下面）
+                NavigationLink {
+                    AppearanceSettingsView()
+                } label: {
+                    SettingsRow(symbol: "circle.lefthalf.filled", title: "外观",
+                                detail: AppearanceSettings.shared.mode.title,
+                                tint: AppTheme.accent)
+                }
+                .buttonStyle(.plain)
+
+                SettingsDivider()
+
+                NavigationLink {
+                    FontSizeView()
+                } label: {
+                    SettingsRow(symbol: "textformat.size", title: "字体大小",
+                                detail: AppearanceSettings.shared.followSystem
+                                    ? "跟随系统" : AppearanceSettings.shared.step.title,
+                                tint: AppTheme.sky)
+                }
+                .buttonStyle(.plain)
+
+                SettingsDivider()
+
+                Button { openAppLanguageSettings() } label: {
+                    SettingsRow(symbol: "globe", title: "语言",
+                                detail: currentLanguageName, tint: AppTheme.indigo)
                 }
                 .buttonStyle(.plain)
             }
