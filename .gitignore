@@ -52,3 +52,6 @@ tools/license-gen/*.pem
 标注模板_*.tsv
 标注模板*.xlsx
 地址差异.md
+
+# 备案材料（含 App 截图与个人材料，不入库）
+备案材料/
