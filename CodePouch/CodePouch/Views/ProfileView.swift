@@ -310,12 +310,15 @@ struct SettingsView: View {
                 // 侧栏顶部搜索框（照 iPad 设置：胶囊输入框 + 放大镜）
                 settingsSearchField
 
-                // 🔴 2026-11-07 主人：拾码 Pro 入口要和直板机一样放在设置最上面
-                proBanner
-                    .padding(.horizontal, 10)
-                    .padding(.bottom, 8)
 
                 List {
+                    // 🔴 2026-11-07 主人：横幅要跟着列表一起滚，不能钉在顶部。
+                    //    放进 List 当第一行（而不是挂在 VStack 上），滚动手感与直板机一致。
+                    proBanner
+                        .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 10, trailing: 10))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+
                     settingsGroup("通用", items: filtered(SettingsPane.generalGroupAll))
                     settingsGroup("本机数据", items: filtered(SettingsPane.dataGroup))
                     settingsGroup("关于", items: filtered(SettingsPane.aboutGroupAll))
