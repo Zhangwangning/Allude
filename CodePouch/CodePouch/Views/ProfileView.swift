@@ -153,7 +153,10 @@ struct SettingsView: View {
 
     var body: some View {
         Group {
-            if horizontalSizeClass == .regular {
+            // 🔴 2026-11-07 主人：iPhone Duo（折叠/展开）也用直板机这套单列布局，
+            //    不再走 iPad 那种"左侧分组 + 右侧面板"的分栏。
+            //    分栏只留给 iPad（暂不维护）。
+            if UIDevice.current.userInterfaceIdiom == .pad {
                 splitSettings
             } else {
                 stackedSettings
