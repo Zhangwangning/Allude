@@ -37,7 +37,7 @@ enum TrainingSampleStore {
 
     static func load() -> [TrainingSample] {
         guard let data = try? Data(contentsOf: fileURL),
-              let list = try? JSONDecoder().decode([TrainingSample].self, from: data) else { return [] }
+              let list = try? JSONDecoder.iso8601.decode([TrainingSample].self, from: data) else { return [] }
         return list.sorted { $0.createdAt > $1.createdAt }
     }
 
@@ -125,6 +125,16 @@ enum TrainingSampleStore {
             result.replaceSubrange(r, with: transform(String(result[r])))
         }
         return result
+    }
+}
+
+private extension JSONDecoder {
+    /// 🔴 必须与 `JSONEncoder.pretty` 的 `dateEncodingStrategy = .iso8601` **成对**，
+    /// 否则解码一律失败 → 列表永远显示「已添加 0 条」（2026-11-07 踩坑）。
+    static var iso8601: JSONDecoder {
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = .iso8601
+        return d
     }
 }
 

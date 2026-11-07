@@ -271,13 +271,16 @@ struct AboutView: View {
 
 // MARK: - 二级页共用页脚
 
-/// 版本号 + 备案号。参考里这几个 App 都把它固定在二级页底部。
-/// 备案号已于 2026-11-06 通过（陇ICP备2026011130号），上架前若变更需同步这里。
+/// 版本号页脚。参考里这几个 App 都把它固定在二级页底部。
+///
+/// 🔴 App 备案（2026-11-07 判断）：拾码是无服务器、不联网的单机 App，
+/// 唯一网络行为是 StoreKit（仅连 Apple），按官方口径「单机不联网的 App 无需备案」，
+/// 走苹果豁免即可 —— 因此**App 内不展示备案号**（网站备案号只用于开发者网站）。
+/// 若将来加了任何自建网络服务（如上传训练数据到自建服务器），就必须备案并在页脚补号。
 struct PageFooter: View {
     var body: some View {
         VStack(spacing: 4) {
             Text("拾码 CodePouch \(AppVersion.display)")
-            Text("陇ICP备2026011130号")
         }
         .font(AppTheme.TypeScale.note)
         .foregroundStyle(.tertiary)

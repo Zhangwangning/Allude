@@ -357,10 +357,11 @@ struct TrainingRecordPickerView: View {
     @State private var query = ""
     let onPick: (PickupRecord) -> Void
 
+    /// 按收信时间倒序（最新的在最上面），与列表页口径一致
     private var records: [PickupRecord] {
-        let all = PickupStore.shared.records
-        guard !query.isEmpty else { return all }
-        return all.filter { $0.rawMessage.localizedCaseInsensitiveContains(query) }
+        let sorted = PickupStore.shared.records.sorted { $0.receivedAt > $1.receivedAt }
+        guard !query.isEmpty else { return sorted }
+        return sorted.filter { $0.rawMessage.localizedCaseInsensitiveContains(query) }
     }
 
     var body: some View {

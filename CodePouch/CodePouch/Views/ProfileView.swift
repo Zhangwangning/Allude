@@ -112,7 +112,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     }
 
     /// 侧栏分组（顺序即显示顺序，与原来长页的分组一一对应）
-    static let generalGroup: [SettingsPane] = [.appearance, .fontSize, .language, .automation, .notification, .widget, .activity, .courier, .station, .guide, .license, .activation]
+    static let generalGroup: [SettingsPane] = [.appearance, .fontSize, .language, .automation, .notification, .widget, .activity, .courier, .station, .guide, .license]
     static let dataGroup: [SettingsPane] = [.storage]
     static let aboutGroup: [SettingsPane] = [.feedback, .version, .privacy, .aiCapability]
 }
@@ -182,7 +182,6 @@ struct SettingsView: View {
             VStack(spacing: 16) {
                 proBanner
                 settingsSection
-                activationSection
                 aboutSection
                 footer
             }
@@ -380,7 +379,7 @@ struct SettingsView: View {
         case .courier:    CourierGalleryView(scope: .courier)
         case .station:    CourierGalleryView(scope: .station)
         case .guide:      UsageGuideView()
-        case .license:    SubscriptionUnavailablePane()
+        case .license:    FullVersionView()
         case .activation: ActivationView()
         case .version:    VersionHistoryView()
         case .storage:    dataDetailPane
@@ -724,32 +723,8 @@ struct SettingsView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: 激活（设备码 / 签名凭证）
-
-    /// 2026-10-31 主人要求：未上架期间用离线签名凭证激活，入口放设置里。
-    /// ⚠️ 上架前必须处理掉（改用内购或隐藏），否则是 App Review 3.1.1 的靶子。
-    private var activationSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "激活")
-
-            VStack(spacing: 0) {
-                NavigationLink {
-                    ActivationView()
-                } label: {
-                    SettingsRow(symbol: "key.horizontal.fill", title: "激活",
-                                tint: AppTheme.indigo)
-                }
-                .buttonStyle(.plain)
-            }
-            .cardSurface()
-
-            Text("离线验签，不联网。正式上架后此入口会移除。")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .padding(.horizontal, 4)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
+    // 2026-11-07 主人：上架前移除「激活」入口（App Review 3.1.1），
+    // 对应分组已从两种布局里删除，激活页代码保留但不再有入口。
 
     // MARK: 关于（版本 / 反馈 / 隐私）
 
