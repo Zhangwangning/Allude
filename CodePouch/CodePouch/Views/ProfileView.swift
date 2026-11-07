@@ -351,6 +351,20 @@ struct SettingsView: View {
                 NavigationStack {
                     // 照 iPad 设置的内容列：左右留白更大、内容限宽居中
                     paneContent(pane ?? .notification)
+                        // 🔴 2026-11-07：帮助页里那两个入口是「切详情列」打开的
+                        //    （push 在这层不落地），所以补一个返回按钮回到帮助与反馈。
+                        .toolbar {
+                            if pane == .trainingSamples || pane == .contactInfo {
+                                ToolbarItem(placement: .topBarLeading) {
+                                    Button {
+                                        pane = .help
+                                    } label: {
+                                        Label("返回", systemImage: "chevron.backward")
+                                            .labelStyle(.titleAndIcon)
+                                    }
+                                }
+                            }
+                        }
                         .padding(.horizontal, 20)
                         .frame(maxWidth: 600)
                         .frame(maxWidth: .infinity)
