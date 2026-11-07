@@ -729,6 +729,26 @@ App Store 版没有这个文件 → 整行自动不显示。
 
 🔴 改这里的铁律：兜底**只能填空**，不得覆盖已抓到的地址 —— 否则语料命中数会掉。
 
+## 系统兼容基线（2026-11-07 定稿）
+
+```
+部署目标：iOS 18.0（App 与小组件扩展一致）
+```
+
+| 设备 | 需要兼容 | 说明 |
+|---|---|---|
+| iPhone 直板机 / iPad | **iOS 18.0+** | 主力兼容范围 |
+| **iPhone Duo** | **iOS 27+ 即可** | 🔴 它出厂系统就是 iOS 27，**不必适配 iOS 26 以下**；Duo 专属代码可直接用 iOS 26/27 API |
+
+液态玻璃的处理：
+
+- `.glassEffect` 是 iOS 26 新增，**所有调用必须走 `appGlass()`**（`CodePouchShared/GlassCompat.swift`）：
+  系统 ≥26 且用户开关打开 → 真液态玻璃；否则 → 系统毛玻璃 `.ultraThinMaterial` + 0.5pt 描边。
+- 设置 › 外观 ›「液态玻璃」开关（仅 iOS 26+ 显示）控制是否启用，界面改动重启生效。
+- 其它已处理的低版本 API：`tabBarMinimizeBehavior`（modifier 收起）、
+  `Glass` 类型（改 `actionTint` + `appGlass`）、`SystemLanguageModel` 全家（`@available(iOS 26)` + 低版本说明页）、
+  `IntentModes`（改 `openAppWhenRun`）、`systemExtraLargePortrait`（可用性判断）。
+
 ## 免费版功能边界（2026-11-07 定稿）
 
 **只限制这三处，别的都放开**（2026-11-07 试过"点开关弹付费墙"的方案，主人当天否决）：
