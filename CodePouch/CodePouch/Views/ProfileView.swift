@@ -48,6 +48,8 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     case termsDoc
     case disclaimer
     case help
+    case trainingSamples
+    case contactInfo
 
     var id: String { rawValue }
 
@@ -76,6 +78,8 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .termsDoc:     return "使用条款"
         case .disclaimer:   return "声明与免责"
         case .help:         return "帮助与反馈"
+        case .trainingSamples: return "帮助改进拾码"
+        case .contactInfo:  return "联系方式"
         }
     }
 
@@ -104,6 +108,8 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .termsDoc:     return "doc.text.fill"
         case .disclaimer:   return "text.badge.checkmark"
         case .help:         return "questionmark.bubble.fill"
+        case .trainingSamples: return "sparkles.rectangle.stack.fill"
+        case .contactInfo:  return "at"
         }
     }
 
@@ -132,6 +138,8 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .termsDoc:     return AppTheme.sky
         case .disclaimer:   return AppTheme.amber
         case .help:         return AppTheme.sky
+        case .trainingSamples: return AppTheme.violet
+        case .contactInfo:  return AppTheme.indigo
         }
     }
 
@@ -470,7 +478,15 @@ struct SettingsView: View {
         case .privacyDoc:   LegalDocumentView(document: .privacy)
         case .termsDoc:     LegalDocumentView(document: .terms)
         case .disclaimer:   StatementView()
-        case .help:         HelpCenterView()
+        case .help:
+            // 宽屏下这页是常驻详情列，里面 push 不落地；交给它直接切 pane。
+            if horizontalSizeClass == .regular {
+                HelpCenterView { pane = $0 }
+            } else {
+                HelpCenterView()
+            }
+        case .trainingSamples: TrainingDataView()
+        case .contactInfo:  ContactView()
         }
     }
 

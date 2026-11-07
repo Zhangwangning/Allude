@@ -15,6 +15,10 @@ import MessageUI
 // MARK: - 帮助与反馈
 
 struct HelpCenterView: View {
+    /// 宽屏分栏下由外层传入「切换详情列」的能力（`pane = …`）。
+    /// push 在常驻详情列里不落地，切 pane 是唯一可靠的做法。
+    var openPane: ((SettingsPane) -> Void)? = nil
+
     @StateObject private var feedback = FeedbackModel()
     @State private var showClearConfirm = false
     @State private var showCleared = false
@@ -52,17 +56,24 @@ struct HelpCenterView: View {
                     SettingsDivider()
 
                     // 帮助改进拾码（2026-11-05 主人 A+B 方案：手动提供样本 → 本地存 → 用户主动导出）
-                    Button { showTraining = true } label: {
+                    Button {
+                        DiagnosticsLog.record("help", "tap-training")
+                        if let openPane { openPane(.trainingSamples) } else { showTraining = true }
+                    } label: {
                         SettingsRow(symbol: "sparkles.rectangle.stack.fill",
                                     title: "帮助改进拾码",
                                     tint: AppTheme.violet)
                     }
                     .buttonStyle(.plain)
+                    .contentShape(Rectangle())
 
                     SettingsDivider()
 
                     // 联系方式（2026-11-01 从「关于」移到这里：它属于"找我们"，不是"关于产品"）
-                    Button { showContact = true } label: {
+                    Button {
+                        DiagnosticsLog.record("help", "tap-contact")
+                        if let openPane { openPane(.contactInfo) } else { showContact = true }
+                    } label: {
                         SettingsRow(symbol: "at", title: "联系方式",
                                     tint: AppTheme.indigo)
                     }
@@ -116,8 +127,14 @@ struct HelpCenterView: View {
             }
         }
         .overlay(alignment: .bottom) { feedbackToast }
-        .navigationDestination(isPresented: $showTraining) { TrainingDataView() }
-        .navigationDestination(isPresented: $showContact) { ContactView() }
+        // 🔴 2026-11-07：push 在宽屏详情列里两种写法都点不动（NavigationLink、navigationDestination），
+        //    改成 sheet —— 与导航栈无关，两种布局都一定能打开。
+        .sheet(isPresented: $showTraining) {
+            NavigationStack { TrainingDataView() }
+        }
+        .sheet(isPresented: $showContact) {
+            NavigationStack { ContactView() }
+        }
         .alert("清除诊断日志？", isPresented: $showClearConfirm) {
             Button("取消", role: .cancel) {}
             Button("清除", role: .destructive) {
