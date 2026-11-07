@@ -573,7 +573,9 @@ final class PickupStore: ObservableObject {
         // 🆕 端侧 AI 兜底（2026-10-28）：正则漏掉的字段，后台补。
         // ⚠️ 必须在 `records` 落库之后调用 —— 它要按 id 回写；
         //    也不阻塞返回值，列表先有条目、字段后到。
-        PickupAIEnhancer.schedule(merged.added)
+        if #available(iOS 26.0, *) {
+            PickupAIEnhancer.schedule(merged.added)
+        }
 
         outcome.pendingCount = pending.count
         return outcome

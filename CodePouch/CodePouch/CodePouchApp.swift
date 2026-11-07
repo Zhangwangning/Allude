@@ -590,7 +590,7 @@ struct CodePouchApp: App {
                     // 把「正则 vs 模型」逐字段打到控制台。模拟器上模型不可用，
                     // 会直接打印不可用原因后退出（不影响 App 正常运行）。
                     RootView()
-                        .task { await PickupAICheck.run() }
+                        .task { if #available(iOS 26.0, *) { await PickupAICheck.run() } }
                 case "onboardingGuide":
                     // 🔍 排查：引导语境（fullScreenCover 同构 —— 栈根挂 toolbar hidden）
                     // push 使用教程后，导航栏/返回按钮是否被根上的 hidden 传播吞掉。
@@ -697,7 +697,13 @@ struct CodePouchApp: App {
                 case "appearance":
                     NavigationStack { AppearanceSettingsView() }
                 case "aiCapability":
-                    NavigationStack { AICapabilityView() }
+                    NavigationStack {
+                        if #available(iOS 26.0, *) {
+                            AICapabilityView()
+                        } else {
+                            AICapabilityUnsupportedView()
+                        }
+                    }
                 case "autoRecord":
                     // 注意：`SCREEN=automation` 已被「使用教程」占用，这里换个名字
                     NavigationStack { AutoRecordSettingsView() }
@@ -862,7 +868,7 @@ struct LockCardPreview: View {
                 // 与真实活动同结构：玻璃在下、内容在上（分层）
                 ZStack {
                     Color.clear
-                        .glassEffect(.regular, in: .rect(cornerRadius: 26))
+                        .appGlass(.rect(cornerRadius: 26))
                     ActivityLockScreenCard(state: state)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 14)

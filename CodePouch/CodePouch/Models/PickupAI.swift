@@ -36,6 +36,7 @@ import FoundationModels
 /// 这是压住模型幻觉最有效的一句话。
 @available(iOS 26.0, *)
 @Generable
+@available(iOS 26.0, *)
 struct AIPickupFields: Sendable {
     @Guide(description: "取件码：顾客要报给店员、或要在柜机上输入的那串字符，原样抄下，不要加空格")
     var code: String
@@ -159,6 +160,7 @@ actor PickupAISession {
 /// ⚠️ 本类型**不能整体标 @MainActor**：`PickupStore.commitAll` 是同步非隔离方法，
 /// 在里头调用主线程隔离的 `schedule` 会直接编译不过（Swift 6 严格并发）。
 /// 只有真正改数据的那一小段（`apply`）需要主线程。
+@available(iOS 26.0, *)
 enum PickupAIEnhancer {
 
     /// 一条记录要不要请模型帮忙。

@@ -581,7 +581,7 @@ struct UndoToast: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 13)
-        .glassEffect(.regular, in: .capsule)
+        .appGlass(.capsule)
     }
 }
 

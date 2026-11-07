@@ -415,9 +415,9 @@ struct RecordDetailView: View {
                 .foregroundStyle(record.isPickedUp ? Color.primary : Color.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .glassEffect(actionGlass,
-                             in: .rect(cornerRadius: AppTheme.innerRadius,
-                                       style: .continuous))
+                .appGlass(.rect(cornerRadius: AppTheme.innerRadius, style: .continuous),
+                             tint: actionTint,
+                             interactive: true)
                 .contentShape(.rect(cornerRadius: AppTheme.innerRadius))
         }
         .buttonStyle(.plain)
@@ -436,10 +436,9 @@ struct RecordDetailView: View {
     ///   不该和主动作抢注意力；去掉染色后文字改 `.primary`，中性玻璃上用白字会糊。
     /// · `.interactive()` 两态都不能省 —— 少了它按下时没有形变与高光，
     ///   玻璃就只是块半透明板子，「液态」没了。
-    private var actionGlass: Glass {
-        record.isPickedUp
-            ? .regular.interactive()
-            : .regular.tint(AppTheme.doneTint.opacity(0.65)).interactive()
+    /// 主动作的染色（`appGlass` 在 iOS 26 走液态玻璃、低版本走毛玻璃）
+    private var actionTint: Color? {
+        record.isPickedUp ? nil : AppTheme.doneTint.opacity(0.65)
     }
 
     /// 品牌色磨砂玻璃：品牌调色板渐变（底）+ 超薄材质（面）

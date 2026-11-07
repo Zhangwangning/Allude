@@ -33,7 +33,7 @@ struct PickupLiveActivity: Widget {
             //    正确做法：玻璃贴在一个占位的透明层上，内容用 ZStack 叠在它上面。
             ZStack {
                 Color.clear
-                    .glassEffect(.regular, in: .rect(cornerRadius: 26))
+                    .appGlass(.rect(cornerRadius: 26))
 
                 ActivityLockScreenCard(state: context.state)
                     .padding(.horizontal, 16)

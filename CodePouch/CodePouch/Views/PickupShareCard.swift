@@ -588,7 +588,7 @@ struct SharePreviewSheet: View {
                 .foregroundStyle(AppTheme.accent)
                 .padding(.horizontal, 16)
                 .frame(height: 34)
-                .glassEffect(.regular.interactive(), in: .capsule)
+                .appGlass(.capsule, interactive: true)
                 .contentShape(.capsule)
                 .onTapGesture { SharePresenter.shared.dismiss() }
                 .accessibilityAddTraits(.isButton)
@@ -770,7 +770,7 @@ struct SharePreviewSheet: View {
                     .frame(height: 34)
                     // 液态玻璃（替代原「白色实底 + 阴影」）：与工具栏胶囊同一材质，
                     // `.interactive()` 提供按下时的形变反馈
-                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .appGlass(.capsule, interactive: true)
                     .contentShape(.capsule)
                     .onTapGesture { SharePresenter.shared.dismiss() }
                     .accessibilityAddTraits(.isButton)
@@ -954,12 +954,9 @@ private struct ShareGlassAction: View {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(highlight ? Color.green : Color.primary)
                 .frame(width: 44, height: 44)
-                .glassEffect(
-                    .regular
-                        .tint(highlight ? Color.green.opacity(0.35) : Color.clear)
-                        .interactive(),
-                    in: .circle
-                )
+                .appGlass(.circle,
+                          tint: highlight ? Color.green.opacity(0.35) : .clear,
+                          interactive: true)
                 .contentShape(.circle)
         }
         .buttonStyle(.plain)

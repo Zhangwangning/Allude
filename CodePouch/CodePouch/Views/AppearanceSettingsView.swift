@@ -41,10 +41,38 @@ struct AppearanceHost<Content: View>: View {
 
 struct AppearanceSettingsView: View {
     @State private var settings = AppearanceSettings.shared
+    /// 液态玻璃开关（2026-11-07）：仅 iOS 26+ 展示；关闭后走系统毛玻璃，
+    /// 也等于给无液态玻璃组件的机型（iOS 18）准备了同一套回落外观。
+    @State private var usesLiquidGlass = GlassSettings.isEnabled
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
+                if GlassSettings.isSupported {
+                    VStack(spacing: 0) {
+                        Toggle(isOn: Binding(
+                            get: { usesLiquidGlass },
+                            set: { newValue in
+                                usesLiquidGlass = newValue
+                                GlassSettings.setEnabled(newValue)
+                                DiagnosticsLog.record("appearance", "liquidGlass=\(newValue)")
+                            }
+                        )) {
+                            Text("液态玻璃")
+                                .font(AppTheme.TypeScale.rowTitle)
+                        }
+                        .tint(AppTheme.accent)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                    }
+                    .cardSurface()
+
+                    Text("关闭后改用系统毛玻璃材质，与 iOS 18 的观感一致。需重启 App 生效。")
+                        .font(AppTheme.TypeScale.note)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
+                }
+
                 VStack(spacing: 0) {
                     ForEach(Array(AppearanceMode.allCases.enumerated()), id: \.element) { index, mode in
                         Button {

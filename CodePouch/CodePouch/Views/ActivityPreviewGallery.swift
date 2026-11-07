@@ -44,10 +44,8 @@ struct ActivityCardShell: View {
             //    原来那层 `.ultraThinMaterial` 只是磨砂玻璃，发灰、没有折射和高光。
             //    `.glassEffect` 是系统 Liquid Glass 的原生实现：折射下层内容、
             //    边缘镜面高光、可带品牌色 tint —— 与真机同一个渲染器。
-            .glassEffect(
-                .regular.tint(tint.opacity(0.16)),
-                in: .rect(cornerRadius: 24, style: .continuous)
-            )
+            .appGlass(.rect(cornerRadius: 24, style: .continuous),
+                      tint: tint.opacity(0.16))
             .allowsHitTesting(false)
     }
 }

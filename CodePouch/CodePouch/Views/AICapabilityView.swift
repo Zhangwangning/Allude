@@ -15,6 +15,7 @@ import FoundationModels
 // 🔴 不记录任何用户内容：只有机型、系统、地区、语言、可用性枚举。
 // ============================================================================
 
+@available(iOS 26.0, *)
 struct AICapabilityView: View {
     @State private var refreshToken = 0
     /// 检测中的状态（2026-11-05 主人：点了没反应，以为没生效）
@@ -201,5 +202,34 @@ struct AICapabilityView: View {
                               + "os=\(ProcessInfo.processInfo.operatingSystemVersionString) "
                               + "region=\(Locale.current.region?.identifier ?? "-") "
                               + "available=\(isAvailable) reason=\(rawReason)")
+    }
+}
+
+// MARK: - 低版本占位（iOS 18）
+
+/// 系统低于 iOS 26 时没有端侧模型框架，这一页只说明情况。
+struct AICapabilityUnsupportedView: View {
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "xmark.seal.fill")
+                        .foregroundStyle(AppTheme.pendingTint)
+                    Text("本机系统版本不支持端侧模型")
+                        .font(AppTheme.TypeScale.rowTitle)
+                }
+
+                Text("端侧模型（Apple 智能）需要 iOS 26 或更高版本。\n当前系统的拾码使用纯正则 + 系统分词解析，收码功能不受影响。")
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.secondary)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, AppTheme.hInset)
+            .padding(.vertical, 16)
+        }
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("Apple 智能")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

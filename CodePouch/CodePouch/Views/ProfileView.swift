@@ -489,7 +489,12 @@ struct SettingsView: View {
         case .storage:    dataDetailPane
         case .feedback:   feedbackPane
         case .privacy:    privacyPane
-        case .aiCapability: AICapabilityView()
+        case .aiCapability:
+            if #available(iOS 26.0, *) {
+                AICapabilityView()
+            } else {
+                AICapabilityUnsupportedView()
+            }
         case .appIcon:      AppIconSettingsView()
         case .softwareInfo: SoftwareInfoView()
         case .privacyDoc:   LegalDocumentView(document: .privacy)
@@ -781,7 +786,7 @@ struct SettingsView: View {
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 13)
-            .glassEffect(.regular, in: .capsule)
+            .appGlass(.capsule)
             .transition(.move(edge: .bottom).combined(with: .opacity))
             .animation(.spring(response: 0.35, dampingFraction: 0.85),
                        value: feedback.showFallback)

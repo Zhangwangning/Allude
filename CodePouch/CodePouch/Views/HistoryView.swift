@@ -248,7 +248,7 @@ struct PickedUpView: View {
                     }
                     .padding(.horizontal, 18)
                     .padding(.vertical, 13)
-                    .glassEffect(.regular, in: .capsule)
+                    .appGlass(.capsule)
                     .padding(.horizontal, AppTheme.hInset)
                     .padding(.bottom, 24)
                     .transition(.move(edge: .bottom).combined(with: .opacity))

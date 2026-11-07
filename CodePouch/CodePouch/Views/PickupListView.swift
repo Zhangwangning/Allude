@@ -843,7 +843,7 @@ struct PickupListView: View {
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 13)
-            .glassEffect(.regular, in: .capsule)
+            .appGlass(.capsule)
             .padding(.horizontal, AppTheme.hInset)
             .padding(.bottom, 92)
             .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -863,7 +863,7 @@ struct PickupListView: View {
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 13)
-            .glassEffect(.regular, in: .capsule)
+            .appGlass(.capsule)
             .padding(.horizontal, AppTheme.hInset)
             // 24 而不是上面那两条的 92：`.overlay(alignment: .bottom)` 本来就落在
             // 标签栏之上，92 会让它悬到屏幕中间压住卡片（Duo 外屏标签栏在右侧，

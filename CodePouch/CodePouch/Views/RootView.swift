@@ -47,7 +47,8 @@ struct RootView: View {
             // ⚠️ 别改回 `.automatic`：那等同于跟系统默认走，又会收起。
             // 注意这与下方 `TabBarCloak`（进设置二级页时**故意**收起）是两件事：
             // 那条是有意的导航语义，不受这里影响。
-            .tabBarMinimizeBehavior(.never)
+            // `.tabBarMinimizeBehavior` 是 iOS 26 新增；低版本没有这个行为，直接跳过。
+            .modifier(TabBarMinimizeNever())
             .tint(AppTheme.accent)
             // 装配后接管系统 tabBar 引用（见 `TabBarCloak`），供显隐动画驱动。
             .background(NativeTabBarBridge())
@@ -612,6 +613,17 @@ struct SettingsTabRoot: View {
     var body: some View {
         NavigationStack {
             SettingsView()
+        }
+    }
+}
+
+/// TabView 的「常驻标签栏」行为只有 iOS 26 才有，用 modifier 收起来。
+private struct TabBarMinimizeNever: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.tabBarMinimizeBehavior(.never)
+        } else {
+            content
         }
     }
 }
