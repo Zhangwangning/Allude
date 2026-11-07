@@ -167,6 +167,8 @@ struct AboutView: View {
             VStack(spacing: 16) {
                 header
 
+                offlineCard
+
                 VStack(spacing: 0) {
                     legalRow(title: "隐私政策",
                              document: .privacy,
@@ -234,6 +236,44 @@ struct AboutView: View {
     }
 
     /// 顶部标识：名称 + 版本号。参考图里这一块都是居中的图标 + 名字 + 版本。
+    // MARK: 软件说明（2026-11-07 主人要求写清楚）
+
+    /// 三句话说清 App 的性质：离线、不联网、不收数据；外加最低系统版本。
+    /// 放在「关于」页最顶上 —— 这是用户与审核最常看的一屏。
+    private var offlineCard: some View {
+        VStack(spacing: 0) {
+            SettingsRow(symbol: "wifi.slash", title: "纯离线运行，不联网",
+                        subtitle: "没有任何服务器与域名，App 不发起任何网络请求（应用内购买由系统 App Store 完成）",
+                        showsChevron: false,
+                        tint: AppTheme.doneTint)
+
+            SettingsDivider()
+
+            SettingsRow(symbol: "hand.raised.fill", title: "不获取任何用户数据",
+                        subtitle: "不读取短信、通讯录、相册与位置，不需要注册或登录，也没有第三方 SDK",
+                        showsChevron: false,
+                        tint: AppTheme.sky)
+
+            SettingsDivider()
+
+            SettingsRow(symbol: "internaldrive.fill", title: "数据只存在本机",
+                        subtitle: "取件记录保存在 App 自己的沙盒里，卸载 App 即全部删除，不会上传也不会同步",
+                        showsChevron: false,
+                        tint: AppTheme.todayTint)
+
+            SettingsDivider()
+
+            SettingsRow(symbol: "iphone", title: "最低系统版本",
+                        detail: Self.minimumOS,
+                        showsChevron: false,
+                        tint: AppTheme.violet)
+        }
+        .cardSurface()
+    }
+
+    /// 与工程 `IPHONEOS_DEPLOYMENT_TARGET` 保持一致（改部署目标时同步这里）
+    static let minimumOS = "iOS 27.0"
+
     private var header: some View {
         VStack(spacing: 8) {
             // 2026-10-31 主人：关于页顶部用 App 自己的 logo（已去掉白底）。
