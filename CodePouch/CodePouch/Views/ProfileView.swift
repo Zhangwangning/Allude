@@ -185,10 +185,10 @@ struct SettingsView: View {
 
     var body: some View {
         Group {
-            // 🔴 2026-11-07 主人：iPhone Duo（折叠/展开）也用直板机这套单列布局，
-            //    不再走 iPad 那种"左侧分组 + 右侧面板"的分栏。
-            //    分栏只留给 iPad（暂不维护）。
-            if UIDevice.current.userInterfaceIdiom == .pad {
+            // 🔴 2026-11-07 主人：宽屏（Duo 展开态 / iPad）就该用分栏，窄屏用单列。
+            //    两种排版渲染的是**同一份目录**（`generalGroupAll` / `dataGroup` / `aboutGroupAll`），
+            //    所以功能完全一致，只是排列不同。
+            if horizontalSizeClass == .regular {
                 splitSettings
             } else {
                 stackedSettings
