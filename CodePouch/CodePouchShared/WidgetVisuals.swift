@@ -145,7 +145,9 @@ struct WidgetPageIntent: AppIntent {
     static var isDiscoverable: Bool { false }
 
     /// 纯后台：翻页绝不把 App 拉到前台
-    static var supportedModes: IntentModes { .background }
+    /// 🔴 部署目标降到 iOS 18：`IntentModes`（含 `.background`）是 iOS 26 新增。
+    ///    改用等价的 `openAppWhenRun = false`（iOS 16 起可用）：后台执行、不拉起 App。
+    static var openAppWhenRun: Bool { false }
 
     @Parameter(title: "尺寸")
     var familyKey: String
@@ -515,7 +517,9 @@ struct TogglePickupIntent: AppIntent {
     static var isDiscoverable: Bool { false }
 
     /// 只支持后台执行：点勾选框只是翻一个字段，绝不把 App 拉到前台。
-    static var supportedModes: IntentModes { .background }
+    /// 🔴 部署目标降到 iOS 18：`IntentModes`（含 `.background`）是 iOS 26 新增。
+    ///    改用等价的 `openAppWhenRun = false`（iOS 16 起可用）：后台执行、不拉起 App。
+    static var openAppWhenRun: Bool { false }
 
     @Parameter(title: "记录 ID")
     var recordID: String

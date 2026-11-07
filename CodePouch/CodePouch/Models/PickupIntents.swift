@@ -51,7 +51,9 @@ struct ParsePickupTextIntent: AppIntent {
     }
 
     /// 只支持后台执行：自动化触发时不把 App 拉到前台，快捷指令里「运行时显示」默认关闭。
-    static var supportedModes: IntentModes { .background }
+    /// 🔴 部署目标降到 iOS 18：`IntentModes`（含 `.background`）是 iOS 26 新增。
+    ///    改用等价的 `openAppWhenRun = false`（iOS 16 起可用）：后台执行、不拉起 App。
+    static var openAppWhenRun: Bool { false }
 
     @Parameter(title: "短信内容",
                description: "选择「快捷指令输入」，自动化触发时即为刚收到的那条短信",
@@ -91,7 +93,9 @@ struct ParsePickupImageIntent: AppIntent {
     }
 
     /// 只支持后台执行：截屏后静默入库，不把 App 拉到前台打断当前操作
-    static var supportedModes: IntentModes { .background }
+    /// 🔴 部署目标降到 iOS 18：`IntentModes`（含 `.background`）是 iOS 26 新增。
+    ///    改用等价的 `openAppWhenRun = false`（iOS 16 起可用）：后台执行、不拉起 App。
+    static var openAppWhenRun: Bool { false }
 
     @Parameter(title: "截图",
                description: "选「截屏」动作的输出，或任意含取件信息的图片",
