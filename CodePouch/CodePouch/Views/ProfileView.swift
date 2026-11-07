@@ -42,6 +42,12 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     case version
     case privacy
     case aiCapability
+    case appIcon
+    case softwareInfo
+    case privacyDoc
+    case termsDoc
+    case disclaimer
+    case help
 
     var id: String { rawValue }
 
@@ -64,6 +70,12 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .version:      return "版本"
         case .privacy:      return "隐私"
         case .aiCapability: return "Apple 智能"
+        case .appIcon:      return "App 图标"
+        case .softwareInfo: return "软件说明"
+        case .privacyDoc:   return "隐私政策"
+        case .termsDoc:     return "使用条款"
+        case .disclaimer:   return "声明与免责"
+        case .help:         return "帮助与反馈"
         }
     }
 
@@ -86,6 +98,12 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .version:      return "info.circle.fill"
         case .privacy:      return "hand.raised.fill"
         case .aiCapability: return "brain.head.profile"
+        case .appIcon:      return "app.badge.fill"
+        case .softwareInfo: return "info.circle.fill"
+        case .privacyDoc:   return "hand.raised.fill"
+        case .termsDoc:     return "doc.text.fill"
+        case .disclaimer:   return "text.badge.checkmark"
+        case .help:         return "questionmark.bubble.fill"
         }
     }
 
@@ -108,13 +126,27 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .version:      return AppTheme.todayTint
         case .privacy:      return AppTheme.doneTint
         case .aiCapability: return AppTheme.violet
+        case .appIcon:      return AppTheme.doneTint
+        case .softwareInfo: return AppTheme.indigo
+        case .privacyDoc:   return AppTheme.doneTint
+        case .termsDoc:     return AppTheme.sky
+        case .disclaimer:   return AppTheme.amber
+        case .help:         return AppTheme.sky
         }
     }
 
     /// 侧栏分组（顺序即显示顺序，与原来长页的分组一一对应）
-    static let generalGroup: [SettingsPane] = [.automation, .notification, .widget, .activity, .courier, .station, .guide, .license, .appearance, .fontSize, .language]
     static let dataGroup: [SettingsPane] = [.storage]
-    static let aboutGroup: [SettingsPane] = [.version, .aiCapability]
+
+    /// 🔴 **唯一数据源**（2026-11-07 主人：不管哪个平台、怎么排版，功能必须一模一样）。
+    /// 单列布局与 iPad 分栏都从这三个数组渲染，不要再各写一份。
+    static let generalGroupAll: [SettingsPane] = [
+        .automation, .notification, .widget, .activity, .courier, .station,
+        .guide, .appIcon, .appearance, .fontSize, .language, .license,
+    ]
+    static let aboutGroupAll: [SettingsPane] = [
+        .help, .softwareInfo, .privacyDoc, .termsDoc, .version, .disclaimer, .aiCapability,
+    ]
 }
 
 struct SettingsView: View {
@@ -173,13 +205,63 @@ struct SettingsView: View {
         }
     }
 
-    /// 窄屏：原「一张长页」布局，保持不变。
+
+    // MARK: 目录渲染（单列布局；iPad 分栏共用同一份目录）
+
+    private func catalogSection(_ title: String, _ items: [SettingsPane]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: title)
+            VStack(spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.element) { index, item in
+                    if index > 0 { SettingsDivider() }
+                    catalogRow(item)
+                }
+            }
+            .cardSurface()
+        }
+    }
+
+    @ViewBuilder
+    private func catalogRow(_ item: SettingsPane) -> some View {
+        if item == .language {
+            // 语言不在 App 内切换，点了直接跳系统设置
+            Button { openAppLanguageSettings() } label: {
+                SettingsRow(symbol: item.symbol, title: item.title,
+                            detail: currentLanguageName, tint: item.tint)
+            }
+            .buttonStyle(.plain)
+        } else {
+            NavigationLink {
+                paneContent(item)
+            } label: {
+                SettingsRow(symbol: item.symbol, title: item.title,
+                            detail: detailValue(for: item), tint: item.tint)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    /// 行尾的值（只有这几项有）
+    private func detailValue(for item: SettingsPane) -> String? {
+        switch item {
+        case .appearance: return AppearanceSettings.shared.mode.title
+        case .fontSize:   return AppearanceSettings.shared.followSystem
+                                ? "跟随系统" : AppearanceSettings.shared.step.title
+        case .appIcon:    return AppIconStore.current.title
+        case .version:    return AppVersion.display
+        case .storage:    return "\(store.records.count) 条"
+        default:          return nil
+        }
+    }
+
+    /// 窄屏：一张长页（目录驱动，与 iPad 分栏功能完全一致）。
     private var stackedSettings: some View {
         ScrollView {
             VStack(spacing: 16) {
                 proBanner
-                settingsSection
-                aboutSection
+                catalogSection("通用", SettingsPane.generalGroupAll)
+                catalogSection("本机数据", SettingsPane.dataGroup)
+                catalogSection("关于", SettingsPane.aboutGroupAll)
                 footer
             }
             .padding(.horizontal, AppTheme.hInset)
@@ -221,9 +303,9 @@ struct SettingsView: View {
                 settingsSearchField
 
                 List {
-                    settingsGroup("通用", items: filtered(SettingsPane.generalGroup))
+                    settingsGroup("通用", items: filtered(SettingsPane.generalGroupAll))
                     settingsGroup("本机数据", items: filtered(SettingsPane.dataGroup))
-                    settingsGroup("关于", items: filtered(SettingsPane.aboutGroup))
+                    settingsGroup("关于", items: filtered(SettingsPane.aboutGroupAll))
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
@@ -378,6 +460,12 @@ struct SettingsView: View {
         case .feedback:   feedbackPane
         case .privacy:    privacyPane
         case .aiCapability: AICapabilityView()
+        case .appIcon:      AppIconSettingsView()
+        case .softwareInfo: SoftwareInfoView()
+        case .privacyDoc:   LegalDocumentView(document: .privacy)
+        case .termsDoc:     LegalDocumentView(document: .terms)
+        case .disclaimer:   StatementView()
+        case .help:         HelpCenterView()
         }
     }
 
@@ -535,133 +623,6 @@ struct SettingsView: View {
 
     // MARK: 设置
 
-    private var settingsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "通用")
-
-            VStack(spacing: 0) {
-                NavigationLink {
-                    AutoRecordSettingsView()
-                } label: {
-                    SettingsRow(symbol: "bolt.badge.automatic.fill", title: "快捷指令自动化",
-                                tint: AppTheme.amber)
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
-
-                NavigationLink {
-                    NotificationSettingsView()
-                } label: {
-                    SettingsRow(symbol: "bell.badge.fill", title: "通知提醒",
-                                tint: AppTheme.pendingTint)
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
-
-                NavigationLink {
-                    WidgetSettingsView()
-                } label: {
-                    SettingsRow(symbol: "square.text.square.fill", title: "桌面小组件",
-                                tint: AppTheme.sky)
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
-
-                NavigationLink {
-                    ActivityPreviewGallery()
-                } label: {
-                    // 🔴 2026-11-01 主人：设置首页这一行的名字与二级页导航栏对齐
-                    SettingsRow(symbol: "platter.filled.top.iphone",
-                                title: "实时活动与灵动岛",
-                                tint: AppTheme.accent,
-                                locked: !store.isPro)
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
-
-                // 快递公司 / 驿站管理 两个模块（2026-10-27 拆开）。
-                // 原来是一行「快递管理」把两件事混在一起：用户既不知道里面有什么，
-                // 也不知道「驿站名称可自定义」其实藏在那个页面的第二/三个分类里。
-                NavigationLink {
-                    CourierGalleryView(scope: .courier)
-                } label: {
-                    SettingsRow(symbol: "shippingbox.fill", title: "快递公司",
-                                tint: AppTheme.indigo)
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
-
-                NavigationLink {
-                    CourierGalleryView(scope: .station)
-                } label: {
-                    SettingsRow(symbol: "storefront.fill", title: "驿站管理",
-                                tint: AppTheme.violet)
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
-
-                // 使用教程（2026-10-31 主人：放回「通用」最后一个）
-                NavigationLink {
-                    UsageGuideView()
-                } label: {
-                    SettingsRow(symbol: "book.fill", title: "使用教程",
-                                tint: AppTheme.violet)
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
-
-                // App 图标（2026-11-01 主人：三套内置图标可切换）
-                NavigationLink {
-                    AppIconSettingsView()
-                } label: {
-                    SettingsRow(symbol: "app.badge.fill", title: "App 图标",
-                                detail: AppIconStore.current.title,
-                                tint: AppTheme.doneTint)
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
-
-                // 外观 / 字体大小 / 语言（2026-11-07 主人：不常用，挪到「通用」最下面）
-                NavigationLink {
-                    AppearanceSettingsView()
-                } label: {
-                    SettingsRow(symbol: "circle.lefthalf.filled", title: "外观",
-                                detail: AppearanceSettings.shared.mode.title,
-                                tint: AppTheme.accent)
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
-
-                NavigationLink {
-                    FontSizeView()
-                } label: {
-                    SettingsRow(symbol: "textformat.size", title: "字体大小",
-                                detail: AppearanceSettings.shared.followSystem
-                                    ? "跟随系统" : AppearanceSettings.shared.step.title,
-                                tint: AppTheme.sky)
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
-
-                Button { openAppLanguageSettings() } label: {
-                    SettingsRow(symbol: "globe", title: "语言",
-                                detail: currentLanguageName, tint: AppTheme.indigo)
-                }
-                .buttonStyle(.plain)
-            }
-            .cardSurface()
-        }
-    }
 
     // MARK: 顶部订阅横幅
 
@@ -725,46 +686,6 @@ struct SettingsView: View {
 
     // MARK: 关于（版本 / 反馈 / 隐私）
 
-    private var aboutSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "更多")
-
-            VStack(spacing: 0) {
-                NavigationLink {
-                    HelpCenterView()
-                } label: {
-                    SettingsRow(symbol: "questionmark.bubble.fill", title: "帮助与反馈",
-                                tint: AppTheme.sky)
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
-
-                NavigationLink {
-                    AboutView()
-                } label: {
-                    SettingsRow(symbol: "info.circle.fill", title: "关于",
-                                detail: AppVersion.display,
-                                tint: AppTheme.todayTint)
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
-
-                // 🔴 iPhone 用的是这一份**手写**的「更多」组，不走 SettingsPane.aboutGroup
-                //    （那是 iPad / Duo 宽屏分栏用的）。2026-11-05 加了 AI 能力检测却漏了这处，
-                //    真机上完全看不到 —— 两套布局都要各加一次。
-                NavigationLink {
-                    AICapabilityView()
-                } label: {
-                    SettingsRow(symbol: "brain.head.profile", title: "Apple 智能",
-                                tint: AppTheme.violet)
-                }
-                .buttonStyle(.plain)
-            }
-            .cardSurface()
-        }
-    }
 
     /// 复制本机 UUID：**复制完整值**（界面上是打码的）
     private func copyDeviceUUID() {
