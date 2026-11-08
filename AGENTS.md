@@ -729,6 +729,30 @@ App Store 版没有这个文件 → 整行自动不显示。
 
 🔴 改这里的铁律：兜底**只能填空**，不得覆盖已抓到的地址 —— 否则语料命中数会掉。
 
+## 质量门禁：mobile-unslop（2026-11-08 接入）
+
+iOS/SwiftUI 专用的「AI 味代码」审计器（`npx mobile-unslop-mcp`），
+查崩溃隐患、无障碍缺失、写死尺寸、release 里 print 等。
+
+```bash
+bash tools/unslop-audit.sh            # 审我们三个源码目录（默认屏蔽字号规则）
+bash tools/unslop-audit.sh --all      # 不屏蔽
+bash tools/unslop-audit.sh --changed  # 只审未提交改动
+bash tools/unslop-audit.sh --json     # 机器可读
+```
+
+- 默认屏蔽 `SWIFT_FIXED_FONT_SIZE`：我们**故意**用数值字号（`TypeScale` 六档 ×
+  `FontScale` 全局倍率），规则看不穿这层封装，会刷 220 条噪音；
+- 退出码：有 ERROR 即 1（可挂 CI/pre-commit）。
+- ⚠️ 同名的 `unslop`（npm 上的 JS linter）**不要用**：它只解析 JS/TS，
+  扫本仓库输出 `Parsed 0 files`。
+
+当前基线（2026-11-08，80 个文件）：**8 error / 41 warning**
+（已屏蔽字号规则后）。8 个 error 是：
+- 6 × `SWIFT_ICON_BUTTON_UNLABELLED`：纯图标按钮缺无障碍标签；
+- 2 × `SWIFT_DEVICE_SIZE_HARDCODE`：分享卡导出图写死 390×500（有意为之，
+  那是**图片尺寸**不是布局尺寸，可加注释豁免）。
+
 ## 系统兼容基线（2026-11-07 定稿）
 
 ```
