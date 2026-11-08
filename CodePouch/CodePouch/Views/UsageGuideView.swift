@@ -63,15 +63,9 @@ struct UsageGuideView: View {
                 .ignoresSafeArea()
 
             ScrollView {
-                VStack(spacing: 16) {
-                    introSection
-                    automationSection
-                    screenshotSection
-                    verifySection
-                }
-                .padding(.horizontal, AppTheme.hInset)
-                .padding(.top, 8)
-                .padding(.bottom, 40)
+                // 内边距由 `UsageGuideContent` 自己加，这里只补底部留白，避免叠加两遍
+                UsageGuideContent()
+                    .padding(.bottom, 16)
             }
         }
         .navigationTitle("使用教程")
@@ -80,6 +74,24 @@ struct UsageGuideView: View {
     }
 
     // MARK: 一、认识拾码
+
+    // 说明：本页内容也被「快捷指令自动化」页内联使用（2026-11-08 主人：合成一页），
+    // 所以把四个分区抽成独立视图，页面与内联共用同一份文案。
+    struct UsageGuideContent: View {
+        private let guide = UsageGuideView()
+
+        var body: some View {
+            VStack(spacing: 16) {
+                guide.introSection
+                guide.automationSection
+                guide.screenshotSection
+                guide.verifySection
+            }
+            .padding(.horizontal, AppTheme.hInset)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
+        }
+    }
 
     private var introSection: some View {
         VStack(alignment: .leading, spacing: 12) {

@@ -41,15 +41,10 @@ struct AutoRecordSettingsView: View {
                 keywordsCard
                 note
 
-                // 🔴 2026-11-08 主人：和使用教程合并 —— 一键导入与「自己创建」放同一页。
-                NavigationLink {
-                    UsageGuideView()
-                } label: {
-                    SettingsRow(symbol: "book.fill", title: "不会用？教你自己创建",
-                                tint: AppTheme.violet)
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 4)
+                // 🔴 2026-11-08 主人：和使用教程合成**一页**，不要再套下级页面。
+                //    上半：一键导入；下半：自己创建的五步 + 校验说明。
+                UsageGuideView.UsageGuideContent()
+                    .padding(.top, 4)
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.vertical, 18)
