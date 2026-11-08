@@ -105,8 +105,9 @@ struct WidgetSettingsView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "效果预览")
 
-            // 小组件本体直接浮在页面灰底上，宽度与下方卡片**同宽**（左右 16pt 对齐）
-            WidgetCanvas(.medium, expandsToFill: true) {
+            // 🔴 2026-11-08 主人：顶部这张比真机宽 —— 原来用 `expandsToFill` 吃满页面宽度，
+            //    而真机中尺寸是固定 338pt。改成与「桌面小组件」页里的中尺寸预览同宽、居中。
+            WidgetCanvas(.medium) {
                 WidgetPagedContent(snapshot: .preview(),
                                    pageSize: WidgetPageSize.rowCount(family: "m"),
                                    familyKey: "m",

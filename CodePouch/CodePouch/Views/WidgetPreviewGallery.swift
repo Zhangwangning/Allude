@@ -212,6 +212,9 @@ struct WidgetGalleryContent: View {
         !WidgetPageSize.supportedFamilies.contains(style.family)
     }
 
+    /// 内容区实测宽度（用来把小尺寸的左缘对齐到中尺寸卡片的左缘）
+    @State private var contentWidth: CGFloat = 0
+
     var body: some View {
         VStack(alignment: .leading, spacing: 26) {
             Text("待取件")
@@ -226,7 +229,14 @@ struct WidgetGalleryContent: View {
                     // 🔴 2026-11-08 主人：除小尺寸外一律**水平居中**；
                     //    小尺寸保持左对齐（与上方的分区标题同一条左边缘）。
                     HStack(spacing: 0) {
-                        if style != .small { Spacer(minLength: 0) }
+                        // 🔴 2026-11-08 主人：小尺寸要和中尺寸的**左缘**对齐。
+                        //    中尺寸是居中的，左缘 = (内容宽 − 中宽) / 2，小尺寸补同样的左缩进。
+                        if style == .small {
+                            let inset = max(0, (contentWidth - WidgetCanvas.Style.medium.size.width) / 2)
+                            Spacer().frame(width: inset)
+                        } else {
+                            Spacer(minLength: 0)
+                        }
 
                         ZStack(alignment: .topTrailing) {
                             canvas(style: style, snapshot: snapshot)
@@ -266,6 +276,11 @@ struct WidgetGalleryContent: View {
             Text("以上为示例数据；桌面上的小组件显示你的真实记录。")
                 .font(.footnote)
                 .foregroundStyle(.tertiary)
+        }
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { width in
+            contentWidth = width
         }
     }
 
