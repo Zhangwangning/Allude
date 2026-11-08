@@ -217,56 +217,65 @@ struct ActivityLockScreenCard: View {
         }
     }
 
-    /// 单条：和旧版一样的大码版式，高度收到最小（84pt 总高）
+    /// 单条：**恢复加高之前的版式**（2026-11-08 主人指定）——
+    /// 上面一行「快递公司 | 驿站/平台」，中间大码 + 柜位，下面一行地址；
+    /// 高度由内容决定（约 78pt），不占满 160。
     private func singleCard(_ item: PickupActivityAttributes.Item) -> some View {
-        HStack(alignment: .center, spacing: 10) {
-            CourierLogo(company: item.displayName, size: 28, showsShadow: false)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Text(item.displayName.L)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .shadow(color: inkShadow, radius: 2, x: 0, y: 0.5)
+                    .lineLimit(1)
 
-            VStack(alignment: .leading, spacing: 2) {
-                // 来源行：快递公司 | 驿站或短信平台（2026-11-08 主人：码上面要能看出是哪来的）
-                HStack(spacing: 5) {
-                    // 浅色玻璃上白字容易发灰：靠更实的描影定轮廓（同信息层级里最暗的一层）
-                    Text(item.displayName.L)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .shadow(color: .black.opacity(0.55), radius: 3, x: 0, y: 0.5)
+                if let platform = item.platformSuffix {
+                    Text("| \(platform)")
+                        .font(.system(size: 14))
                         .lineLimit(1)
-
-                    if let platform = item.platformSuffix {
-                        Text("| \(platform)")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.white.opacity(0.9))
-                            .lineLimit(1)
-                            .shadow(color: .black.opacity(0.55), radius: 2.5, x: 0, y: 0.5)
-                    }
-                    Spacer(minLength: 0)
+                        .foregroundStyle(secondaryInk)
+                        .shadow(color: inkShadow, radius: 1.5, x: 0, y: 0.5)
                 }
 
-                PickupCodeEmphasis.text(item.code,
-                                        tint: islandInk(item.tint),
-                                        headOpacity: 0.78)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                Spacer(minLength: 6)
+            }
+
+            HStack(alignment: .center, spacing: 10) {
+                CourierLogo(company: item.displayName, size: 28, showsShadow: false)
+
+                PickupCodeEmphasis.text(item.code, tint: islandInk(item.tint), headOpacity: 0.78)
+                    .font(.system(size: 31, weight: .bold, design: .rounded))
                     .monospaced()
                     .lineLimit(1)
                     .minimumScaleFactor(0.45)
                     .allowsTightening(true)
+                    .layoutPriority(1)
                     .shadow(color: inkShadow, radius: 2.5, x: 0, y: 0.5)
 
-                if !item.address.isEmpty {
-                    Text(item.address.L)
-                        .font(.system(size: 13))
-                        .foregroundStyle(secondaryInk)
+                if let locker = item.locker, !locker.isEmpty {
+                    Text(locker.L)
+                        .font(.system(size: 14, weight: .medium))
                         .lineLimit(1)
+                        .foregroundStyle(secondaryInk)
                         .truncationMode(.tail)
+                        .layoutPriority(0)
                         .shadow(color: inkShadow, radius: 1.5, x: 0, y: 0.5)
                 }
-            }
 
-            Spacer(minLength: 0)
+                Spacer(minLength: 0)
+            }
+            .padding(.top, 6)
+
+            if !item.address.isEmpty {
+                Text(item.address.L)
+                    .font(.system(size: 14))
+                    .foregroundStyle(secondaryInk)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .padding(.top, 3)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: PickupActivityAttributes.LockScreenMetrics.singleContentHeight,
-               alignment: .leading)
     }
 
     /// 多条（2–3）：列表版式，高度用满 160pt 上限
