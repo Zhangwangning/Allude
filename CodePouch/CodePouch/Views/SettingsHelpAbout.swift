@@ -82,14 +82,10 @@ struct HelpCenterView: View {
                 .cardSurface()
 
                 VStack(spacing: 0) {
+                    // 🔴 2026-11-08 主人：设置行只留标题，说明统一放页面底部
                     Toggle(isOn: $feedback.includeLog) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("反馈时附带诊断日志")
-                                .font(AppTheme.TypeScale.body)
-                            Text("只在本机保存，点了发送才会随邮件发出")
-                                .font(AppTheme.TypeScale.note)
-                                .foregroundStyle(.secondary)
-                        }
+                        Text("反馈时附带诊断日志")
+                            .font(AppTheme.TypeScale.rowTitle)
                     }
                     .tint(AppTheme.accent)
                     .padding(.horizontal, 16)
@@ -109,6 +105,11 @@ struct HelpCenterView: View {
                     .buttonStyle(.plain)
                 }
                 .cardSurface()
+                Text("诊断日志只在本机保存，只有你点发送并确认后才会随邮件发出。")
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 4)
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 12)
@@ -199,20 +200,8 @@ struct AboutView: View {
                 }
                 .cardSurface()
 
-                VStack(spacing: 0) {
-                    SettingsRow(symbol: "internaldrive.fill", title: "已存记录",
-                                detail: "\(store.records.count) 条",
-                                showsChevron: false,
-                                tint: AppTheme.todayTint)
-
-                    SettingsDivider()
-
-                    SettingsRow(symbol: "doc.text.fill", title: "数据文件",
-                                detail: PickupStorage.fileSizeDescription,
-                                showsChevron: false,
-                                tint: AppTheme.doneTint)
-                }
-                .cardSurface()
+                // 🔴 2026-11-08 主人：数据只留一个入口 —— 设置 › 本机数据 › 存储。
+                //    关于页不再重复「已存记录 / 数据文件」（同一份数据两个入口）。
 
                 VStack(spacing: 0) {
                     NavigationLink {

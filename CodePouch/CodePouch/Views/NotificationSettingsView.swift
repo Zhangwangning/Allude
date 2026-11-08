@@ -121,7 +121,7 @@ struct NotificationSettingsView: View {
         // 第一组也带组标题：三组（入库通知 / 定期 / 不定期）节奏一致，
         // 否则顶上一块无标题的卡会像是从上一页漏下来的。
         SettingsGroup(title: "入库通知",
-                      note: "取件信息入库后弹一条通知：标题是取件码，下面是平台与地址。") {
+                      note: "入库后弹一条：标题是取件码。") {
             SettingsPlainRow(title: "添加后发送通知") {
                 Toggle("", isOn: Binding(get: { model.isEnabled },
                                          set: { model.setEnabled($0) }))
@@ -170,8 +170,8 @@ struct NotificationSettingsView: View {
     // MARK: 定期提醒
 
     private var dailySection: some View {
-        SettingsGroup(title: "取件提醒 · 定期",
-                      note: "每天固定时间数一遍待取件，有没取的才响；全部取完不会打扰。") {
+        SettingsGroup(title: "提醒 · 每天固定",
+                      note: "到点数一遍待取件，没取的才响。") {
             SettingsPlainRow(title: "每天定时提醒") {
                 Toggle("", isOn: Binding(get: { model.dailyEnabled },
                                          set: { model.setDailyEnabled($0) }))
@@ -235,8 +235,8 @@ struct NotificationSettingsView: View {
     // MARK: 不定期提醒
 
     private var pendingSection: some View {
-        SettingsGroup(title: "取件提醒 · 不定期",
-                      note: "入库超过设定时长还没取，单独催一次；取走或删除后自动撤回。") {
+        SettingsGroup(title: "提醒 · 超时未取",
+                      note: "超过设定时长还没取就催一次，取走后自动撤回。") {
             SettingsPlainRow(title: "超时未取提醒") {
                 Toggle("", isOn: Binding(get: { model.pendingEnabled },
                                          set: { model.setPendingEnabled($0) }))

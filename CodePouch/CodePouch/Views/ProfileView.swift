@@ -67,7 +67,8 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .guide:        return "使用教程"
         case .license:      return "拾码 Pro"
         case .activation:   return "激活"
-        case .storage:      return "本机数据"
+        // 组名已经是「本机数据」，行不能再同名（2026-11-08 主人：看着像重复）
+        case .storage:      return "存储"
         case .feedback:     return "反馈"
         case .version:      return "版本"
         case .privacy:      return "隐私"

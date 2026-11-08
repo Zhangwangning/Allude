@@ -126,35 +126,42 @@ struct AppearanceSettingsView: View {
 struct FontSizeView: View {
     @State private var settings = AppearanceSettings.shared
 
-    /// 预览用的示例文本（照主人参考图的两行说明）
-    private let sampleTitle = "预览文字大小"
-    private let sampleBody = "你可以拖动滑块来调整字体大小。"
+    /// 预览用的示例文本：用**真实 App 文案**当样本，
+    /// 用户拖动滑块时能直接看到「标题 / 正文 / 取件码」三档一起变。
+    /// 🔴 2026-11-08 主人：原来的预览卡只有两行、下面一大片空白，像没做完。
+    private let sampleStatus = "待取 44 件"
+    private let sampleBody = "圆通速递 · 家佳福超市甘州院子店"
+    private let sampleCode = "D-1-3516"
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // ── 预览卡 ──
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Spacer(minLength: 0)
-                        Text(sampleTitle.L)
-                            .font(AppTheme.TypeScale.rowSubtitle.weight(.medium))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .background(
-                                Capsule().fill(Color(.secondarySystemFill))
-                            )
-                    }
+                // ── 预览卡：三段真实文案 ──
+                VStack(alignment: .leading, spacing: 10) {
+                    // ① 行标题档
+                    Text(sampleStatus.L)
+                        .font(AppTheme.TypeScale.rowTitle.weight(.semibold))
 
+                    // ② 正文档
                     Text(sampleBody.L)
                         .font(AppTheme.TypeScale.body)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(.secondary)
 
+                    // ③ 取件码（等宽）—— 用户最关心的那一个
+                    Text(sampleCode)
+                        .font(.system(size: 30 * FontScale.value, weight: .bold,
+                                      design: .rounded))
+                        .monospaced()
+                        .foregroundStyle(AppTheme.accent)
+                        .padding(.top, 2)
+
+                    Text("以上为示例，实际字号随滑块变化。")
+                        .font(AppTheme.TypeScale.note)
+                        .foregroundStyle(.tertiary)
+                        .padding(.top, 6)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(18)
-                .frame(minHeight: 260, alignment: .topLeading)
                 .cardSurface()
 
                 // ── 跟随系统 ──

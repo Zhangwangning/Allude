@@ -345,7 +345,7 @@ struct CourierGalleryView: View {
                      : "内置 \(stationCount) 个取件地点图标")
                     .font(.subheadline.weight(.semibold))
                 Text(scope == .courier
-                     ? "未收录的快递会按名称自动生成图标，不会出现空白"
+                     ? "未收录的快递按名称自动生成图标"
                      : "驿站名称可自定义，添加后按名字自动匹配短信里的取件地点")
                     .font(.caption)
                     .foregroundStyle(.secondary)
