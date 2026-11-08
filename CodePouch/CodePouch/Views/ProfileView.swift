@@ -61,7 +61,9 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .automation:   return "快捷指令自动化"
         case .notification: return "通知提醒"
         case .widget:       return "桌面小组件"
-        case .activity:     return "实时活动与灵动岛"
+        // 🔴 2026-11-08 主人：只叫「实时活动」—— 灵动岛只有部分机型有，
+        //    写进标题会让其他机型以为是专属功能。
+        case .activity:     return "实时活动"
         case .courier:      return "快递公司"
         case .station:      return "驿站管理"
         case .guide:        return "使用教程"
