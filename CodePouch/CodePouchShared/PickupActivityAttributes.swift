@@ -92,9 +92,9 @@ struct PickupActivityAttributes: ActivityAttributes {
         static let perPage = 3
         /// 内容区高度：三条用满上限（160 − 14×2）
         static let contentHeight: CGFloat = 132
-        /// 单条：HIG 允许的最小高度 84 − 14×2 = 56 —— 只有一条时卡面就该这么小，
-        /// 不该空着 160pt 的框子（2026-11-08 主人指出）
-        static let singleContentHeight: CGFloat = 56
+        /// 单条：来源行（公司｜驿站/平台）+ 大码 + 地址三层，内容区 72 → 总高 100，
+        /// 仍在 HIG 的 84–160 区间内，且比三条时矮一截。
+        static let singleContentHeight: CGFloat = 72
         /// 两条：介于两者之间（118 − 14×2）
         static let doubleContentHeight: CGFloat = 90
 
@@ -223,10 +223,29 @@ struct ActivityLockScreenCard: View {
             CourierLogo(company: item.displayName, size: 28, showsShadow: false)
 
             VStack(alignment: .leading, spacing: 2) {
+                // 来源行：快递公司 | 驿站或短信平台（2026-11-08 主人：码上面要能看出是哪来的）
+                HStack(spacing: 5) {
+                    // 浅色玻璃上白字容易发灰：靠更实的描影定轮廓（同信息层级里最暗的一层）
+                    Text(item.displayName.L)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.55), radius: 3, x: 0, y: 0.5)
+                        .lineLimit(1)
+
+                    if let platform = item.platformSuffix {
+                        Text("| \(platform)")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.white.opacity(0.9))
+                            .lineLimit(1)
+                            .shadow(color: .black.opacity(0.55), radius: 2.5, x: 0, y: 0.5)
+                    }
+                    Spacer(minLength: 0)
+                }
+
                 PickupCodeEmphasis.text(item.code,
                                         tint: islandInk(item.tint),
                                         headOpacity: 0.78)
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
                     .monospaced()
                     .lineLimit(1)
                     .minimumScaleFactor(0.45)
