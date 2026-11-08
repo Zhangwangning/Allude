@@ -1157,19 +1157,13 @@ struct PendingStatsCard: View {
             Spacer(minLength: 8)
 
             // —— 次级列：今日新增 / 今日已取 ——
-            // 🔴 2026-11-08 unslop：值为 0 的那一格不显示 ——
-            //    状态没变化时"0"只是噪音，两个都 0 就整列不出现。
-            if todayNew > 0 || todayPicked > 0 {
-                VStack(alignment: .leading, spacing: 10) {
-                    if todayNew > 0 {
-                        miniStat("今日新增", value: todayNew,
-                                 tint: AppTheme.todayTint, symbol: "arrow.down.circle.fill")
-                    }
-                    if todayPicked > 0 {
-                        miniStat("今日已取", value: todayPicked,
-                                 tint: AppTheme.doneTint, symbol: "checkmark.circle.fill")
-                    }
-                }
+            // 🔴 2026-11-08 主人：0 也要显示 —— 只留一个大数字的卡片太空了。
+            //    （曾试过"0 不显示"，视觉上左边大数字孤零零，已撤回。）
+            VStack(alignment: .leading, spacing: 10) {
+                miniStat("今日新增", value: todayNew,
+                         tint: AppTheme.todayTint, symbol: "arrow.down.circle.fill")
+                miniStat("今日已取", value: todayPicked,
+                         tint: AppTheme.doneTint, symbol: "checkmark.circle.fill")
             }
         }
         // 内边距与列表卡同一档（AppTheme.cardPadding / 12），保证内容左缘共线
