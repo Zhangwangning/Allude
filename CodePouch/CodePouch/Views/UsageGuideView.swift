@@ -45,16 +45,6 @@ struct UsageGuideView: View {
     ///
     /// 自动化只能监听「收到短信」。微信群转发的取件通知、快递 App 的推送、驿站发来的
     /// 聊天截图 —— 这些都没有可监听的系统事件，用户手上唯一能做的动作就是「截屏」。
-    /// 认识拾码三点（原首启引导欢迎页收编）。
-    private let introPoints: [(String, String, Color, String)] = [
-        ("bubble.left.and.text.bubble.right.fill", "自动收码", AppTheme.accent,
-         "配合快捷指令，快递短信一到取件码自动进「待取」"),
-        ("platter.filled.top.iphone", "灵动岛常显", AppTheme.violet,
-         "最新取件码挂在灵动岛与锁屏，到驿站抬手即见"),
-        ("hand.raised.fill", "只在本机", AppTheme.doneTint,
-         "无账号、无联网，取件数据不出这台手机"),
-    ]
-
     var body: some View {
         // 🔴 2026-10-25：同 VersionHistoryView —— 底色用 ZStack 独立铺，
         // 不再依赖 ScrollView 上的 `.background`（分栏 detail 列里撑不满会露白）。
@@ -74,56 +64,20 @@ struct UsageGuideView: View {
         .cloaksTabBar()
     }
 
-    // MARK: 一、认识拾码
+    // MARK: 内容视图（页面与「快捷指令自动化」页共用）
 
-    // 说明：本页内容也被「快捷指令自动化」页内联使用（2026-11-08 主人：合成一页），
-    // 所以把四个分区抽成独立视图，页面与内联共用同一份文案。
+    /// 🔴 2026-11-08 主人：设置页里的「快捷指令自动化」把教程**内联**成一页，
+    /// 所以正文抽成这个视图；左右边距不由它加，谁用它谁给。
+    /// 「认识拾码」已删除 —— 与 设置 › 关于 › 软件说明 重复。
     struct UsageGuideContent: View {
         private let guide = UsageGuideView()
 
         var body: some View {
-            // 🔴 左右边距**不由内容层加**（2026-11-08 主人：要和上面的卡片对齐）：
-            //    由使用方统一给同一档 `AppTheme.hInset`，否则内联进自动化页时会双倍缩进。
             VStack(spacing: 16) {
-                guide.introSection
                 guide.automationSection
                 guide.screenshotSection
                 guide.verifySection
             }
-        }
-    }
-
-    private var introSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "认识拾码")
-
-            VStack(spacing: 0) {
-                ForEach(Array(introPoints.enumerated()), id: \.offset) { position, point in
-                    if position > 0 { SettingsDivider() }
-
-                    HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: point.0)
-                            .font(AppTheme.TypeScale.rowTitle.weight(.semibold))
-                            .foregroundStyle(point.2)
-                            .frame(width: 28)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(point.1)
-                                .font(AppTheme.TypeScale.rowTitle.weight(.semibold))
-                            Text(point.3)
-                                .font(AppTheme.TypeScale.body)
-                                .foregroundStyle(.secondary)
-                                .lineSpacing(2)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 13)
-                }
-            }
-            .cardSurface()
         }
     }
 
