@@ -27,6 +27,9 @@ struct CodePouchApp: App {
         // 把这个能力注入给共享层的控制器（2026-10-28）。
         // 只做一次赋值，之后控制器只读；扩展进程里没注入时恒为 nil，卡面自然降级。
         // 锁屏卡翻页用的待办来源（与 stationResolver 同一套路：共享层拿不到 Store）
+        // 语言：把上次在「设置 › 语言」里的选择落到 AppleLanguages（下次启动生效）
+        AppLanguageSettings.applyAtLaunch()
+
         PickupActivityController.pendingProvider = { PickupStore.shared.pending }
 
         PickupActivityController.stationResolver = { record in
@@ -709,6 +712,8 @@ struct CodePouchApp: App {
                     NavigationStack { AutoRecordSettingsView() }
                 case "fontSize":
                     NavigationStack { FontSizeView() }
+                case "language":
+                    NavigationStack { AppLanguageView() }
                 case "colorCheck":
                     // 品牌取色体检（2026-10-28）：小组件里码的颜色与 App 不一致，
                     // 先把「每个品牌名解析到哪一条、最终色是多少」打成一份表，

@@ -255,9 +255,11 @@ struct SettingsView: View {
     private func catalogRow(_ item: SettingsPane) -> some View {
         if item == .language {
             // 语言不在 App 内切换，点了直接跳系统设置
-            Button { openAppLanguageSettings() } label: {
+            NavigationLink {
+                AppLanguageView()
+            } label: {
                 SettingsRow(symbol: item.symbol, title: item.title,
-                            detail: currentLanguageName, tint: item.tint)
+                            detail: AppLanguageSettings.summary, tint: item.tint)
             }
             .buttonStyle(.plain)
         } else {
@@ -487,7 +489,7 @@ struct SettingsView: View {
         .contentShape(.rect)
         .onTapGesture {
             // 语言没有 App 内页面：按主人要求直接跳到 设置 › App › 拾码
-            if item == .language { openAppLanguageSettings() } else { pane = item }
+            pane = item
         }
         .tag(item)
     }
@@ -534,46 +536,9 @@ struct SettingsView: View {
         }
     }
 
-    /// 语言：不在 App 内做切换，交给系统（跳 设置 › App › 拾码）
-    @ViewBuilder
+    /// 语言：App 内直接选（2026-11-08 主人：不再跳系统设置）
     private var languageDetailPane: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                SectionHeader(title: "语言")
-
-                VStack(spacing: 0) {
-                    SettingsRow(symbol: "globe", title: "当前语言", detail: "简体中文",
-                                showsChevron: false, tint: AppTheme.indigo)
-                    SettingsDivider()
-                    Button { openAppLanguageSettings() } label: {
-                        SettingsRow(symbol: "arrow.up.forward.app.fill", title: "在系统设置中更改",
-                                    detail: nil, tint: AppTheme.accent)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .settingsCard()
-
-                Text("语言由 iOS 统一管理：设置 › App › 拾码 › 语言。\n首次安装时默认是简体中文。")
-                    .font(AppTheme.TypeScale.note)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 4)
-            }
-            .padding(.horizontal, AppTheme.hInset)
-            .padding(.vertical, 18)
-        }
-        .background(Color(.systemGroupedBackground))
-    }
-
-    /// 当前界面语言名（跟着系统走，不在 App 内切换）
-    private var currentLanguageName: String {
-        let code = Bundle.main.preferredLocalizations.first ?? "zh-Hans"
-        return code.hasPrefix("zh-Hant") ? "繁體中文" : "简体中文"
-    }
-
-    /// 跳到 iOS 设置里本 App 的页面（语言项在那里）
-    private func openAppLanguageSettings() {
-        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-        UIApplication.shared.open(url)
+        AppLanguageView()
     }
 
     /// 「已存记录 / 数据文件」面板（原 dataSection 的数据部分）
@@ -1258,4 +1223,57 @@ struct FullVersionView: View {
         }
     }
 
+}
+
+// MARK: - 语言（App 内直接选，2026-11-08 主人定）
+
+/// 版式参考系统语言列表：一行一种语言，当前项打勾。
+/// 只有两套本地化（简体 / 繁体）+ 跟随系统，**不做导入、不塞一堆语言**。
+struct AppLanguageView: View {
+    @State private var choice = AppLanguageSettings.choice
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(spacing: 0) {
+                    ForEach(Array(AppLanguageChoice.allCases.enumerated()), id: \.element) { index, item in
+                        if index > 0 { SettingsDivider() }
+                        Button {
+                            choice = item
+                            AppLanguageSettings.choice = item
+                        } label: {
+                            HStack(spacing: 12) {
+                                Text(item.title)
+                                    .font(AppTheme.TypeScale.rowTitle)
+                                    .foregroundStyle(.primary)
+
+                                Spacer(minLength: 0)
+
+                                if choice == item {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundStyle(AppTheme.accent)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .settingsCard()
+
+                Text("切换后需要**重新打开拾码**才会生效。".richText)
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 4)
+            }
+            .padding(.horizontal, AppTheme.hInset)
+            .padding(.vertical, 18)
+        }
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("语言")
+        .navigationBarTitleDisplayMode(.inline)
+    }
 }
