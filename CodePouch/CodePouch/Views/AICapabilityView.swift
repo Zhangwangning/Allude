@@ -32,8 +32,9 @@ struct AICapabilityView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 statusCard
+                purposeCard
+                qwenCard
                 detailCard
-                explainCard
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.vertical, 18)
@@ -52,19 +53,18 @@ struct AICapabilityView: View {
                 Image(systemName: isAvailable ? "checkmark.seal.fill" : "xmark.seal.fill")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(isAvailable ? AppTheme.doneTint : AppTheme.pendingTint)
-                Text(isAvailable ? "端侧模型可用" : "端侧模型不可用")
+                Text(isAvailable ? "可以用" : "暂时用不了")
                     .font(AppTheme.TypeScale.rowTitleMedium)
                 Spacer(minLength: 0)
             }
 
-            Text(PickupAI.statusText)
+            // 🔴 2026-11-08 主人：用户只关心「能不能用」，不关心枚举。
+            Text(isAvailable
+                 ? "拾码会用 iPhone 本机的智能来识别短信，不联网、不上传。"
+                 : "这台 iPhone 目前没向拾码开放本机智能，拾码会自动改用正则解析，收码照样正常。")
                 .font(AppTheme.TypeScale.body)
                 .foregroundStyle(.secondary)
-
-            Text("原始返回：\(rawReason)")
-                .font(AppTheme.TypeScale.note)
-                .foregroundStyle(.secondary)
-                .lineSpacing(2)
+                .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
 
             Button {
@@ -126,8 +126,9 @@ struct AICapabilityView: View {
     // MARK: 设备信息
 
     private var detailCard: some View {
-        VStack(spacing: 0) {
-            row("机型", DeviceProfile.machineID)
+        DisclosureGroup {
+            VStack(spacing: 0) {
+                row("机型", DeviceProfile.machineID)
             SettingsDivider()
             row("系统", ProcessInfo.processInfo.operatingSystemVersionString)
             SettingsDivider()
@@ -137,8 +138,17 @@ struct AICapabilityView: View {
             SettingsDivider()
             row("支持中文", SystemLanguageModel.default.supportsLocale(Locale(identifier: "zh_CN")) ? "是" : "否")
             SettingsDivider()
-            row("模型支持语言数", "\(SystemLanguageModel.default.supportedLanguages.count)")
+                row("模型支持语言数", "\(SystemLanguageModel.default.supportedLanguages.count)")
+                SettingsDivider()
+                row("原始返回", rawReason)
+            }
+            .padding(.top, 6)
+        } label: {
+            Text("技术详情（排查用）")
+                .font(AppTheme.TypeScale.rowTitleMedium)
         }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .settingsCard()
     }
 
@@ -157,17 +167,65 @@ struct AICapabilityView: View {
         .padding(.vertical, 11)
     }
 
-    // MARK: 说明
+    // MARK: 说明（用户视角，只讲三件事）
 
-    private var explainCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("怎么看这个结果")
+    private var purposeCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("为什么有这个功能")
                 .font(AppTheme.TypeScale.rowTitleMedium)
-            Text("· **「需 iPhone 15 Pro 及以上」是官方最低要求，不是在说本机配置不够**；本机硬件满足，是系统层面没开放这个接口。\n· **写作工具能在任何 App 里用**，那是系统提供的能力，跟 App 自己调端侧模型是两条通道；它可用不代表这里可用。\n· 中国区机型由第三方模型提供服务，第三方 App 的端侧模型接口是否开放由系统决定，App 侧无法绕过、也无法伪造资格。\n· 不可用时拾码自动退回纯正则解析，收码与小组件功能不受影响。".richText)
+
+            bullet("shield.lefthalf.filled",
+                   "拾码用 iPhone 自己的端侧智能识别短信，**不联网、不上传**——数据一直在本机。")
+            bullet("text.alignleft",
+                   "系统没开放时，拾码自动用正则解析；收码、小组件、灵动岛都不受影响。")
+            bullet("questionmark.circle",
+                   "能不能用由 iOS 决定，拾码没法绕过，也不会伪造。")
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .settingsCard()
+    }
+
+    private func bullet(_ symbol: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AppTheme.sky)
+                .frame(width: 18)
+            Text(text.richText)
                 .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.secondary)
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: 千问扩展（用户自行开启，数据不经过拾码）
+
+    private var qwenCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("可选：千问扩展")
+                .font(AppTheme.TypeScale.rowTitleMedium)
+
+            Text("iOS 已与千问合作提供智能扩展。你可以在系统设置里自行开启；开启后这部分识别由系统与第三方服务完成，**数据不再经过拾码**，相关问题与隐私由该服务方负责。")
+                .font(AppTheme.TypeScale.note)
+                .foregroundStyle(.secondary)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                Text("前往系统设置")
+                    .font(AppTheme.TypeScale.body.weight(.medium))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .appGlass(.capsule, tint: AppTheme.accent, interactive: true)
+            }
+            .buttonStyle(.plain)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
