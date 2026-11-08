@@ -144,15 +144,15 @@ struct AutoRecordSettingsView: View {
                 Label("用文件导入", systemImage: "square.and.arrow.down")
             }
         } label: {
-            // 独立按钮：描边胶囊，与左侧文案分开，点它才出菜单
+            // 🔴 2026-11-08 主人：改成**蓝色填充的液态玻璃**按钮，文字白色。
+            //    iOS 26+ 走系统玻璃（靠 tint 染成品牌蓝）；iOS 18 没有液态玻璃，
+            //    由 appGlass 的回落实现铺两层同色，看起来同样是实心蓝。
             Text("添加")
                 .font(AppTheme.TypeScale.bodyMedium)
-                .foregroundStyle(AppTheme.accent)
-                .padding(.vertical, 5)
-                .padding(.horizontal, 14)
-                .overlay(
-                    Capsule().stroke(AppTheme.accent.opacity(0.45), lineWidth: 1)
-                )
+                .foregroundStyle(.white)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 16)
+                .appGlass(.capsule, tint: AppTheme.accent, interactive: true)
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
