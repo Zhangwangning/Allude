@@ -195,7 +195,10 @@ struct SettingsView: View {
             // 🔴 2026-11-07 主人：宽屏（Duo 展开态 / iPad）就该用分栏，窄屏用单列。
             //    两种排版渲染的是**同一份目录**（`generalGroupAll` / `dataGroup` / `aboutGroupAll`），
             //    所以功能完全一致，只是排列不同。
-            if horizontalSizeClass == .regular {
+            // 截图脚手架：`SETTINGS_COMPACT=1` 强制走单列，用来在宽屏模拟器上
+            // 验证窄屏样式（尤其 iOS 26 的玻璃行），平时不影响任何布局。
+            if horizontalSizeClass == .regular,
+               ProcessInfo.processInfo.environment["SETTINGS_COMPACT"] != "1" {
                 splitSettings
             } else {
                 stackedSettings
@@ -215,16 +218,36 @@ struct SettingsView: View {
 
     // MARK: 目录渲染（单列布局；iPad 分栏共用同一份目录）
 
+    /// 最下面的「拾码 Pro」区：标题 + 一张卡，点进去是订阅页。
+    private var proSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "拾码 Pro")
+            proBanner
+        }
+    }
+
     private func catalogSection(_ title: String, _ items: [SettingsPane]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: title)
-            VStack(spacing: 0) {
-                ForEach(Array(items.enumerated()), id: \.element) { index, item in
-                    if index > 0 { SettingsDivider() }
-                    catalogRow(item)
+            // 🔴 2026-11-08 主人：iOS 26+ 参考 Widgy —— 每行一条**独立玻璃胶囊**，
+            //    行间留 8pt，不再用一张大白卡 + 分隔线；iOS 18 没有液态玻璃，
+            //    保持原来的整卡分组（系统材质），两种版本各自成立。
+            if GlassSettings.isActive {
+                VStack(spacing: 8) {
+                    ForEach(items, id: \.self) { item in
+                        catalogRow(item)
+                            .appGlass(.rect(cornerRadius: 22, style: .continuous))
+                    }
                 }
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(items.enumerated()), id: \.element) { index, item in
+                        if index > 0 { SettingsDivider() }
+                        catalogRow(item)
+                    }
+                }
+                .cardSurface()
             }
-            .cardSurface()
         }
     }
 
@@ -265,10 +288,12 @@ struct SettingsView: View {
     private var stackedSettings: some View {
         ScrollView {
             VStack(spacing: 16) {
-                proBanner
                 catalogSection("通用", SettingsPane.generalGroupAll)
                 catalogSection("本机数据", SettingsPane.dataGroup)
                 catalogSection("关于", SettingsPane.aboutGroupAll)
+                // 🔴 2026-11-08 主人：Pro 入口学 Widgy 放到**最下面**（商店区的位置），
+                //    不再顶在第一条 —— 用户先看到设置，想买时再往下翻。
+                proSection
                 footer
             }
             .padding(.horizontal, AppTheme.hInset)
@@ -311,16 +336,15 @@ struct SettingsView: View {
 
 
                 List {
-                    // 🔴 2026-11-07 主人：横幅要跟着列表一起滚，不能钉在顶部。
-                    //    放进 List 当第一行（而不是挂在 VStack 上），滚动手感与直板机一致。
-                    proBanner
-                        .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 10, trailing: 10))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-
                     settingsGroup("通用", items: filtered(SettingsPane.generalGroupAll))
                     settingsGroup("本机数据", items: filtered(SettingsPane.dataGroup))
                     settingsGroup("关于", items: filtered(SettingsPane.aboutGroupAll))
+
+                    // Pro 入口在列表最下面（学 Widgy 的商店区位置）
+                    proBanner
+                        .listRowInsets(EdgeInsets(top: 18, leading: 10, bottom: 10, trailing: 10))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
