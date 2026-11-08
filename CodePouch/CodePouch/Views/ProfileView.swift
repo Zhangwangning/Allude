@@ -43,7 +43,6 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     case privacy
     case aiCapability
     case appIcon
-    case softwareInfo
     case privacyDoc
     case termsDoc
     case disclaimer
@@ -76,7 +75,6 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .privacy:      return "隐私"
         case .aiCapability: return "Apple 智能"
         case .appIcon:      return "App 图标"
-        case .softwareInfo: return "软件说明"
         case .privacyDoc:   return "隐私政策"
         case .termsDoc:     return "使用条款"
         case .disclaimer:   return "声明与免责"
@@ -106,7 +104,6 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .privacy:      return "hand.raised.fill"
         case .aiCapability: return "brain.head.profile"
         case .appIcon:      return "app.badge.fill"
-        case .softwareInfo: return "info.circle.fill"
         case .privacyDoc:   return "hand.raised.fill"
         case .termsDoc:     return "doc.text.fill"
         case .disclaimer:   return "text.badge.checkmark"
@@ -136,7 +133,6 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .privacy:      return AppTheme.doneTint
         case .aiCapability: return AppTheme.violet
         case .appIcon:      return AppTheme.doneTint
-        case .softwareInfo: return AppTheme.indigo
         case .privacyDoc:   return AppTheme.doneTint
         case .termsDoc:     return AppTheme.sky
         case .disclaimer:   return AppTheme.amber
@@ -156,7 +152,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         .appIcon, .appearance, .fontSize, .language,
     ]
     static let aboutGroupAll: [SettingsPane] = [
-        .help, .softwareInfo, .privacyDoc, .termsDoc, .version, .disclaimer, .aiCapability,
+        .help, .privacyDoc, .termsDoc, .version, .disclaimer, .aiCapability,
     ]
 }
 
@@ -499,7 +495,6 @@ struct SettingsView: View {
                 AICapabilityUnsupportedView()
             }
         case .appIcon:      AppIconSettingsView()
-        case .softwareInfo: SoftwareInfoView()
         case .privacyDoc:   LegalDocumentView(document: .privacy)
         case .termsDoc:     LegalDocumentView(document: .terms)
         case .disclaimer:   StatementView()

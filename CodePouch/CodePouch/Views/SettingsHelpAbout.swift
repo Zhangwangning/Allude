@@ -239,23 +239,30 @@ struct AboutView: View {
     /// 顶部标识：名称 + 版本号。参考图里这一块都是居中的图标 + 名字 + 版本。
     // MARK: 软件说明（2026-11-07 主人要求写清楚）
 
-    /// 这一屏只留一条入口：离线 / 数据 / 系统要求的完整说明在 `SoftwareInfoView`。
+    /// 四条事实直接摆在页面上（不再有独立的「软件说明」二级页）。
     /// 🔴 2026-11-07 主人：不要把同样几句话在两处各写一遍（之前四行与二级页完全重复）。
     private var offlineCard: some View {
         VStack(spacing: 0) {
-            NavigationLink {
-                SoftwareInfoView()
-            } label: {
-                SettingsRow(symbol: "info.circle.fill", title: "软件说明",
-                            tint: AppTheme.indigo)
-            }
-            .buttonStyle(.plain)
+            // 🔴 2026-11-08 主人：软件说明不必再单独一页 —— 这几条就是「关于」
+            //    最该第一眼看到的事实，直接摆在页面上，少一层点击。
+            SettingsRow(symbol: "wifi.slash", title: "纯离线运行，不联网",
+                        showsChevron: false, tint: AppTheme.doneTint)
+            SettingsDivider()
+            SettingsRow(symbol: "hand.raised.fill", title: "不获取任何用户数据",
+                        showsChevron: false, tint: AppTheme.sky)
+            SettingsDivider()
+            SettingsRow(symbol: "internaldrive.fill", title: "数据只存在本机",
+                        showsChevron: false, tint: AppTheme.todayTint)
+            SettingsDivider()
+            SettingsRow(symbol: "iphone", title: "最低系统版本",
+                        detail: Self.minimumOS,
+                        showsChevron: false, tint: AppTheme.violet)
         }
         .cardSurface()
     }
 
     /// 与工程 `IPHONEOS_DEPLOYMENT_TARGET` 保持一致（改部署目标时同步这里）
-    static let minimumOS = "iOS 27.0"
+    static let minimumOS = "iOS 18.0"
 
     private var header: some View {
         VStack(spacing: 8) {
@@ -312,55 +319,3 @@ struct PageFooter: View {
     }
 }
 
-// MARK: - 软件说明（离线 / 数据 / 系统要求）
-
-/// 从「关于」的第一张卡进入。设置项行里只留标题，细节统一收在这一页。
-struct SoftwareInfoView: View {
-    private let items: [(symbol: String, title: String, tint: Color, body: String)] = [
-        ("wifi.slash", "纯离线运行，不联网", AppTheme.doneTint,
-         "App 没有任何服务器与域名，自身不发起任何网络请求。\n唯一的网络行为是你购买完整版时由系统 App Store 完成的支付，这一步与其它 App 的内购相同。"),
-        ("hand.raised.fill", "不获取任何用户数据", AppTheme.sky,
-         "不读取短信数据库、通讯录、相册或位置，不需要注册也不需要登录，不含任何第三方统计、广告或追踪 SDK。\n截图识别时，图片由系统相册选择器提供，识别在本机完成，不保存、不上传。"),
-        ("internaldrive.fill", "数据只存在本机", AppTheme.todayTint,
-         "取件记录保存在 App 自己的沙盒与本地共享容器里，卸载 App 即全部删除。\nApp 不提供云同步，也没有回收站，删除前请自行确认。"),
-        ("iphone", "最低系统版本：iOS 27.0", AppTheme.violet,
-         "低于此版本的设备无法安装。App 使用 SwiftUI、WidgetKit、ActivityKit 与 StoreKit 2，均要求 iOS 27 及以上。"),
-    ]
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                VStack(spacing: 0) {
-                    ForEach(Array(items.enumerated()), id: \.offset) { index, item in
-                        if index > 0 { SettingsDivider() }
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack(spacing: 10) {
-                                Image(systemName: item.symbol)
-                                    .font(AppTheme.TypeScale.body.weight(.semibold))
-                                    .foregroundStyle(item.tint)
-                                    .frame(width: 24)
-                                Text(item.title)
-                                    .font(AppTheme.TypeScale.rowTitle)
-                            }
-                            Text(item.body)
-                                .font(AppTheme.TypeScale.note)
-                                .foregroundStyle(.secondary)
-                                .lineSpacing(2)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .padding(.leading, 34)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-                .cardSurface()
-            }
-            .padding(.horizontal, AppTheme.hInset)
-            .padding(.vertical, 16)
-        }
-        .background(Color(.systemGroupedBackground))
-        .navigationTitle("软件说明")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
