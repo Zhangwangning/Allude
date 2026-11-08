@@ -367,7 +367,7 @@ struct ActivityPreviewGallery: View {
         if ProcessInfo.processInfo.environment["ACTIVITY_LONG_CODE"] == "1" {
             return [
                 .init(id: "long-1", company: "圆通速递", code: "YT8861990771306",
-                      address: "家佳福超市甘州院子店", tint: 0x5D3FD3, locker: nil),
+                      address: "家佳福超市甘州院子店", tint: 0x5D3FD3, locker: "2号柜"),
                 .init(id: "long-2", company: "顺丰速运", code: "8-2-4031",
                       address: "丰巢智能柜 · 望京SOHO T1 大堂", tint: 0x000000, locker: "2号柜"),
                 .init(id: "long-3", company: "拼多多", code: "D-1-3516",

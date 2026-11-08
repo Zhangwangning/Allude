@@ -356,15 +356,32 @@ struct ActivityLockScreenCard: View {
             CourierLogo(company: item.displayName, size: 22, showsShadow: false)
 
             VStack(alignment: .leading, spacing: 1) {
-                PickupCodeEmphasis.text(item.code,
-                                        tint: islandInk(item.tint),
-                                        headOpacity: 0.78)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .monospaced()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.55)
-                    .allowsTightening(true)
-                    .shadow(color: inkShadow, radius: 2, x: 0, y: 0.5)
+                HStack(spacing: 6) {
+                    PickupCodeEmphasis.text(item.code,
+                                            tint: islandInk(item.tint),
+                                            headOpacity: 0.78)
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .monospaced()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.55)
+                        .allowsTightening(true)
+                        .layoutPriority(1)
+                        .shadow(color: inkShadow, radius: 2, x: 0, y: 0.5)
+
+                    // 多条时柜位一律做成**标签跟在码尾**（2026-11-08 主人定）：
+                    // 列表行空间紧，塞进码右侧会挤掉码本身；标签只占 8pt 高。
+                    if let locker = item.locker, !locker.isEmpty {
+                        Text(locker.L)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .fixedSize()
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(.white.opacity(0.20)))
+                            .overlay(Capsule().stroke(.white.opacity(0.25), lineWidth: 0.5))
+                    }
+                }
 
                 if !item.address.isEmpty {
                     Text(item.address.L)
