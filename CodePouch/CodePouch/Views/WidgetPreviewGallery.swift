@@ -31,6 +31,19 @@ import WidgetKit
 /// 预览**不响应点击**：勾选框与翻页控件在真实小组件里由 AppIntent 直接写数据，
 /// 而在 App 内预览时点击既不会更新界面、又会让内存副本与文件不一致，
 /// 因此整块 `allowsHitTesting(false)`，只作视觉对照。
+/// 预览尺寸换算用的屏宽比例。
+///
+/// 取当前窗口宽度（不是 `UIScreen.main` —— 它在多窗口/折叠屏下已弃用且不准）。
+/// 拿不到窗口时按 390pt 基准，等于 `scale = 1`，不会把界面撑坏。
+enum WidgetPreviewMetrics {
+    /// 由页面用 `onGeometryChange` 实测写入（窗口宽度）。
+    /// 为什么不用 `UIApplication…keyWindow`：SwiftUI 里那一刻常拿不到 keyWindow，
+    /// 结果 scale 恒为 1、预览还是按 390pt 渲染（2026-11-08 实测踩过）。
+    static var deviceWidth: CGFloat = 393
+
+    static var scale: CGFloat { deviceWidth / 393 }
+}
+
 struct WidgetCanvas: View {
     enum Style: String, CaseIterable {
         case small
@@ -39,13 +52,27 @@ struct WidgetCanvas: View {
         case extraLarge
         case extraLargePortrait
 
+        /// 🔴 2026-11-08 主人：预览必须和桌面上真实大小一致。
+        ///
+        /// 原来写死 158 / 338 / 354 —— 那是 **390pt 屏**（iPhone 12/13/14 标准版）的数值。
+        /// 系统小组件是按屏宽等比缩放的，402pt（16 Pro）、430pt（Pro Max）上会更大，
+        /// 于是预览永远比真机小一圈。
+        ///
+        /// 基准值 158 / 338 / 354 是 iPhone 15·16 Pro（**393pt**）实测，按屏宽等比缩放。
         var size: CGSize {
+            // ① 有实测值就直接用（小组件在桌面上渲染过一次就会记下来）——
+            //    这是唯一「和真机完全一致」的来源。
+            if let measured = WidgetMeasuredSize.load(family: pageKey) {
+                return measured
+            }
+            // ② 没测过：按屏宽等比估算（158 / 338 / 354 是 393pt 屏的实测基准）
+            let k = WidgetPreviewMetrics.scale
             switch self {
-            case .small: CGSize(width: 158, height: 158)
-            case .medium: CGSize(width: 338, height: 158)
-            case .large: CGSize(width: 338, height: 354)
-            case .extraLarge: CGSize(width: 690, height: 354)
-            case .extraLargePortrait: CGSize(width: 338, height: 690)
+            case .small:  return CGSize(width: 158 * k, height: 158 * k)
+            case .medium: return CGSize(width: 338 * k, height: 158 * k)
+            case .large:  return CGSize(width: 338 * k, height: 354 * k)
+            case .extraLarge:        return CGSize(width: 690 * k, height: 354 * k)
+            case .extraLargePortrait: return CGSize(width: 338 * k, height: 690 * k)
             }
         }
 
@@ -363,6 +390,12 @@ struct WidgetPreviewGallery: View {
             }
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
+            // 实测容器宽度 → 换算成屏宽比例，让预览与真机小组件同尺寸
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.size.width
+            } action: { width in
+                if width > 0 { WidgetPreviewMetrics.deviceWidth = width }
+            }
         }
         .navigationTitle("桌面小组件")
         .navigationBarTitleDisplayMode(.inline)
