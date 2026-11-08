@@ -9,18 +9,10 @@
 /* Begin PBXBuildFile section */
 		AA000000000000000000001E /* CodePouchWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000010 /* CodePouchWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AA0000000000000000000030 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000020 /* AppTheme.swift */; };
-		AA0000000000000000000102 /* GlassCompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000101 /* GlassCompat.swift */; };
-		AA00000000000000000000FB /* PickupActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000FA /* PickupActivityIntents.swift */; };
-		AA00000000000000000000F8 /* BrandDebug.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000F7 /* BrandDebug.swift */; };
-		AA00000000000000000000F5 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000F4 /* Localization.swift */; };
 		AA0000000000000000000031 /* CourierBrand.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000021 /* CourierBrand.swift */; };
 		AA0000000000000000000032 /* PickupModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000022 /* PickupModels.swift */; };
 		AA0000000000000000000033 /* PickupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000023 /* PickupStorage.swift */; };
 		AA0000000000000000000034 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000020 /* AppTheme.swift */; };
-		AA0000000000000000000103 /* GlassCompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000101 /* GlassCompat.swift */; };
-		AA00000000000000000000FC /* PickupActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000FA /* PickupActivityIntents.swift */; };
-		AA00000000000000000000F9 /* BrandDebug.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000F7 /* BrandDebug.swift */; };
-		AA00000000000000000000F6 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000F4 /* Localization.swift */; };
 		AA0000000000000000000035 /* CourierBrand.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000021 /* CourierBrand.swift */; };
 		AA0000000000000000000036 /* PickupModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000022 /* PickupModels.swift */; };
 		AA0000000000000000000037 /* PickupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000023 /* PickupStorage.swift */; };
@@ -48,6 +40,14 @@
 		AA0000000000000000000064 /* AppIconChoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000062 /* AppIconChoice.swift */; };
 		AA00000000000000000000F2 /* FontScale.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000F1 /* FontScale.swift */; };
 		AA00000000000000000000F3 /* FontScale.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000F1 /* FontScale.swift */; };
+		AA00000000000000000000F5 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000F4 /* Localization.swift */; };
+		AA00000000000000000000F6 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000F4 /* Localization.swift */; };
+		AA00000000000000000000F8 /* BrandDebug.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000F7 /* BrandDebug.swift */; };
+		AA00000000000000000000F9 /* BrandDebug.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000F7 /* BrandDebug.swift */; };
+		AA00000000000000000000FB /* PickupActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000FA /* PickupActivityIntents.swift */; };
+		AA00000000000000000000FC /* PickupActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000FA /* PickupActivityIntents.swift */; };
+		AA0000000000000000000102 /* GlassCompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000101 /* GlassCompat.swift */; };
+		AA0000000000000000000103 /* GlassCompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000101 /* GlassCompat.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -78,10 +78,6 @@
 		AA0000000000000000000003 /* CodePouch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CodePouch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0000000000000000000010 /* CodePouchWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CodePouchWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0000000000000000000020 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
-		AA0000000000000000000101 /* GlassCompat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassCompat.swift; sourceTree = "<group>"; };
-		AA00000000000000000000FA /* PickupActivityIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickupActivityIntents.swift; sourceTree = "<group>"; };
-		AA00000000000000000000F7 /* BrandDebug.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandDebug.swift; sourceTree = "<group>"; };
-		AA00000000000000000000F4 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		AA0000000000000000000021 /* CourierBrand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourierBrand.swift; sourceTree = "<group>"; };
 		AA0000000000000000000022 /* PickupModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickupModels.swift; sourceTree = "<group>"; };
 		AA0000000000000000000023 /* PickupStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickupStorage.swift; sourceTree = "<group>"; };
@@ -103,6 +99,10 @@
 		AA0000000000000000000060 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AA0000000000000000000062 /* AppIconChoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconChoice.swift; sourceTree = "<group>"; };
 		AA00000000000000000000F1 /* FontScale.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FontScale.swift; sourceTree = "<group>"; };
+		AA00000000000000000000F4 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
+		AA00000000000000000000F7 /* BrandDebug.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandDebug.swift; sourceTree = "<group>"; };
+		AA00000000000000000000FA /* PickupActivityIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickupActivityIntents.swift; sourceTree = "<group>"; };
+		AA0000000000000000000101 /* GlassCompat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassCompat.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -269,6 +269,7 @@
 				en,
 				Base,
 				"zh-Hans",
+				"zh-Hant",
 			);
 			mainGroup = AA0000000000000000000005;
 			minimizedProjectReferenceProxies = 1;
@@ -495,7 +496,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/CodePouch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = SW725KU49U;
-				CURRENT_PROJECT_VERSION = 209;
+				CURRENT_PROJECT_VERSION = 210;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
@@ -508,6 +509,7 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -528,7 +530,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/CodePouch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = SW725KU49U;
-				CURRENT_PROJECT_VERSION = 209;
+				CURRENT_PROJECT_VERSION = 210;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
@@ -541,6 +543,7 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -562,7 +565,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/CodePouchWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = SW725KU49U;
-				CURRENT_PROJECT_VERSION = 209;
+				CURRENT_PROJECT_VERSION = 210;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CodePouchWidget/Info.plist;
@@ -591,7 +594,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/CodePouchWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = SW725KU49U;
-				CURRENT_PROJECT_VERSION = 209;
+				CURRENT_PROJECT_VERSION = 210;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CodePouchWidget/Info.plist;

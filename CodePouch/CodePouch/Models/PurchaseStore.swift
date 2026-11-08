@@ -68,7 +68,12 @@ final class PurchaseStore: ObservableObject {
 
     static let shared = PurchaseStore()
 
-    static var allProductIDs: [String] { Plan.allCases.map(\.productID) }
+    /// 🔴 2026-11-08 主人：**只卖两档** —— 终身（主推）与每年。
+    /// `monthly` 这个 case 留着只为兼容旧数据解码（App Store 里也已下架），
+    /// 界面与商品请求都不再出现它。
+    static var displayedPlans: [Plan] { [.lifetime, .yearly] }
+
+    static var allProductIDs: [String] { displayedPlans.map(\.productID) }
 
     // MARK: 状态
 

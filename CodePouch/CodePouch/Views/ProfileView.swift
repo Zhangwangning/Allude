@@ -1013,7 +1013,7 @@ struct FullVersionView: View {
             // 402pt 屏上内容宽 370pt，卡片间距 8 → 每张约 118pt，
             // 价格 20pt 字刚好放得下「¥18.00」。
             HStack(spacing: 8) {
-                ForEach(PurchaseStore.Plan.allCases) { plan in
+                ForEach(PurchaseStore.displayedPlans) { plan in
                     planCard(plan)
                 }
             }
