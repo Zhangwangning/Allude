@@ -253,17 +253,19 @@ struct NotificationSettingsView: View {
                         .labelsHidden()
                         .tint(AppTheme.accent)
                 } else {
-                    ZStack {
-                        Toggle("", isOn: .constant(false))
-                            .labelsHidden()
-                            .tint(AppTheme.accent)
-                            .allowsHitTesting(false)
-                        Color.clear
-                            .contentShape(Rectangle())
-                            .onTapGesture { showPaywall = true }
-                            .accessibilityLabel("超时未取提醒")
-                            .accessibilityHint("需要拾码 Pro")
-                    }
+                    // 用 overlay 接管点击：ZStack 里放 `Color.clear` 会撑宽，
+                    // 把开关挤到行中间（2026-11-08 主人：开关怎么乱跑）。
+                    Toggle("", isOn: .constant(false))
+                        .labelsHidden()
+                        .tint(AppTheme.accent)
+                        .allowsHitTesting(false)
+                        .overlay {
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .onTapGesture { showPaywall = true }
+                                .accessibilityLabel("超时未取提醒")
+                                .accessibilityHint("需要拾码 Pro")
+                        }
                 }
             }
 
