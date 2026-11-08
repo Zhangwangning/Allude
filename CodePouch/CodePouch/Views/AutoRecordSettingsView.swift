@@ -41,10 +41,26 @@ struct AutoRecordSettingsView: View {
                 keywordsCard
                 note
 
+                // 🔴 2026-11-08 主人：必须讲清楚"上面的能导入，就不用看下面的"。
+                SectionHeader(title: "手动配置（仅在上面导入不了时）")
+
+                Text("""
+上面的「添加」会把整条自动化直接存进「快捷指令」App。**导入成功、并去\
+「快捷指令 › 自动化」把开关打开之后，下面的步骤全都不用做。**
+
+只有一种情况需要往下看：点「添加」后系统没有把文件存进「快捷指令」App\
+（没法从拾码直接保存），那时才照下面的步骤自己建一条。
+""".richText)
+                    .font(AppTheme.TypeScale.body)
+                    .foregroundStyle(.secondary)
+                    .lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .cardSurface()
+
                 // 🔴 2026-11-08 主人：和使用教程合成**一页**，不要再套下级页面。
-                //    上半：一键导入；下半：自己创建的五步 + 校验说明。
                 UsageGuideView.UsageGuideContent()
-                    .padding(.top, 4)
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.vertical, 18)
