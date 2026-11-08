@@ -162,7 +162,10 @@ enum AppTheme {
     /// 卡片内容层叠品牌色的强度。克制 —— 只提供「每张卡有自己的颜色」的氛围，
     /// 一旦调高就会变成整卡染色，与导航层争夺层级。
     /// 0.08 对应左上角约 0.136、右下角约 0.04 的对角渐变（见 CardSurface）。
-    static let cardTintOpacity: Double = 0.08
+    /// 卡片品牌色淡染强度。
+    /// 2026-11-08 主人：「还是品牌色淡染好看，深了就再淡一些」→ 0.08 → 0.06
+    /// （渲染时再 ×1.7 / ×0.5 做对角线渐变）。
+    static let cardTintOpacity: Double = 0.06
 }
 
 extension Color {

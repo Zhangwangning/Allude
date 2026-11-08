@@ -792,6 +792,12 @@ bash tools/unslop-audit.sh --json     # 机器可读
 Apple 智能页显示低版本说明页。发现并修掉一处：`appGlass()` 的 tint 早先画在 `.overlay`
 （内容之上），把详情页「标记为已取」的**白字盖住**了 —— 已改为画在 `.background` 内。
 
+🔴 **组件口径（2026-11-08 主人两次强调）**：
+- iOS 26+ 一律用 **Apple 原生的液态玻璃组件**（`glassEffect`，经 `appGlass()`）；
+- iOS 18 一律用 **Apple 原生材质组件**（`ultraThinMaterial` 等）；
+- **不要自创装饰**：卡片不加左侧竖条之类的东西，卡面层次由品牌色淡染
+  （`AppTheme.cardTintOpacity`，2026-11-08 从 0.08 调到 0.06 更淡）+ 发丝描边 + 圆角表达。
+
 液态玻璃的处理：
 
 - `.glassEffect` 是 iOS 26 新增，**所有调用必须走 `appGlass()`**（`CodePouchShared/GlassCompat.swift`）：

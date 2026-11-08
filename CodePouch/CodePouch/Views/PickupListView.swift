@@ -1365,16 +1365,9 @@ struct PickupCard: View {
         // 去掉竖条后左右内边距取同一值，卡片内不再有「被竖条吃掉」的左侧偏窄感
         .padding(.horizontal, AppTheme.cardPadding)
         .padding(.vertical, 12)
-        // 🔴 2026-11-08 unslop：一屏多张彩色渐变没有主次。
-        //    卡片底改中性表面，品牌色只留在三处：左侧竖条、取件码、勾选钮。
-        .cardSurface()
-        .overlay(alignment: .leading) {
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(brand)
-                .frame(width: 3)
-                .padding(.vertical, 10)
-                .padding(.leading, 3)
-        }
+        // 🔴 2026-11-08 主人：卡面还是品牌色淡染好看，不要自创竖条之类的装饰。
+        //    浓度由 `AppTheme.cardTintOpacity` 统一控制（已再降一档，更淡）。
+        .cardSurface(tint: brand)
         .opacity(isDone && selectionState == nil ? 0.72 : 1)
     }
 
