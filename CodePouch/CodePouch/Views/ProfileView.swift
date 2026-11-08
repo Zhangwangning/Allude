@@ -1019,22 +1019,18 @@ struct FullVersionView: View {
             }
             .padding(.top, 9)     // 给「推荐」徽章留出上探的空间
 
-            Text("推荐买断：一次付清，永久有效。")
+            // 🔴 2026-11-08 主人：两句话共用**下面这一格**（固定高度）：
+            //    选终身显示「推荐买断」，选每年显示续期说明；
+            //    高度写死，切换方案时下面的内容不会跟着上下跳。
+            Text(selected == .lifetime
+                 ? "推荐买断：一次付清，永久有效。"
+                 : "订阅会自动续期：到期前 24 小时自动扣款，可在「设置 › Apple ID › 订阅」里取消。")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(selected == .lifetime ? Color.secondary : Color.secondary)
+                .lineLimit(2)
+                .frame(height: 34, alignment: .topLeading)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 4)
-
-            // 🔴 2026-11-08 主人：续期说明要跟着「每年」这张卡走，放在方案下方，
-            //    不要丢到页面最底部让人找不到。
-            if selected == .yearly {
-                Text("订阅会自动续期：确认购买后从 Apple ID 扣款，当前周期结束前 24 小时内自动续费；可在「设置 › Apple ID › 订阅」里取消。")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 4)
-                    .padding(.top, 2)
-                    .transition(.opacity)
-            }
         }
     }
 
