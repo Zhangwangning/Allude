@@ -64,8 +64,10 @@ final class ReminderSettingsModel: ObservableObject {
     }
 
     func setPendingEnabled(_ value: Bool) {
-        PickupNotifier.isPendingReminderEnabled = value
-        pendingEnabled = value
+        // 超时未取提醒属于拾码 Pro：非 Pro 一律落回关闭态
+        let allowed = value && EntitlementSnapshot.licensedPro
+        PickupNotifier.isPendingReminderEnabled = allowed
+        pendingEnabled = allowed
         PickupNotifier.rescheduleAllPendingReminders()
     }
 
@@ -81,6 +83,8 @@ final class ReminderSettingsModel: ObservableObject {
 struct NotificationSettingsView: View {
     @EnvironmentObject private var store: PickupStore
     @StateObject private var model = ReminderSettingsModel()
+    /// 非 Pro 点「超时未取提醒」时直接弹订阅页（不显示任何加锁标志）
+    @State private var showPaywall = false
 
     /// 不定期提醒的可选等待时长（小时）。
     private let hourOptions = [3, 6, 12, 24, 48]
@@ -99,7 +103,10 @@ struct NotificationSettingsView: View {
             .padding(.bottom, 60)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("通知提醒")
+        .navigationTitle("通知")
+        .sheet(isPresented: $showPaywall) {
+            NavigationStack { FullVersionView() }
+        }
         .cloaksTabBar()
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -238,10 +245,26 @@ struct NotificationSettingsView: View {
         SettingsGroup(title: "提醒 · 超时未取",
                       note: "超过设定时长还没取就催一次，取走后自动撤回。") {
             SettingsPlainRow(title: "超时未取提醒") {
-                Toggle("", isOn: Binding(get: { model.pendingEnabled },
-                                         set: { model.setPendingEnabled($0) }))
-                    .labelsHidden()
-                    .tint(AppTheme.accent)
+                // 🔴 2026-11-08 主人：**不显示任何加锁标志**；
+                //    非 Pro 点一下开关 = 直接弹订阅页（不先翻转开关再回弹）。
+                if EntitlementSnapshot.licensedPro {
+                    Toggle("", isOn: Binding(get: { model.pendingEnabled },
+                                             set: { model.setPendingEnabled($0) }))
+                        .labelsHidden()
+                        .tint(AppTheme.accent)
+                } else {
+                    ZStack {
+                        Toggle("", isOn: .constant(false))
+                            .labelsHidden()
+                            .tint(AppTheme.accent)
+                            .allowsHitTesting(false)
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture { showPaywall = true }
+                            .accessibilityLabel("超时未取提醒")
+                            .accessibilityHint("需要拾码 Pro")
+                    }
+                }
             }
 
             if model.pendingEnabled {

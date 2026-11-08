@@ -279,7 +279,9 @@ enum PickupNotifier {
     /// 增删改与撤销共用一条链路。设置页改开关 / 改时长后调用
     /// `rescheduleAllPendingReminders` 全量对齐。
     static func schedulePendingReminder(for record: PickupRecord) {
-        guard isPendingReminderEnabled else { return }
+        // 超时未取提醒是 **拾码 Pro** 功能（2026-11-08 主人定）：
+        // 非 Pro 一律不排期，并把已排的全部撤掉（降级后下一次进前台就清干净）。
+        guard isPendingReminderEnabled, EntitlementSnapshot.licensedPro else { return }
         let hours = pendingReminderHours
         let content = UNMutableNotificationContent()
         content.title = "\(record.code) 还没取"
@@ -313,7 +315,9 @@ enum PickupNotifier {
     /// 关掉开关时撤掉全部在排的提醒。
     static func rescheduleAllPendingReminders() {
         let center = UNUserNotificationCenter.current()
-        guard isPendingReminderEnabled else {
+        // 超时未取提醒是 **拾码 Pro** 功能（2026-11-08 主人定）：
+        // 非 Pro 一律不排期，并把已排的全部撤掉（降级后下一次进前台就清干净）。
+        guard isPendingReminderEnabled, EntitlementSnapshot.licensedPro else {
             center.getPendingNotificationRequests { requests in
                 let ids = requests.map(\.identifier).filter { $0.hasPrefix(pickupReminderPrefix) }
                 center.removePendingNotificationRequests(withIdentifiers: ids)

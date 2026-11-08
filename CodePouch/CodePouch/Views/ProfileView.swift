@@ -58,7 +58,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .fontSize:     return "字体大小"
         case .language:     return "语言"
         case .automation:   return "快捷指令自动化"
-        case .notification: return "通知提醒"
+        case .notification: return "通知"
         case .widget:       return "桌面小组件"
         // 🔴 2026-11-08 主人：只叫「实时活动」—— 灵动岛只有部分机型有，
         //    写进标题会让其他机型以为是专属功能。
