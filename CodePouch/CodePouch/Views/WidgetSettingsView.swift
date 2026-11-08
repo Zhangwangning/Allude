@@ -138,9 +138,7 @@ struct WidgetSettingsView: View {
             .settingsCard()
 
             // 说明放卡外（iOS 二级设置页口径：标题在卡内、说明在卡外）
-            Text("取件码永远显示，不参与开关 —— 它是这个小组件存在的意义。\n"
-                 + "「完整信息」与下面四项互斥：四项全开时它自动亮起，关掉任一项它自动熄灭。\n"
-                 + "快递公司、驿站、取件地址是三件不同的事：谁承运 / 谁保管 / 去哪取，可同时显示。")
+            Text("取件码永远显示。四项可同时开；「完整信息」等价于四项全开。")
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
                 .lineSpacing(2)

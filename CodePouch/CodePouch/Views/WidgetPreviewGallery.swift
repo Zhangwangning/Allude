@@ -145,6 +145,14 @@ struct WidgetCanvas: View {
                     }
             }
             .clipShape(shape)
+            // 🔴 2026-11-08 主人：预览和页面背景分不清 —— 给一张**软阴影 + 发丝描边**，
+            //    这是 iOS 系统里「浮起卡片」的标准做法（比加深底色更像真机）。
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.45 : 0.10),
+                    radius: 12, y: 6)
+            .overlay {
+                shape.stroke(.primary.opacity(colorScheme == .dark ? 0.10 : 0.06),
+                             lineWidth: 0.5)
+            }
             // 🔴 描边 + 阴影（2026-10-27 主人：「下面都融在一起看不见底了」）：
             // `secondarySystemBackground` 与设置页的 `systemGroupedBackground`
             // 在浅色下几乎是同一个浅灰白，没有分离手段时小组件下边缘直接消失。
@@ -212,7 +220,6 @@ struct WidgetGalleryContent: View {
 
             // 档位说明（2026-11-01 主人）：这里展示**全部尺寸**，
             // 免费版与拾码 Pro 的差别只是"能不能加到桌面"，不是"看不看得到"。
-            tierNote
 
             ForEach(styles, id: \.rawValue) { style in
                 block(title: style.title) {
@@ -256,10 +263,9 @@ struct WidgetGalleryContent: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Text("以上为**示例数据**（不是你自己的待取件），用来展示版式；桌面小组件显示的是你的真实记录。真机上由系统决定圆角与内边距；翻页控件可点，滑动不可用 —— 小组件不支持原生滚动。".richText)
+            Text("以上为示例数据；桌面上的小组件显示你的真实记录。")
                 .font(.footnote)
                 .foregroundStyle(.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -292,26 +298,6 @@ struct WidgetGalleryContent: View {
     }
 
     /// 档位说明。命名按主人定的：免费版 = 拾码 CodePouch，付费版 = 拾码 Pro。
-    private var tierNote: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: "info.circle.fill")
-                    .font(.system(size: 12))
-                    .foregroundStyle(AppTheme.sky)
-                Text("全部尺寸都在这里预览")
-                    .font(AppTheme.TypeScale.rowSubtitle.weight(.semibold))
-            }
-
-            Text("小尺寸最多 4 条，中尺寸 3 条一页。\n\n大尺寸与竖版超大只在这里展示效果，系统小组件库里加不出来（标着「拾码 Pro」的那些）。")
-                .font(AppTheme.TypeScale.note)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppTheme.sky.opacity(0.08), in: .rect(cornerRadius: 12, style: .continuous))
-    }
-
     private var proBadge: some View {
         HStack(spacing: 4) {
             Image(systemName: "lock.fill")
