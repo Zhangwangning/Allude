@@ -244,12 +244,17 @@ struct ActivityLockScreenCard: View {
                     // 品牌图标挪到取件码左侧（2026-11-05 主人）：一眼看出是哪家
                     CourierLogo(company: state.item.displayName, size: 28, showsShadow: false)
 
+                    // 🔴 2026-11-08 主人：长运单号（YT8861990771306）**冲出卡片**了。
+                    //    根因是这里 `fixedSize(horizontal: true)` —— 它让文字按"理想宽度"
+                    //    排版，`minimumScaleFactor` 根本没机会生效。
+                    //    去掉 fixedSize，让码在可用宽度内**自动缩小**（最小 45%）。
                     PickupCodeEmphasis.text(state.item.code, tint: tint, headOpacity: 0.78)
                         .font(.system(size: 31, weight: .bold, design: .rounded))
                         .monospaced()
                         .lineLimit(1)
-                        .minimumScaleFactor(0.5)
-                        .fixedSize(horizontal: true, vertical: false)
+                        .minimumScaleFactor(0.45)
+                        .allowsTightening(true)
+                        .layoutPriority(1)
                         // 码用品牌亮色（韵达金黄），在浅玻璃上靠这层描影定轮廓 ——
                         // 与正文同一套「白/亮字 + 深色阴影」逻辑，重了会脏，0.40 是实测值。
                         .shadow(color: inkShadow, radius: 2.5, x: 0, y: 0.5)
@@ -259,7 +264,8 @@ struct ActivityLockScreenCard: View {
                             .font(.system(size: 14, weight: .medium))
                             .lineLimit(1)
                             .foregroundStyle(secondaryInk)
-                            .fixedSize(horizontal: true, vertical: false)
+                            .truncationMode(.tail)
+                            .layoutPriority(0)
                             .shadow(color: inkShadow, radius: 1.5, x: 0, y: 0.5)
                     }
 
