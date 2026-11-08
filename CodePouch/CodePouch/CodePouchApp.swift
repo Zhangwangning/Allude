@@ -714,6 +714,8 @@ struct CodePouchApp: App {
                     NavigationStack { FontSizeView() }
                 case "language":
                     NavigationStack { AppLanguageView() }
+                case "training":
+                    NavigationStack { TrainingDataView() }
                 case "colorCheck":
                     // 品牌取色体检（2026-10-28）：小组件里码的颜色与 App 不一致，
                     // 先把「每个品牌名解析到哪一条、最终色是多少」打成一份表，

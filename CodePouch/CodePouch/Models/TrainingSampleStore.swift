@@ -21,6 +21,8 @@ struct TrainingSample: Codable, Identifiable {
     var label: String
     var code: String?
     var address: String?
+    /// 快递柜柜位（如「A-12」）。2026-11-08 新增；老样本没有这个字段 → 解码为 nil
+    var locker: String?
     var note: String?
     var createdAt: Date = Date()
     var appVersion: String
@@ -42,7 +44,8 @@ enum TrainingSampleStore {
     }
 
     @discardableResult
-    static func add(text: String, label: String, code: String?, address: String?, note: String?) -> Bool {
+    static func add(text: String, label: String, code: String?,
+                    address: String?, locker: String? = nil, note: String?) -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 6 else { return false }
         var list = load()
@@ -51,11 +54,30 @@ enum TrainingSampleStore {
             label: label,
             code: cleanOptional(code),
             address: cleanOptional(address),
+            locker: cleanOptional(locker),
             note: cleanOptional(note),
             appVersion: AppVersion.display,
             osVersion: ProcessInfo.processInfo.operatingSystemVersionString,
             machine: DeviceProfile.machineID
         ))
+        return save(list)
+    }
+
+    /// 编辑已有样本（文本/判定/字段都能改；时间与设备信息保持原样）
+    @discardableResult
+    static func update(id: UUID, text: String, label: String,
+                       code: String?, address: String?,
+                       locker: String?, note: String?) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 6 else { return false }
+        var list = load()
+        guard let index = list.firstIndex(where: { $0.id == id }) else { return false }
+        list[index].text = mask(trimmed)
+        list[index].label = label
+        list[index].code = cleanOptional(code)
+        list[index].address = cleanOptional(address)
+        list[index].locker = cleanOptional(locker)
+        list[index].note = cleanOptional(note)
         return save(list)
     }
 
