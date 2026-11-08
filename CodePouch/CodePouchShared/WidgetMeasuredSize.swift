@@ -17,17 +17,29 @@ enum WidgetMeasuredSize {
     private static func key(_ family: String) -> String { "codeclip.widgetSize.\(family)" }
 
     /// 记录一次实测尺寸（单位 pt）
+    ///
+    /// 🔴 2026-11-08：加合理性门槛。小组件的真实宽高都在 140–400pt 之间，
+    /// 探针如果在别的容器里量到一条行、一个角标（几十 pt），写进去会让设置页
+    /// 那张预览被压扁、内容叠在一起。宁可不要这条记录。
     static func record(_ size: CGSize, family: String) {
-        guard size.width > 1, size.height > 1 else { return }
+        guard size.width >= 120, size.height >= 120 else { return }
         defaults.set([Double(size.width), Double(size.height)], forKey: key(family))
     }
 
-    /// 读回实测尺寸；没有记录返回 nil
-    static func load(family: String) -> CGSize? {
+    /// 读回实测尺寸；没有记录、或与 `expected` 差得太离谱时返回 nil。
+    ///
+    /// 校验的意义：历史版本可能写进过脏数据（量到的是行/角标而不是整块），
+    /// 一次脏数据就会让预览长期错位。超出 ±25% 就当没有。
+    static func load(family: String, expected: CGSize) -> CGSize? {
         guard let pair = defaults.array(forKey: key(family)) as? [Double], pair.count == 2 else {
             return nil
         }
-        return CGSize(width: pair[0], height: pair[1])
+        let size = CGSize(width: pair[0], height: pair[1])
+        guard expected.width > 0, expected.height > 0 else { return nil }
+        let dw = abs(size.width - expected.width) / expected.width
+        let dh = abs(size.height - expected.height) / expected.height
+        guard dw <= 0.25, dh <= 0.25 else { return nil }
+        return size
     }
 }
 

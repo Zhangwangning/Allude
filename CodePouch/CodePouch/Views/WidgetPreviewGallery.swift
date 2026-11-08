@@ -60,20 +60,22 @@ struct WidgetCanvas: View {
         ///
         /// 基准值 158 / 338 / 354 是 iPhone 15·16 Pro（**393pt**）实测，按屏宽等比缩放。
         var size: CGSize {
-            // ① 有实测值就直接用（小组件在桌面上渲染过一次就会记下来）——
-            //    这是唯一「和真机完全一致」的来源。
-            if let measured = WidgetMeasuredSize.load(family: pageKey) {
+            // 基准估值（158 / 338 / 354 是 393pt 屏的实测值），按当前窗口宽等比缩放
+            let k = WidgetPreviewMetrics.scale
+            let estimate: CGSize
+            switch self {
+            case .small:  estimate = CGSize(width: 158 * k, height: 158 * k)
+            case .medium: estimate = CGSize(width: 338 * k, height: 158 * k)
+            case .large:  estimate = CGSize(width: 338 * k, height: 354 * k)
+            case .extraLarge:        estimate = CGSize(width: 690 * k, height: 354 * k)
+            case .extraLargePortrait: estimate = CGSize(width: 338 * k, height: 690 * k)
+            }
+
+            // 有实测值且与估值接近 → 用实测（小组件在桌面渲染过一次就会记下来）
+            if let measured = WidgetMeasuredSize.load(family: pageKey, expected: estimate) {
                 return measured
             }
-            // ② 没测过：按屏宽等比估算（158 / 338 / 354 是 393pt 屏的实测基准）
-            let k = WidgetPreviewMetrics.scale
-            switch self {
-            case .small:  return CGSize(width: 158 * k, height: 158 * k)
-            case .medium: return CGSize(width: 338 * k, height: 158 * k)
-            case .large:  return CGSize(width: 338 * k, height: 354 * k)
-            case .extraLarge:        return CGSize(width: 690 * k, height: 354 * k)
-            case .extraLargePortrait: return CGSize(width: 338 * k, height: 690 * k)
-            }
+            return estimate
         }
 
         var title: String {
@@ -239,6 +241,10 @@ struct WidgetGalleryContent: View {
                         ZStack(alignment: .topTrailing) {
                             canvas(style: style, snapshot: snapshot)
                                 .opacity(isLocked(style) ? 0.55 : 1)
+                                // 🔴 2026-11-08：尺寸从「估值」切到「实测」时会发生一次
+                                //    隐式过渡，动画中间帧看起来像两层文字叠在一起（乱套）。
+                                //    预览尺寸变化不需要动画，直接关掉。
+                                .transaction { $0.animation = nil }
 
                             if isLocked(style) {
                                 proBadge
