@@ -67,6 +67,8 @@ final class AddPickupModel: ObservableObject {
 struct AddPickupSheet: View {
     @EnvironmentObject private var store: PickupStore
     @StateObject private var model: AddPickupModel
+    /// 键盘焦点：点空白 / 滚页面 / 点键盘上的「完成」都能收起
+    @FocusState private var editorFocused: Bool
 
     /// 关闭回调（由父视图控制呈现状态，避免依赖 dismiss 环境值）
     let onClose: () -> Void
@@ -95,7 +97,12 @@ struct AddPickupSheet: View {
                 .padding(.horizontal, AppTheme.hInset)
                 .padding(.top, 12)
                 .padding(.bottom, 28)
+                .frame(maxWidth: .infinity, minHeight: 1, alignment: .top)
+                .contentShape(Rectangle())
+                .onTapGesture { editorFocused = false }
             }
+            // 手指往下拖列表就把键盘收起来（系统标准行为）
+            .scrollDismissesKeyboard(.interactively)
             .background(Color(.systemGroupedBackground))
             .navigationTitle("添加取件信息")
             .navigationBarTitleDisplayMode(.inline)
@@ -107,6 +114,11 @@ struct AddPickupSheet: View {
                     Button("添加") { submit() }
                         .fontWeight(.semibold)
                         .disabled(!model.hasInput || model.addedMessage != nil)
+                }
+                // 键盘上方给一个「完成」：不想滚动时也能一键收键盘
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("完成") { editorFocused = false }
                 }
             }
         }
@@ -135,6 +147,7 @@ struct AddPickupSheet: View {
             ZStack(alignment: .topLeading) {
                 TextEditor(text: $model.text)
                     .font(AppTheme.TypeScale.body)
+                    .focused($editorFocused)
                     .scrollContentBackground(.hidden)
                     .frame(minHeight: 168)
                     .padding(.horizontal, 12)
