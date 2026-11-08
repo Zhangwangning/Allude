@@ -59,19 +59,32 @@ struct WidgetCanvas: View {
         /// 于是预览永远比真机小一圈。
         ///
         /// 基准值 158 / 338 / 354 是 iPhone 15·16 Pro（**393pt**）实测，按屏宽等比缩放。
+        /// 预览尺寸。
+        ///
+        /// 🔴 2026-11-08（第二次返工，读 HIG / WidgetKit 口径后重写）：
+        /// Apple 的桌面小组件尺寸是**按屏宽算的**，而且 **iOS 17 起变大了一档**：
+        ///   · iOS 16 及以前（393pt 屏）：小 158 / 中 338
+        ///   · iOS 17+（同一块 393pt 屏）：小 170 / 中 364 / 大 364×382
+        /// 原来代码里那组 158/338 是旧值，所以在 402pt 的 16 Pro 上永远偏小。
+        ///
+        /// 三档比例（由 iOS 17 实测反推，随屏宽线性缩放）：
+        ///   小 = 屏宽 × 0.4325（正方形）
+        ///   中 = 屏宽 × 0.9262，高 = 宽 × 0.467
+        ///   大 = 同中宽，高 = 宽 × 1.049
+        ///
+        /// 系统真机若已经渲染过小组件，`WidgetMeasuredSize` 里有实测值 —— 优先用它。
         var size: CGSize {
-            // 基准估值（158 / 338 / 354 是 393pt 屏的实测值），按当前窗口宽等比缩放
-            let k = WidgetPreviewMetrics.scale
+            let w = WidgetPreviewMetrics.deviceWidth
+            let med = w * 0.9262
             let estimate: CGSize
             switch self {
-            case .small:  estimate = CGSize(width: 158 * k, height: 158 * k)
-            case .medium: estimate = CGSize(width: 338 * k, height: 158 * k)
-            case .large:  estimate = CGSize(width: 338 * k, height: 354 * k)
-            case .extraLarge:        estimate = CGSize(width: 690 * k, height: 354 * k)
-            case .extraLargePortrait: estimate = CGSize(width: 338 * k, height: 690 * k)
+            case .small:  estimate = CGSize(width: w * 0.4325, height: w * 0.4325)
+            case .medium: estimate = CGSize(width: med, height: med * 0.467)
+            case .large:  estimate = CGSize(width: med, height: med * 1.049)
+            case .extraLarge:        estimate = CGSize(width: w * 2.05, height: med * 0.467)
+            case .extraLargePortrait: estimate = CGSize(width: med, height: med * 1.049 * 2)
             }
 
-            // 有实测值且与估值接近 → 用实测（小组件在桌面渲染过一次就会记下来）
             if let measured = WidgetMeasuredSize.load(family: pageKey, expected: estimate) {
                 return measured
             }
@@ -402,7 +415,8 @@ struct WidgetPreviewGallery: View {
                     }
                 }
             }
-            .padding(20)
+            // 12pt：真机中尺寸 ≈ 屏宽 − 30（左右各 15），页内 20pt 会把真尺寸挤到溢出
+            .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
             // 实测容器宽度 → 换算成屏宽比例，让预览与真机小组件同尺寸
             .onGeometryChange(for: CGFloat.self) { proxy in

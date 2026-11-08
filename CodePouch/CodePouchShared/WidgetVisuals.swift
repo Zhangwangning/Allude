@@ -222,17 +222,27 @@ struct WidgetPagedContent: View {
             // 现在改成**行高恒定 = 满页时的行高**（可用高度 ÷ 每页条数），
             // 数据不足一页时多出来的空间留在底部，任何行数下字号与行距都一致。
             GeometryReader { geo in
-                let rowHeight = geo.size.height / CGFloat(max(pageSize, 1))
+                // 🔴 2026-11-08 修「内容重叠」：
+                //    行高来自「可用高度 ÷ 每页条数」，高度不够时它会小于一行的自然高度，
+                //    而 `.frame(height:)` **不会裁剪**内容 —— 第一行的第二行文字就压到了
+                //    第二行上，看起来像串行。三处一起兜住：
+                //      · 行高设下限（够放码 + 一行副标题），
+                //      · 每行 `.clipped()`，任何溢出都截在本行内，
+                //      · 外层随后由卡片 clipShape 兜底。
+                let rawRowHeight = geo.size.height / CGFloat(max(pageSize, 1))
+                let rowHeight = max(rawRowHeight, 28)
                 VStack(spacing: 0) {
                     ForEach(rows) { record in
                         WidgetPickupRow(record: record, options: options)
-                            .frame(height: rowHeight)
+                            .frame(height: rowHeight, alignment: .top)
+                            .clipped()
                     }
                     // 不足一页时补空槽：向用户传达「就这些了」，而不是「还没加载完」。
                     ForEach(0 ..< snapshot.placeholderRows(page: current, pageSize: pageSize),
                             id: \.self) { _ in
                         WidgetPlaceholderRow()
-                            .frame(height: rowHeight)
+                            .frame(height: rowHeight, alignment: .top)
+                            .clipped()
                     }
                     Spacer(minLength: 0)
                 }
