@@ -246,3 +246,139 @@ struct StationEditView: View {
         dismiss()
     }
 }
+
+// MARK: - 添加驿站 · 居中弹窗（2026-11-08 主人定）
+
+/// 参考系统 alert 版式：半透明蒙层 + 居中玻璃卡，两个胶囊按钮（取消 / 保存）。
+/// 原来「添加驿站」是推入的独立页面，主人要求改成弹窗，不再切换页面。
+struct StationAddDialog: View {
+    var onDismiss: () -> Void
+
+    @ObservedObject private var station = StationDirectory.shared
+
+    @State private var name = ""
+    @State private var iconData: Data?
+    @State private var pickerSelection: PhotosPickerItem?
+    @State private var errorMessage: String?
+
+    private var trimmedName: String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Text("添加驿站")
+                .font(AppTheme.TypeScale.rowTitle.weight(.semibold))
+                .padding(.top, 4)
+
+            // 图标（可选）：点一下从相册挑，没选就按名称首字自动生成
+            PhotosPicker(selection: $pickerSelection, matching: .images, photoLibrary: .shared()) {
+                iconPreview
+            }
+            .buttonStyle(.plain)
+
+            TextField("驿站名称，如「XX 便利店代收」", text: $name)
+                .font(AppTheme.TypeScale.body)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(Color(.tertiarySystemFill),
+                            in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            if let errorMessage {
+                Text(errorMessage.L)
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(AppTheme.pendingTint)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            HStack(spacing: 12) {
+                dialogButton("取消", filled: false) { onDismiss() }
+                dialogButton("保存", filled: true) { save() }
+                    .disabled(trimmedName.isEmpty)
+                    .opacity(trimmedName.isEmpty ? 0.5 : 1)
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: 320)
+        // 🔴 弹窗要**读得清**：玻璃太透会透出后面的品牌图标。
+        //    用系统厚材质打底 + 细描边 + 阴影，观感与系统 alert 一致。
+        .background {
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .stroke(.primary.opacity(0.08), lineWidth: 0.5)
+        }
+        .shadow(color: .black.opacity(0.18), radius: 24, y: 10)
+        .padding(.horizontal, 28)
+        .task(id: pickerSelection) {
+            guard let item = pickerSelection else { return }
+            if let data = try? await item.loadTransferable(type: Data.self) {
+                iconData = data
+            }
+            pickerSelection = nil
+        }
+    }
+
+    @ViewBuilder
+    private var iconPreview: some View {
+        ZStack {
+            if let iconData, let image = UIImage(data: iconData) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 84, height: 84)
+                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            } else if !trimmedName.isEmpty {
+                CourierLogo(company: trimmedName, size: 84)
+            } else {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(AppTheme.accent.opacity(0.12))
+                    .frame(width: 84, height: 84)
+                    .overlay {
+                        Image(systemName: "plus")
+                            .font(.system(size: 28, weight: .semibold))
+                            .foregroundStyle(AppTheme.accent)
+                    }
+            }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            Image(systemName: "photo.badge.plus")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(.white)
+                .padding(5)
+                .background(AppTheme.accent, in: .circle)
+                .offset(x: 6, y: 6)
+        }
+        .accessibilityLabel("选择图标")
+    }
+
+    private func dialogButton(_ title: String,
+                              filled: Bool,
+                              action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(AppTheme.TypeScale.body.weight(.semibold))
+                .foregroundStyle(filled ? .white : .primary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .appGlass(.capsule,
+                          tint: filled ? AppTheme.accent : nil,
+                          interactive: true)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func save() {
+        guard !trimmedName.isEmpty else { return }
+        guard station.add(trimmedName) else {
+            errorMessage = "名称与内置或已有驿站重复"
+            return
+        }
+        if let iconData { station.setIcon(iconData, for: trimmedName) }
+        onDismiss()
+    }
+}

@@ -243,6 +243,8 @@ struct TicketPunchLine: View {
 // 把共享层的品牌清单可视化，既方便自查，也是「30+ 家快递覆盖」这一卖点的直观呈现。
 
 struct CourierGalleryView: View {
+    /// 「添加驿站」改成居中弹窗（2026-11-08 主人定）
+    @State private var showAddStation = false
     /// 这一页管哪种东西（2026-10-27 主人：拆成「快递公司」与「驿站管理」两个模块）。
     /// 原先是**一页全包**（快递公司 / 驿站·代收平台 / 智能快递柜 / 商家 / 国际快递），
     /// 设置里只有一行「快递管理」，用户既不知道里面有什么、也不知道驿站自定义在哪。
@@ -293,6 +295,17 @@ struct CourierGalleryView: View {
         .navigationTitle(scope.title)
         .cloaksTabBar()
         .navigationBarTitleDisplayMode(.inline)
+        // 添加驿站：居中弹窗，不再推入独立页面
+        .overlay {
+            if showAddStation { stationAddOverlay }
+        }
+        .animation(.snappy(duration: 0.22), value: showAddStation)
+        .onAppear {
+            // 截图脚手架：SCREEN=gallery 时用 STATION_ADD_DEMO=1 直接把弹窗亮起来
+            if ProcessInfo.processInfo.environment["STATION_ADD_DEMO"] == "1" {
+                showAddStation = true
+            }
+        }
     }
 
     private var content: some View {
@@ -420,8 +433,8 @@ struct CourierGalleryView: View {
     /// 结构差异过大的格子会算错 ideal size，曾有复杂版式被整格跳过不渲染。
     /// 点按 → 独立编辑页（名称 + 图标同页填，2026-10-15 主人定稿）。
     private var addStationCell: some View {
-        NavigationLink {
-            StationEditView(mode: .add)
+        Button {
+            showAddStation = true
         } label: {
             VStack(spacing: 7) {
                 RoundedRectangle(cornerRadius: 54 * 0.29, style: .continuous)
@@ -443,6 +456,18 @@ struct CourierGalleryView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("添加自定义驿站")
+    }
+
+    /// 添加驿站的居中弹窗（蒙层 + 玻璃卡）
+    private var stationAddOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.28)
+                .ignoresSafeArea()
+                .onTapGesture { showAddStation = false }
+
+            StationAddDialog { showAddStation = false }
+                .transition(.scale(scale: 0.96).combined(with: .opacity))
+        }
     }
 
     /// 自定义驿站格子：有自定义图标显示图片（统一圆角矩形），没有则按名兜底图标；
