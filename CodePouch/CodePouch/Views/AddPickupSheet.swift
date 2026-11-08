@@ -97,27 +97,6 @@ struct AddPickupSheet: View {
                 .padding(.bottom, 28)
             }
             .background(Color(.systemGroupedBackground))
-            .safeAreaInset(edge: .bottom) {
-                if model.addedMessage == nil && model.hasInput {
-                    // 底部操作条：加一层薄材质，内容滚到下面时不会和按钮糊在一起
-                    VStack(spacing: 0) {
-                        Button { submit() } label: {
-                            Text("添加")
-                                .font(AppTheme.TypeScale.body.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .appGlass(.capsule, tint: AppTheme.accent, interactive: true)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(model.parsedList.isEmpty && !model.looksLikeBareCode)
-                        .padding(.horizontal, AppTheme.hInset)
-                        .padding(.top, 10)
-                        .padding(.bottom, 8)
-                    }
-                    .background(.ultraThinMaterial)
-                }
-            }
             .navigationTitle("添加取件信息")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
