@@ -33,7 +33,11 @@ struct AICapabilityView: View {
             VStack(alignment: .leading, spacing: 14) {
                 statusCard
                 purposeCard
-                qwenCard
+                // 🔴 2026-11-08 主人：国行用不了端侧接口，给个「去开启」按钮点了也没用。
+                //    只在**系统确实有开关**（Apple 智能未开启）时才展示这一卡。
+                if needsSystemEnable {
+                    qwenCard
+                }
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 18)
@@ -195,6 +199,16 @@ struct AICapabilityView: View {
     }
 
     // MARK: 工具
+
+    /// 系统明确表示「Apple 智能未开启」—— 这种才值得引导用户去设置里打开。
+    /// 国行返回的是 `deviceNotEligible`（第三方接口没开放），引导也没用，不显示。
+    private var needsSystemEnable: Bool {
+        if case .unavailable(let reason) = availability,
+           case .appleIntelligenceNotEnabled = reason {
+            return true
+        }
+        return false
+    }
 
     private var isAvailable: Bool {
         if case .available = availability { return true }
