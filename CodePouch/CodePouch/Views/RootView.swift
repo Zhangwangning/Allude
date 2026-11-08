@@ -194,6 +194,13 @@ struct OnboardingView: View {
             .safeAreaInset(edge: .bottom) { bottomBar }
         }
         .background(Color(.systemGroupedBackground))
+        .onAppear {
+            // 截图脚手架：ONBOARDING_PAGE=0/1/2 直接落到某一页
+            if let raw = ProcessInfo.processInfo.environment["ONBOARDING_PAGE"],
+               let page = Int(raw), (0...2).contains(page) {
+                state.page = page
+            }
+        }
         .sheet(isPresented: $showAutomationShare) {
             if let automationURL {
                 ActivitySheet(items: [automationURL])
@@ -215,10 +222,12 @@ struct OnboardingView: View {
                             tint: AppTheme.accent,
                             title: "自动收码",
                             detail: "配合快捷指令，快递短信一到取件码自动入库")
-            OnboardingPoint(symbol: "platter.filled.top.iphone",
+            // 🔴 2026-11-08 主人：重点是**小组件实时更新**，以及灵动岛/锁屏的实时活动，
+            //    不要只写「灵动岛常显」——那只是其中一个入口。
+            OnboardingPoint(symbol: "rectangle.grid.2x2.fill",
                             tint: AppTheme.violet,
-                            title: "灵动岛常显",
-                            detail: "最新取件码挂在灵动岛与锁屏，抬手即见")
+                            title: "小组件与实时活动",
+                            detail: "待取码在桌面小组件实时更新，也常驻灵动岛与锁屏卡片")
             OnboardingPoint(symbol: "hand.raised.fill",
                             tint: AppTheme.doneTint,
                             title: "只在本机",
@@ -235,41 +244,21 @@ struct OnboardingView: View {
             title: "开启快捷指令自动化",
             subtitle: "一次配置，之后每一单都自动进来")
         {
-            OnboardingPoint(symbol: "1.circle.fill",
-                            tint: AppTheme.amber,
-                            title: "导入自动化",
-                            detail: "点下面的按钮，把「收到短信 → 添加到拾码」导进系统")
-            OnboardingPoint(symbol: "2.circle.fill",
-                            tint: AppTheme.amber,
-                            title: "打开开关",
-                            detail: "快捷指令 › 自动化 里找到它，把开关打开（导入后默认关闭）")
-            OnboardingPoint(symbol: "3.circle.fill",
-                            tint: AppTheme.amber,
-                            title: "完成",
-                            detail: "之后收到取件短信，待取列表自动出现新记录并提醒")
-
-            Button {
-                guard let preset = ShortcutAutomation.presets.first,
-                      let url = ShortcutAutomation.importFile(for: preset) else { return }
-                automationURL = url
-                showAutomationShare = true
-                ShortcutAutomation.markImported(preset.keyword)
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "square.and.arrow.down.fill")
-                    Text("一键导入自动化（关键词：【）")
-                }
-                .font(AppTheme.TypeScale.bodyMedium)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(AppTheme.amber.opacity(0.14))
-                )
-                .foregroundStyle(AppTheme.amber)
+            VStack(spacing: 0) {
+                OnboardingStep(index: 1, tint: AppTheme.amber,
+                               title: "导入自动化",
+                               detail: "点下面的按钮，把「收到短信 → 添加到拾码」导进系统")
+                SettingsDivider()
+                OnboardingStep(index: 2, tint: AppTheme.amber,
+                               title: "打开开关",
+                               detail: "快捷指令 › 自动化 里找到它，把开关打开（导入后默认关）")
+                SettingsDivider()
+                OnboardingStep(index: 3, tint: AppTheme.amber,
+                               title: "完成",
+                               detail: "之后收到取件短信，列表自动出现新记录")
             }
-            .buttonStyle(.plain)
-            .padding(.top, 4)
+            .settingsCard()
+
         }
     }
 
@@ -307,7 +296,29 @@ struct OnboardingView: View {
 
     private var bottomBar: some View {
         VStack(spacing: 14) {
-            // 自动化页内嵌完整教程入口
+            // 自动化页：一键导入 + 完整教程（都放底栏，页面圆点不会压到它们）
+            if state.page == 1 {
+                Button {
+                    guard let preset = ShortcutAutomation.presets.first,
+                          let url = ShortcutAutomation.importFile(for: preset) else { return }
+                    automationURL = url
+                    showAutomationShare = true
+                    ShortcutAutomation.markImported(preset.keyword)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "square.and.arrow.down.fill")
+                        Text("一键导入自动化（关键词：【）")
+                    }
+                    .font(AppTheme.TypeScale.body.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 13)
+                    .appGlass(.capsule, tint: AppTheme.amber, interactive: true)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 32)
+            }
+
             if state.page == 1 {
                 NavigationLink {
                     UsageGuideView()
@@ -375,7 +386,7 @@ private struct OnboardingPage<Points: View>: View {
                 Text(title.L)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                 Text(subtitle.L)
-                    .font(.subheadline)
+                    .font(AppTheme.TypeScale.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
@@ -389,7 +400,40 @@ private struct OnboardingPage<Points: View>: View {
             Spacer(minLength: 30)
         }
         .padding(.horizontal, 28)
+        // 页面圆点由 TabView 画在底部，内容要给它让位，否则会压住「一键导入」按钮
+        .padding(.bottom, 44)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// 引导步骤行：数字徽标 + 标题 + 说明（放在同一张卡里，用分隔线分开）。
+private struct OnboardingStep: View {
+    let index: Int
+    let tint: Color
+    let title: String
+    let detail: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "\(index).circle.fill")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title.L)
+                    .font(AppTheme.TypeScale.rowTitleMedium)
+                Text(detail.L)
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.secondary)
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
     }
 }
 
@@ -409,9 +453,9 @@ private struct OnboardingPoint: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title.L)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(AppTheme.TypeScale.rowTitleMedium)
                 Text(detail.L)
-                    .font(.system(size: 13))
+                    .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.secondary)
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)

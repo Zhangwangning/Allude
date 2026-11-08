@@ -644,6 +644,8 @@ struct CodePouchApp: App {
                     NavigationStack { VersionHistoryView() }
                 case "consent":
                     LegalConsentView { }
+                case "onboarding":
+                    OnboardingView()
                 case "contact":
                     NavigationStack { ContactView() }
                 case "statement":
