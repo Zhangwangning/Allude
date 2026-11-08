@@ -1401,7 +1401,7 @@ struct HiddenHint: View {
         HStack(spacing: 8) {
             Image(systemName: "ellipsis.circle")
                 .font(.system(size: 14))
-            Text("还有 \(count) 条记录 · 免费版仅显示最近 \(PickupStore.freeVisibleLimit) 条")
+            Text("还有 \(count) 条记录 · 拾码 Pro 可查看全部")
                 .font(.footnote)
             Spacer(minLength: 0)
         }

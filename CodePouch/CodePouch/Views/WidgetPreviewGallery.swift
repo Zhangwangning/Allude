@@ -226,7 +226,7 @@ struct WidgetGalleryContent: View {
             }
 
             if !EntitlementSnapshot.licensedPro {
-                Text("免费版只注册小、中两种尺寸，桌面最多显示 \(PickupLimits.freeVisible) 条待取。")
+                Text("小、中两种尺寸可直接添加，桌面最多显示 \(PickupLimits.freeVisible) 条待取。")
                     .font(.footnote)
                     .foregroundStyle(.tertiary)
                     .fixedSize(horizontal: false, vertical: true)

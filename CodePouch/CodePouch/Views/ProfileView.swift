@@ -1109,10 +1109,10 @@ struct FullVersionView: View {
 
             VStack(spacing: 0) {
                 featureRow(symbol: "tray.full.fill", title: "不限条数",
-                           note: "免费版同屏 \(PickupStore.freeVisibleLimit) 条、最多存 \(PickupStore.freeStorageLimit) 条；解锁后全部放开")
+                           note: "拾码同屏 \(PickupStore.freeVisibleLimit) 条、最多存 \(PickupStore.freeStorageLimit) 条；拾码 Pro 全部放开")
                 SettingsDivider()
                 featureRow(symbol: "square.grid.2x2.fill", title: "桌面小组件全尺寸",
-                           note: "免费版只有小、中两种尺寸；解锁后大尺寸与 iPad 尺寸一并可用")
+                           note: "拾码只有小、中两种尺寸；拾码 Pro 大尺寸与 iPad 尺寸一并可用")
                 SettingsDivider()
                 featureRow(symbol: "iphone.gen3.radiowaves.left.and.right", title: "实时活动",
                            note: "灵动岛与锁屏常驻最新取件码")
