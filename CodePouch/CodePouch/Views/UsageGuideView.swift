@@ -63,9 +63,10 @@ struct UsageGuideView: View {
                 .ignoresSafeArea()
 
             ScrollView {
-                // 内边距由 `UsageGuideContent` 自己加，这里只补底部留白，避免叠加两遍
                 UsageGuideContent()
-                    .padding(.bottom, 16)
+                    .padding(.horizontal, AppTheme.hInset)
+                    .padding(.top, 8)
+                    .padding(.bottom, 40)
             }
         }
         .navigationTitle("使用教程")
@@ -81,15 +82,14 @@ struct UsageGuideView: View {
         private let guide = UsageGuideView()
 
         var body: some View {
+            // 🔴 左右边距**不由内容层加**（2026-11-08 主人：要和上面的卡片对齐）：
+            //    由使用方统一给同一档 `AppTheme.hInset`，否则内联进自动化页时会双倍缩进。
             VStack(spacing: 16) {
                 guide.introSection
                 guide.automationSection
                 guide.screenshotSection
                 guide.verifySection
             }
-            .padding(.horizontal, AppTheme.hInset)
-            .padding(.top, 8)
-            .padding(.bottom, 24)
         }
     }
 
