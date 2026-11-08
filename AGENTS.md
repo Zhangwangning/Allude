@@ -729,6 +729,29 @@ App Store 版没有这个文件 → 整行自动不显示。
 
 🔴 改这里的铁律：兜底**只能填空**，不得覆盖已抓到的地址 —— 否则语料命中数会掉。
 
+## 去 AI 味：skills/unslop-ios（2026-11-08 接入）
+
+iOS/SwiftUI 版的 unslop —— 把「一眼 AI 生成」的界面改回有设计感的界面。
+改编自 Damir Sokolovsky（[@heydamir](https://x.com/heydamir)）的
+[unslop](https://github.com/heydamir/unslop)（CC BY 4.0，署名保留在文件头），
+针对 SwiftUI + 本项目重写。
+
+| 文件 | 作用 |
+|---|---|
+| `skills/unslop-ios/SKILL.md` | 完整流程：定方向（5 行）→ 按间距→颜色→字号→图标→文案→布局→动效 修 7 遍 |
+| `skills/unslop-ios/references/signs-ios.md` | iOS 专属 slop 迹象清单（含本项目踩过的坑） |
+| `tools/unslop-ui-check.sh` | 能自动判的 6 条：界面 emoji、写死字号、`**` 残留、同名行、营销词、hInset 叠加 |
+
+**什么时候用**：要新建/改版任何一个界面之前，以及每次视觉收口；上架前整屏过一遍。
+
+```bash
+bash tools/unslop-ui-check.sh     # 自动项，退出码 1 表示有命中
+```
+
+🔴 两条来自实战的硬规矩（都写进了 SKILL.md）：
+- **同一功能不要两个入口**（2026-11-08：快捷指令自动化 vs 使用教程，已合并）；
+- **同一事实不要写两遍**（同日：教程里的产品卖点与「关于 › 软件说明」重复，已删）。
+
 ## 质量门禁：mobile-unslop（2026-11-08 接入）
 
 iOS/SwiftUI 专用的「AI 味代码」审计器（`npx mobile-unslop-mcp`），

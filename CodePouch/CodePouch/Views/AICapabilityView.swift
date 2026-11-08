@@ -163,7 +163,7 @@ struct AICapabilityView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("怎么看这个结果")
                 .font(AppTheme.TypeScale.rowTitleMedium)
-            Text("· **「需 iPhone 15 Pro 及以上」是官方最低要求，不是在说本机配置不够**；本机硬件满足，是系统层面没开放这个接口。\n· **写作工具能在任何 App 里用**，那是系统提供的能力，跟 App 自己调端侧模型是两条通道；它可用不代表这里可用。\n· 中国区机型由第三方模型提供服务，第三方 App 的端侧模型接口是否开放由系统决定，App 侧无法绕过、也无法伪造资格。\n· 不可用时拾码自动退回纯正则解析，收码与小组件功能不受影响。")
+            Text("· **「需 iPhone 15 Pro 及以上」是官方最低要求，不是在说本机配置不够**；本机硬件满足，是系统层面没开放这个接口。\n· **写作工具能在任何 App 里用**，那是系统提供的能力，跟 App 自己调端侧模型是两条通道；它可用不代表这里可用。\n· 中国区机型由第三方模型提供服务，第三方 App 的端侧模型接口是否开放由系统决定，App 侧无法绕过、也无法伪造资格。\n· 不可用时拾码自动退回纯正则解析，收码与小组件功能不受影响。".richText)
                 .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.secondary)
                 .lineSpacing(3)
