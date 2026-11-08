@@ -787,6 +787,11 @@ bash tools/unslop-audit.sh --json     # 机器可读
 | iPhone 直板机 / iPad | **iOS 18.0+** | 主力兼容范围 |
 | **iPhone Duo** | **iOS 27+ 即可** | 🔴 它出厂系统就是 iOS 27，**不必适配 iOS 26 以下**；Duo 专属代码可直接用 iOS 26/27 API |
 
+**iOS 18 实测记录（2026-11-08，iOS 18.2 模拟器 iPhone 16 Pro）**：
+列表 / 详情 / 设置 / 外观 / Apple 智能 / 桌面小组件全部正常；「液态玻璃」开关在 18 上**正确隐藏**；
+Apple 智能页显示低版本说明页。发现并修掉一处：`appGlass()` 的 tint 早先画在 `.overlay`
+（内容之上），把详情页「标记为已取」的**白字盖住**了 —— 已改为画在 `.background` 内。
+
 液态玻璃的处理：
 
 - `.glassEffect` 是 iOS 26 新增，**所有调用必须走 `appGlass()`**（`CodePouchShared/GlassCompat.swift`）：

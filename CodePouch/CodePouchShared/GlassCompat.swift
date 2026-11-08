@@ -56,16 +56,24 @@ extension View {
             let final = interactive ? tinted.interactive() : tinted
             self.glassEffect(final, in: shape)
         } else {
+            // 🔴 2026-11-08 iOS 18 实测：tint 必须画在**内容下方**。
+            //    早先写成 `.overlay { shape.fill(tint) }`，会把按钮文字盖住
+            //    （详情页「标记为已取」的字直接看不见）。
+            //    tint 自带 alpha（调用点传 0.65），叠两层把有效不透明度抬到 ~0.88，
+            //    观感才贴近液态玻璃的实心感，白字对比也够。
             self
-                .background(.ultraThinMaterial, in: shape)
+                .background {
+                    ZStack {
+                        shape.fill(.ultraThinMaterial)
+                        if let tint {
+                            shape.fill(tint)
+                            shape.fill(tint)
+                        }
+                    }
+                }
                 .overlay {
                     // 毛玻璃没有液态玻璃的镜面高光，用一圈极淡描边找边界
                     shape.stroke(.white.opacity(0.16), lineWidth: 0.5)
-                }
-                .overlay {
-                    if let tint {
-                        shape.fill(tint.opacity(0.35))
-                    }
                 }
         }
     }
