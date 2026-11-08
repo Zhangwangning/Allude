@@ -231,14 +231,22 @@ struct WidgetGalleryContent: View {
 
             ForEach(styles, id: \.rawValue) { style in
                 block(title: style.title) {
-                    ZStack(alignment: .topTrailing) {
-                        canvas(style: style, snapshot: snapshot)
-                            .opacity(isLocked(style) ? 0.55 : 1)
+                    // 🔴 2026-11-08 主人：除小尺寸外一律**水平居中**；
+                    //    小尺寸保持左对齐（与上方的分区标题同一条左边缘）。
+                    HStack(spacing: 0) {
+                        if style != .small { Spacer(minLength: 0) }
 
-                        if isLocked(style) {
-                            proBadge
-                                .padding(8)
+                        ZStack(alignment: .topTrailing) {
+                            canvas(style: style, snapshot: snapshot)
+                                .opacity(isLocked(style) ? 0.55 : 1)
+
+                            if isLocked(style) {
+                                proBadge
+                                    .padding(8)
+                            }
                         }
+
+                        if style != .small { Spacer(minLength: 0) }
                     }
                 }
             }
