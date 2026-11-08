@@ -93,7 +93,7 @@ struct ContactView: View {
             }
             .buttonStyle(.plain)
         }
-        .cardSurface()
+        .settingsCard()
     }
 
     // MARK: 微信公众号（只放图片）

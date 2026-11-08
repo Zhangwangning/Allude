@@ -274,7 +274,7 @@ struct VersionHistoryView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface()
+        .settingsCard()
     }
 
     // MARK: 时间线
@@ -378,6 +378,6 @@ struct VersionHistoryView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface()
+        .settingsCard()
     }
 }

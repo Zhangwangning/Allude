@@ -118,7 +118,7 @@ struct UsageGuideView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .cardSurface()
+                .settingsCard()
         }
     }
 
@@ -183,7 +183,7 @@ struct UsageGuideView: View {
                 .padding(.vertical, 15)
             }
         }
-        .cardSurface()
+        .settingsCard()
     }
 
     // MARK: 信息卡
@@ -209,6 +209,6 @@ struct UsageGuideView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface()
+        .settingsCard()
     }
 }

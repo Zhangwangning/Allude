@@ -246,7 +246,7 @@ struct SettingsView: View {
                         catalogRow(item)
                     }
                 }
-                .cardSurface()
+                .settingsCard()
             }
         }
     }
@@ -551,7 +551,7 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                .cardSurface()
+                .settingsCard()
 
                 Text("语言由 iOS 统一管理：设置 › App › 拾码 › 语言。\n首次安装时默认是简体中文。")
                     .font(AppTheme.TypeScale.note)
@@ -593,7 +593,7 @@ struct SettingsView: View {
                                 showsChevron: false,
                                 tint: AppTheme.doneTint)
                 }
-                .cardSurface()
+                .settingsCard()
 
                 Text("数据只保存在这台设备上，不上传任何服务器。")
                     .font(.caption2)
@@ -641,7 +641,7 @@ struct SettingsView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                 }
-                .cardSurface()
+                .settingsCard()
 
                 Text("日志只在本机滚动保存，只有你点发送并确认后才会随邮件发出。")
                     .font(.caption2)
@@ -667,7 +667,7 @@ struct SettingsView: View {
                                 showsChevron: false,
                                 tint: AppTheme.doneTint)
                 }
-                .cardSurface()
+                .settingsCard()
 
                 Text("无账号、无联网；取件数据全程只在本机。")
                     .font(AppTheme.TypeScale.note)
@@ -1141,7 +1141,7 @@ struct FullVersionView: View {
                 featureRow(symbol: "arrow.triangle.2.circlepath", title: "后续更新",
                            note: "订阅期内或买断后，新版本的新功能都包含")
             }
-            .cardSurface()
+            .settingsCard()
         }
     }
 

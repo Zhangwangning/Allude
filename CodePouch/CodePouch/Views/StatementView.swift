@@ -90,6 +90,6 @@ struct StatementView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface()
+        .settingsCard()
     }
 }

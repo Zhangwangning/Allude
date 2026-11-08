@@ -78,7 +78,7 @@ struct TrainingDataView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface()
+        .settingsCard()
     }
 
     // MARK: 添加
@@ -92,7 +92,7 @@ struct TrainingDataView: View {
             }
             .buttonStyle(.plain)
         }
-        .cardSurface()
+        .settingsCard()
     }
 
     // MARK: 列表
@@ -150,7 +150,7 @@ struct TrainingDataView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface()
+        .settingsCard()
     }
 
     // MARK: 导出
@@ -175,7 +175,7 @@ struct TrainingDataView: View {
             .buttonStyle(.plain)
             .disabled(samples.isEmpty)
         }
-        .cardSurface()
+        .settingsCard()
     }
 }
 

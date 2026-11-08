@@ -100,7 +100,7 @@ struct AICapabilityView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface()
+        .settingsCard()
         .opacity(isChecking ? 0.55 : 1)
         .overlay {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -139,7 +139,7 @@ struct AICapabilityView: View {
             SettingsDivider()
             row("模型支持语言数", "\(SystemLanguageModel.default.supportedLanguages.count)")
         }
-        .cardSurface()
+        .settingsCard()
     }
 
     private func row(_ title: String, _ value: String) -> some View {
@@ -171,7 +171,7 @@ struct AICapabilityView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface()
+        .settingsCard()
     }
 
     // MARK: 工具

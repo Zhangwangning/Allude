@@ -79,7 +79,7 @@ struct HelpCenterView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                .cardSurface()
+                .settingsCard()
 
                 VStack(spacing: 0) {
                     // 🔴 2026-11-08 主人：设置行只留标题，说明统一放页面底部
@@ -91,7 +91,7 @@ struct HelpCenterView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                 }
-                .cardSurface()
+                .settingsCard()
 
                 VStack(spacing: 0) {
                     Button {
@@ -104,7 +104,7 @@ struct HelpCenterView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                .cardSurface()
+                .settingsCard()
                 Text("诊断日志只在本机保存，只有你点发送并确认后才会随邮件发出。")
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.secondary)
@@ -198,7 +198,7 @@ struct AboutView: View {
                              symbol: "doc.text.fill",
                              tint: AppTheme.sky)
                 }
-                .cardSurface()
+                .settingsCard()
 
                 // 🔴 2026-11-08 主人：数据只留一个入口 —— 设置 › 本机数据 › 存储。
                 //    关于页不再重复「已存记录 / 数据文件」（同一份数据两个入口）。
@@ -212,7 +212,7 @@ struct AboutView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                .cardSurface()
+                .settingsCard()
 
                 VStack(spacing: 0) {
                     NavigationLink {
@@ -223,7 +223,7 @@ struct AboutView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                .cardSurface()
+                .settingsCard()
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 12)
@@ -258,7 +258,7 @@ struct AboutView: View {
                         detail: Self.minimumOS,
                         showsChevron: false, tint: AppTheme.violet)
         }
-        .cardSurface()
+        .settingsCard()
     }
 
     /// 与工程 `IPHONEOS_DEPLOYMENT_TARGET` 保持一致（改部署目标时同步这里）

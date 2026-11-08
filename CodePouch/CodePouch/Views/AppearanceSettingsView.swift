@@ -65,7 +65,7 @@ struct AppearanceSettingsView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
                     }
-                    .cardSurface()
+                    .settingsCard()
 
                     Text("关闭后改用系统毛玻璃材质，与 iOS 18 的观感一致。需重启 App 生效。")
                         .font(AppTheme.TypeScale.note)
@@ -105,7 +105,7 @@ struct AppearanceSettingsView: View {
                         }
                     }
                 }
-                .cardSurface()
+                .settingsCard()
 
                 Text("「自动」跟随系统的深浅色设置；选「浅色」或「深色」后，本 App 不再随系统切换。")
                     .font(AppTheme.TypeScale.note)
@@ -162,7 +162,7 @@ struct FontSizeView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(18)
-                .cardSurface()
+                .settingsCard()
 
                 // ── 跟随系统 ──
                 HStack {
@@ -177,7 +177,7 @@ struct FontSizeView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .cardSurface()
+                .settingsCard()
 
                 // ── 滑块 ──
                 VStack(spacing: 10) {
@@ -215,7 +215,7 @@ struct FontSizeView: View {
                     }
                 }
                 .padding(16)
-                .cardSurface()
+                .settingsCard()
 
                 Text("字号只影响拾码自己，不改系统的文字大小。设置页、列表与卡片会一起变化。")
                     .font(AppTheme.TypeScale.note)

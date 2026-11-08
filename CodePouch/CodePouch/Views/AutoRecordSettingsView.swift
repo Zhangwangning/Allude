@@ -57,7 +57,7 @@ struct AutoRecordSettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .cardSurface()
+                    .settingsCard()
 
                 // 🔴 2026-11-08 主人：和使用教程合成**一页**，不要再套下级页面。
                 UsageGuideView.UsageGuideContent()
@@ -88,7 +88,7 @@ struct AutoRecordSettingsView: View {
             VStack(spacing: 0) {
                 keywordRow(ShortcutAutomation.presets[0], showsDivider: false)
             }
-            .cardSurface()
+            .settingsCard()
 
             Text("可选关键词")
                 .font(AppTheme.TypeScale.section)
@@ -100,7 +100,7 @@ struct AutoRecordSettingsView: View {
                     keywordRow(preset, showsDivider: index < ShortcutAutomation.presets.count - 2)
                 }
             }
-            .cardSurface()
+            .settingsCard()
         }
     }
 
@@ -182,7 +182,7 @@ struct AutoRecordSettingsView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .cardSurface()
+        .settingsCard()
     }
 }
 

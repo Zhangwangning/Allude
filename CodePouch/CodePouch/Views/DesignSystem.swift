@@ -112,6 +112,33 @@ extension View {
     }
 }
 
+// MARK: - 设置类页面卡片（iOS 26+ 玻璃 / iOS 18 系统卡片）
+
+extension View {
+    /// 设置及其二三级页面的卡片外框。
+    ///
+    /// 🔴 2026-11-08 主人：设置首页已经改成 Widgy 那种玻璃，二三级页也要跟上。
+    /// 这里做一处开关，所有设置类页面共用：
+    ///   · iOS 26+ 且「液态玻璃」开关开启 → 系统玻璃（`appGlass`）；
+    ///   · 其它情况 → 原来的系统分组卡片（iOS 18 没有玻璃，硬套会发灰）。
+    func settingsCard(radius: CGFloat = AppTheme.cardRadius) -> some View {
+        modifier(SettingsGlassCard(radius: radius))
+    }
+}
+
+private struct SettingsGlassCard: ViewModifier {
+    var radius: CGFloat
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *), GlassSettings.isActive {
+            content.appGlass(.rect(cornerRadius: radius, style: .continuous))
+        } else {
+            content.cardSurface(radius: radius)
+        }
+    }
+}
+
 // MARK: - 卡片内直接完成取件（核心交互，无需进入详情页）
 
 /// 圆形勾选控件：轻点即在卡片内完成 / 取消取件状态。

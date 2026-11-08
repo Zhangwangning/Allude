@@ -135,7 +135,7 @@ struct WidgetSettingsView: View {
                     toggleRow(field)
                 }
             }
-            .cardSurface()
+            .settingsCard()
 
             // 说明放卡外（iOS 二级设置页口径：标题在卡内、说明在卡外）
             Text("取件码永远显示，不参与开关 —— 它是这个小组件存在的意义。\n"
