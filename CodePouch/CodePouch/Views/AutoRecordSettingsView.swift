@@ -38,19 +38,21 @@ struct AutoRecordSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
+                // 🔴 2026-11-08 主人：用户看不懂上面四个「添加」是干嘛的。
+                //    第一句就直接说清楚目的，再给卡片。
+                Text("装一条「自动化」：收到快递短信，拾码自动收码，不用手动粘贴。")
+                    .font(AppTheme.TypeScale.body)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 4)
+
                 keywordsCard
                 note
 
                 // 🔴 2026-11-08 主人：必须讲清楚"上面的能导入，就不用看下面的"。
                 SectionHeader(title: "手动配置（仅在上面导入不了时）")
 
-                Text("""
-上面的「添加」会把整条自动化直接存进「快捷指令」App。**导入成功、并去\
-「快捷指令 › 自动化」把开关打开之后，下面的步骤全都不用做。**
-
-只有一种情况需要往下看：点「添加」后系统没有把文件存进「快捷指令」App\
-（没法从拾码直接保存），那时才照下面的步骤自己建一条。
-""".richText)
+                Text("点「添加」后，「快捷指令」里没出现这条自动化（没能直接保存），才需要照下面的步骤手动建一条。".richText)
                     .font(AppTheme.TypeScale.body)
                     .foregroundStyle(.secondary)
                     .lineSpacing(4)
@@ -161,28 +163,14 @@ struct AutoRecordSettingsView: View {
     // MARK: 说明
 
     private var note: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("添加后，请到「快捷指令 › 自动化」把它打开——系统导入的自动化默认是关闭的。")
-                .font(AppTheme.TypeScale.note)
-                .foregroundStyle(.secondary)
-                .lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Text("默认加「【」就够了。只有当你的快递短信里确实没有【时，再加下面的可选关键词。")
-                .font(AppTheme.TypeScale.note)
-                .foregroundStyle(.secondary)
-                .lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Text("每多一条自动化，iOS 就会多一条「自动化已运行」的系统通知。iOS 27.2 起这条通知已经无法关闭（旧系统还能去「设置 › 屏幕时间」关掉），所以关键词加得越多、通知越频繁——只加「【」通常就够。")
-                .font(AppTheme.TypeScale.note)
-                .foregroundStyle(.secondary)
-                .lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .settingsCard()
+        // 只留最要紧的两件事：加完要去开开关；一条自动化 = 一条系统通知。
+        Text("加完请到「快捷指令 › 自动化」把开关打开（默认是关的）。默认加「【」就够；每多一条自动化，就多一条系统「自动化已运行」通知。")
+            .font(AppTheme.TypeScale.note)
+            .foregroundStyle(.secondary)
+            .lineSpacing(3)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 4)
     }
 }
 
