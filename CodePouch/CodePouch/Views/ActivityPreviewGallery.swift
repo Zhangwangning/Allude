@@ -37,7 +37,8 @@ struct ActivityCardShell: View {
 
     var body: some View {
         content
-            .padding(.horizontal, 16)
+            // HIG：锁屏卡标准内边距 14pt（宽=屏宽−22、高 84–160）
+            .padding(.horizontal, 14)
             .padding(.vertical, 14)
             .frame(maxWidth: .infinity, alignment: .leading)
             // 🔴 2026-10-28 主人：真机锁屏卡是 iOS 26 的**液态玻璃**，

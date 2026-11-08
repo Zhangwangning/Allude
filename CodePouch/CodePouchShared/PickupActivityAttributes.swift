@@ -249,7 +249,7 @@ struct ActivityLockScreenCard: View {
                     //    排版，`minimumScaleFactor` 根本没机会生效。
                     //    去掉 fixedSize，让码在可用宽度内**自动缩小**（最小 45%）。
                     PickupCodeEmphasis.text(state.item.code, tint: tint, headOpacity: 0.78)
-                        .font(.system(size: 31, weight: .bold, design: .rounded))
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
                         .monospaced()
                         .lineLimit(1)
                         .minimumScaleFactor(0.45)
@@ -279,11 +279,15 @@ struct ActivityLockScreenCard: View {
                     Text(state.item.address.L)
                         .font(.system(size: 14))
                         .foregroundStyle(secondaryInk)
-                        .lineLimit(1)
+                        .lineLimit(2)          // 卡面加高后能放两行地址
                         .truncationMode(.tail)
-                        .padding(.top, 3)
+                        .padding(.top, 6)
+                        .shadow(color: inkShadow, radius: 1.5, x: 0, y: 0.5)
                 }
             }
+            // HIG：锁屏卡高 84–160pt → 取上限 160；减去上下各 14pt 内边距 = 内容区 132pt。
+            // 用**定高**而不是 Spacer：外层是整屏舞台（920pt 提案），Spacer 会把卡撑成整屏。
+            .frame(height: 132, alignment: .topLeading)
 
             VStack(spacing: 10) {
                 // 翻页箭头：竖直排列，只在多于一条时出现（图标已挪到取件码左侧，这里整列留给箭头）
@@ -295,18 +299,18 @@ struct ActivityLockScreenCard: View {
                     VStack(spacing: 8) {
                         Button(intent: PreviousPickupIntent()) {
                             Image(systemName: "chevron.up")
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(.system(size: 16, weight: .semibold))
                                 .foregroundStyle(secondaryInk)
-                                .frame(width: 40, height: 32)
+                                .frame(width: 44, height: 38)
                                 .background(Capsule().fill(.white.opacity(0.16)))
                         }
                         .buttonStyle(.plain)
 
                         Button(intent: NextPickupIntent()) {
                             Image(systemName: "chevron.down")
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(.system(size: 16, weight: .semibold))
                                 .foregroundStyle(secondaryInk)
-                                .frame(width: 40, height: 32)
+                                .frame(width: 44, height: 38)
                                 .background(Capsule().fill(.white.opacity(0.16)))
                         }
                         .buttonStyle(.plain)
@@ -316,6 +320,12 @@ struct ActivityLockScreenCard: View {
             }
         }
         .padding(.vertical, 2)
+        // 🔴 2026-11-08 主人：高度要用到 **Apple 规范的最大值**，不是随手定。
+        //    HIG「Live Activities › iOS dimensions」：
+        //      锁屏卡 高 **84–160pt**（宽 = 屏宽 − 22），标准内边距 **14pt**。
+        //    所以内容区按 160 − 14×2 = **132pt** 排：顶部来源行、中部大码、底部地址各占一层，
+        //    空余用 Spacer 均分，卡面下缘不再留一条空白。
+        //    ⚠️ 不能写 `maxHeight: .infinity`（外层是整屏舞台，会贪婪撑满导致文字被挤出）。
     }
 }
 
