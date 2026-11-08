@@ -272,12 +272,16 @@ struct PickupListView: View {
         max(0, scopedPending.count - store.visibleLimit)
     }
 
+    /// 🔴 2026-11-08 主人：「今天 1 件」但「今日新增 0」，数字自相矛盾。
+    ///    根因：分组与卡面时间用的是 `lastNotifiedAt`（最后一次通知），
+    ///    而这两个计数用的是 `receivedAt`（短信收到时刻）—— 同一条记录会在两处
+    ///    落到不同天。计数改成与屏幕同源，看得见的与报出来的必须一致。
     private var scopedTodayNewCount: Int {
-        scopedPending.filter { Calendar.current.isDateInToday($0.receivedAt) }.count
+        scopedPending.filter { Calendar.current.isDateInToday($0.lastNotifiedAt) }.count
     }
 
     private var scopedTodayPickedCount: Int {
-        scopedPicked.filter { Calendar.current.isDateInToday($0.receivedAt) }.count
+        scopedPicked.filter { Calendar.current.isDateInToday($0.lastNotifiedAt) }.count
     }
 
     /// 先按分类、范围与免费上限裁剪，再套用搜索与排序
