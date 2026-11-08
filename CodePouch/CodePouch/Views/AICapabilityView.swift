@@ -34,10 +34,10 @@ struct AICapabilityView: View {
                 statusCard
                 purposeCard
                 qwenCard
-                detailCard
             }
             .padding(.horizontal, AppTheme.hInset)
-            .padding(.vertical, 18)
+            .padding(.top, 18)
+            .padding(.bottom, 40)
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Apple 智能")
@@ -50,18 +50,26 @@ struct AICapabilityView: View {
     private var statusCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Image(systemName: isAvailable ? "checkmark.seal.fill" : "xmark.seal.fill")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(isAvailable ? AppTheme.doneTint : AppTheme.pendingTint)
-                Text(isAvailable ? "可以用" : "暂时用不了")
+                if isChecking {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(AppTheme.accent)
+                } else {
+                    Image(systemName: isAvailable ? "checkmark.seal.fill" : "xmark.seal.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(isAvailable ? AppTheme.doneTint : AppTheme.pendingTint)
+                }
+                Text(isChecking ? "正在检测…" : (isAvailable ? "可以用" : "暂时用不了"))
                     .font(AppTheme.TypeScale.rowTitleMedium)
                 Spacer(minLength: 0)
             }
 
             // 🔴 2026-11-08 主人：用户只关心「能不能用」，不关心枚举。
-            Text(isAvailable
-                 ? "拾码会用 iPhone 本机的智能来识别短信，不联网、不上传。"
-                 : "这台 iPhone 目前没向拾码开放本机智能，拾码会自动改用正则解析，收码照样正常。")
+            Text(isChecking
+                 ? "正在向系统查询本机是否可用…"
+                 : (isAvailable
+                    ? "拾码会用 iPhone 本机的智能来识别短信，不联网、不上传。"
+                    : "这台 iPhone 目前没向拾码开放本机智能，拾码会自动改用正则解析，收码照样正常。"))
                 .font(AppTheme.TypeScale.body)
                 .foregroundStyle(.secondary)
                 .lineSpacing(3)
@@ -123,51 +131,7 @@ struct AICapabilityView: View {
         withAnimation(.easeOut(duration: 0.3)) { justChecked = false }
     }
 
-    // MARK: 设备信息
-
-    private var detailCard: some View {
-        DisclosureGroup {
-            VStack(spacing: 0) {
-                row("机型", DeviceProfile.machineID)
-            SettingsDivider()
-            row("系统", ProcessInfo.processInfo.operatingSystemVersionString)
-            SettingsDivider()
-            row("地区", Locale.current.region?.identifier ?? "—")
-            SettingsDivider()
-            row("首选语言", Locale.preferredLanguages.prefix(2).joined(separator: ", "))
-            SettingsDivider()
-            row("支持中文", SystemLanguageModel.default.supportsLocale(Locale(identifier: "zh_CN")) ? "是" : "否")
-            SettingsDivider()
-                row("模型支持语言数", "\(SystemLanguageModel.default.supportedLanguages.count)")
-                SettingsDivider()
-                row("原始返回", rawReason)
-            }
-            .padding(.top, 6)
-        } label: {
-            Text("技术详情（排查用）")
-                .font(AppTheme.TypeScale.rowTitleMedium)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .settingsCard()
-    }
-
-    private func row(_ title: String, _ value: String) -> some View {
-        HStack(spacing: 12) {
-            Text(title)
-                .font(AppTheme.TypeScale.rowTitle)
-            Spacer(minLength: 8)
-            Text(value)
-                .font(AppTheme.TypeScale.body)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 11)
-    }
-
-    // MARK: 说明（用户视角，只讲三件事）
+    // MARK: 为什么有这个功能 / 千问扩展
 
     private var purposeCard: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -199,8 +163,6 @@ struct AICapabilityView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
-
-    // MARK: 千问扩展（用户自行开启，数据不经过拾码）
 
     private var qwenCard: some View {
         VStack(alignment: .leading, spacing: 10) {
