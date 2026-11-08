@@ -93,7 +93,9 @@ enum PickupActivityController {
     nonisolated(unsafe) static var pendingProvider: (() -> [PickupRecord])?
 
     /// 把一条记录装配成活动状态（原 converge 里的映射，抽出来给翻页复用）
-    static func state(for record: PickupRecord, pendingCount: Int) -> PickupActivityAttributes.ContentState {
+    static func state(for record: PickupRecord,
+                      pendingCount: Int,
+                      items: [PickupActivityAttributes.Item]? = nil) -> PickupActivityAttributes.ContentState {
         let stationName = stationResolver?(record)
         let nameSource = PickupNaming(courier: record.courierDisplay,
                                       platform: record.company,
@@ -107,11 +109,29 @@ enum PickupActivityController {
                         address: record.address,
                         tint: CourierBrand.info(for: nameSource).resolvedFrom,
                         locker: record.widgetLockerLabel(WidgetDisplayOptions.load())),
-            pendingCount: pendingCount
+            pendingCount: pendingCount,
+            items: items
         )
     }
 
-    /// 锁屏卡的「上一件 / 下一件」：在待取列表里循环切换当前展示的那一条。
+    /// 单条记录 → 活动条目（与 `state(for:)` 同一口径，翻页时复用）
+    static func mapToItem(_ record: PickupRecord) -> PickupActivityAttributes.Item {
+        let stationName = stationResolver?(record)
+        let nameSource = PickupNaming(courier: record.courierDisplay,
+                                      platform: record.company,
+                                      station: stationName).iconSource
+        return PickupActivityAttributes.Item(
+            id: record.id.uuidString,
+            company: record.company,
+            courier: record.courier,
+            station: stationName,
+            code: record.code,
+            address: record.address,
+            tint: CourierBrand.info(for: nameSource).resolvedFrom,
+            locker: record.widgetLockerLabel(WidgetDisplayOptions.load()))
+    }
+
+    /// 锁屏卡的「上一页 / 下一页」：一页三条，整页整页地翻。
     ///
     /// 由 App Intent 在**后台**调用（App 不必打开）。只允许一个活动实例，
     /// 所以直接 update 当前那张，不新建。
@@ -122,11 +142,21 @@ enum PickupActivityController {
         let pending = all
         guard pending.count > 1 else { return }
         let sorted = pending.sorted { $0.receivedAt > $1.receivedAt }
+        let perPage = PickupActivityAttributes.LockScreenMetrics.perPage
+        guard sorted.count > perPage else { return }   // 一页装得下就不用翻
         guard let current = Activity<PickupActivityAttributes>.activities.first else { return }
-        let currentID = current.content.state.item.id
-        let index = sorted.firstIndex { $0.id.uuidString == currentID } ?? 0
-        let next = sorted[(index + offset + sorted.count) % sorted.count]
-        let newState = state(for: next, pendingCount: sorted.count)
+
+        // 以**当前页的第一条**为准做基准，整页整页地翻
+        let anchorID = current.content.state.items?.first?.id ?? current.content.state.item.id
+        let startIndex = sorted.firstIndex { $0.id.uuidString == anchorID } ?? 0
+        let nextStart = ((startIndex + offset * perPage) % sorted.count + sorted.count) % sorted.count
+
+        // 从 nextStart 开始取一页（到末尾就回绕到开头）
+        let page = (0..<min(perPage, sorted.count)).map { sorted[(nextStart + $0) % sorted.count] }
+        let records = page.map { mapToItem($0) }
+        guard let head = records.first else { return }
+        let newState = PickupActivityAttributes.ContentState(
+            item: head, pendingCount: sorted.count, items: records)
         guard newState != current.content.state else { return }
         await current.update(ActivityContent(state: newState, staleDate: nil))
     }
@@ -270,10 +300,10 @@ enum PickupActivityController {
                         // 柜位 / 货架：跟随用户在小组件里选的显示设置
                         // （关掉「显示快递柜/货架」时这一位不出现，两处口径一致）
                         locker: newest.widgetLockerLabel(WidgetDisplayOptions.load())),
-            // 只送**最近一条**：展开态与紧凑态都以这一条为准，条数另给。
-            // （不再有「恰好 2 条就并排两个码」的分支 —— 那个版式里
-            //  顶部的站点名只对得上最新一条，第二个码属于哪个站点无法表达。）
-            pendingCount: pending.count
+            // 锁屏卡要一页三条、右侧翻页（2026-11-08 主人定）：
+            // 一次性送最近 12 条（四页），翻页在扩展里本地完成，不必再唤醒 App。
+            pendingCount: pending.count,
+            items: Array(sorted.prefix(12)).map { mapToItem($0) }
         )
 
         await apply(state)

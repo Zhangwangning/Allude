@@ -73,8 +73,27 @@ struct PickupActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         /// 当前展示的那一条（取最新待办）
         var item: Item
-        /// 待办总数 —— 卡面只画一条，其余用计数交代
+        /// 待办总数
         var pendingCount: Int
+        /// 锁屏卡的**列表**（2026-11-08 主人：一张卡放三条，右侧翻页）。
+        /// 可选：老的活动快照里没有这个字段，解码为 nil，卡面回落到单条。
+        var items: [Item]? = nil
+
+        /// 锁屏卡真正要画的一页（最多 3 条）
+        var lockPage: [Item] {
+            guard let items, !items.isEmpty else { return [item] }
+            return Array(items.prefix(LockScreenMetrics.perPage))
+        }
+    }
+
+    /// 锁屏卡几何：HIG 规定高 84–160pt、标准内边距 14pt、宽 = 屏宽 − 22。
+    enum LockScreenMetrics {
+        /// 一页放几条
+        static let perPage = 3
+        /// 内容区高度 = 160 − 14×2
+        static let contentHeight: CGFloat = 132
+        /// 卡内上下左右内边距
+        static let inset: CGFloat = 14
     }
 }
 
@@ -165,167 +184,96 @@ enum LockCardGlass {
 struct ActivityLockScreenCard: View {
     let state: PickupActivityAttributes.ContentState
 
-    /// 常亮显示（Always-On）下系统会把卡面**按深色渲染并整体压暗**，
-    /// 品牌色里偏暗的那批（顺丰 / 抖音的主色就是纯黑）会糊进底色。
-    /// 此时退回语义色，交给系统按对比度自己选 —— Apple 对 Always-On 的明确建议。
-    ///
-    /// 🔴 正常态也**不能直接用品牌色**（2026-09-24 主人真机指认"黑色取件码"）：
-    ///    暗色锁屏上卡底是深色材质 + 品牌色叠层，顺丰的纯黑主色码就是黑上黑。
-    ///    统一走 `islandTint` 亮度插值（≥0.55），色相保留、对比度兜底。
-    @Environment(\.isLuminanceReduced) private var dimmed
-
-    /// 取件码的着色（2026-10-28 主人真机反馈：「有点看不清楚取件码了」）。
-    ///
-    /// 🔴 **锁屏卡不再用品牌色画码**。原因是材质不可控：
-    /// 卡片底是系统的液态玻璃，透过去是**用户的壁纸** —— 花哨照片上用圆通紫画码，
-    /// 亮化后的淡紫叠在浅色壁纸上几乎消失（真机截图实证）。
-    /// 现在一律 `.primary`（深色外观下就是纯白），对比度交给「把卡底压深」保证，
-    /// 品牌色只留给图标本身与系统操作按钮。
-    /// 取件码色 = **品牌色的加深版**（亮玻璃上用深色字，对比靠色彩深度保证）。
-    /// 品牌本身就很深（圆通紫、顺丰黑）时原样返回，不改色相。
-    private var tint: Color { dimmed ? .primary : islandInk(state.item.tint) }
-
-    /// 次级文字（柜位、地址、「还有 N 条」）。
-    ///
-    /// 🔴 2026-10-28 定稿：**白字 + 深色描影**，这是壁纸类场景的通用解法
-    /// （系统自己的锁屏小组件也是这么干的）。
-    ///
-    /// 为什么不用语义色：实测 `.primary` 在这里只会给白色（Live Activity 固定 dark 外观），
-    /// 并不会按玻璃实际明暗翻转 —— 白字落在浅色玻璃上照样糊。
-    /// 而「白字 + 一层深色阴影」两头通吃：底色深，白字本身够亮；
-    /// 底色浅，阴影把字的轮廓"垫"出来。一套颜色，两种壁纸都能读。
+    /// 卡面文字一律白/亮色 + 深色描影：锁屏卡底透的是**用户的壁纸**，
+    /// 语义色在这层玻璃上会跟浅色壁纸糊在一起（2026-10-28 真机实证）。
     private var secondaryInk: Color { .white.opacity(0.80) }
-
-    /// 文字描影的强度：底越浅越靠它撑轮廓。
     private var inkShadow: Color { .black.opacity(0.40) }
 
+    /// 一页三条（2026-11-08 主人定）：不解锁手机也要能一次看仨码。
+    private var page: [PickupActivityAttributes.Item] { state.lockPage }
+    private var totalPages: Int {
+        max(1, Int(ceil(Double(state.pendingCount) / Double(PickupActivityAttributes.LockScreenMetrics.perPage))))
+    }
+
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            // 取件码是整张卡唯一要「一眼读出」的内容，与 App 列表卡片同一口径：
-            // 上方一行放来源，中间大字放码，底部一行放地址。
+        HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 6) {
-                    // 首行：「快递公司 | 短信平台」。
-                    //
-                    // 🔴 2026-10-28 主人：
-                    //   ① 不再显示取件码**类型**（「特殊取件码」那枚胶囊已删）——
-                    //      锁屏上它只是噪音，用户一眼要的是码本身；
-                    //   ② 二者只有**一个**时不要管道符：`displayName` 取快递公司，
-                    //      `platformSuffix` 仅在「公司 ≠ 平台」时才有值，
-                    //      所以没有平台时这段整块不渲染，不会留下孤立的「|」。
-                    Text(state.item.displayName.L)
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .shadow(color: inkShadow, radius: 2, x: 0, y: 0.5)
-                        .lineLimit(1)
-
-                    if let platform = state.item.platformSuffix {
-                        Text("| \(platform)")
-                            .font(.system(size: 14))
-                            .lineLimit(1)
-                            .foregroundStyle(secondaryInk)
+                ForEach(Array(page.enumerated()), id: \.element.id) { index, item in
+                    if index > 0 {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.14))
+                            .frame(height: 0.5)
                     }
-
-                    Spacer(minLength: 6)
-
-                    if state.pendingCount > 1 {
-                        Text("还有 \(state.pendingCount - 1) 条")
-                            .font(.system(size: 13))
-                            .foregroundStyle(secondaryInk)
-                            .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
-                            .shadow(color: inkShadow, radius: 1.5, x: 0, y: 0.5)
-                    }
+                    row(item)
                 }
-
-                // 取件码 + 快递柜（有柜位才跟在后面，没有就什么都不显示）。
-                // 与灵动岛、桌面小组件同一口径：到柜那一刻要用的信息，紧贴主角。
-                HStack(alignment: .center, spacing: 10) {
-                    // 品牌图标挪到取件码左侧（2026-11-05 主人）：一眼看出是哪家
-                    CourierLogo(company: state.item.displayName, size: 28, showsShadow: false)
-
-                    // 🔴 2026-11-08 主人：长运单号（YT8861990771306）**冲出卡片**了。
-                    //    根因是这里 `fixedSize(horizontal: true)` —— 它让文字按"理想宽度"
-                    //    排版，`minimumScaleFactor` 根本没机会生效。
-                    //    去掉 fixedSize，让码在可用宽度内**自动缩小**（最小 45%）。
-                    PickupCodeEmphasis.text(state.item.code, tint: tint, headOpacity: 0.78)
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
-                        .monospaced()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.45)
-                        .allowsTightening(true)
-                        .layoutPriority(1)
-                        // 码用品牌亮色（韵达金黄），在浅玻璃上靠这层描影定轮廓 ——
-                        // 与正文同一套「白/亮字 + 深色阴影」逻辑，重了会脏，0.40 是实测值。
-                        .shadow(color: inkShadow, radius: 2.5, x: 0, y: 0.5)
-
-                    if let locker = state.item.locker, !locker.isEmpty {
-                        Text(locker.L)
-                            .font(.system(size: 14, weight: .medium))
-                            .lineLimit(1)
-                            .foregroundStyle(secondaryInk)
-                            .truncationMode(.tail)
-                            .layoutPriority(0)
-                            .shadow(color: inkShadow, radius: 1.5, x: 0, y: 0.5)
-                    }
-
-                    Spacer(minLength: 0)
-                }
-                .padding(.top, 6)
-
-
-
-                if !state.item.address.isEmpty {
-                    Text(state.item.address.L)
-                        .font(.system(size: 14))
-                        .foregroundStyle(secondaryInk)
-                        .lineLimit(2)          // 卡面加高后能放两行地址
-                        .truncationMode(.tail)
-                        .padding(.top, 6)
-                        .shadow(color: inkShadow, radius: 1.5, x: 0, y: 0.5)
-                }
+                Spacer(minLength: 0)
             }
-            // HIG：锁屏卡高 84–160pt → 取上限 160；减去上下各 14pt 内边距 = 内容区 132pt。
-            // 用**定高**而不是 Spacer：外层是整屏舞台（920pt 提案），Spacer 会把卡撑成整屏。
-            .frame(height: 132, alignment: .topLeading)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack(spacing: 10) {
-                // 翻页箭头：竖直排列，只在多于一条时出现（图标已挪到取件码左侧，这里整列留给箭头）
-                // 🔴 **不要用 Spacer 做垂直居中**：Spacer 会让这个 HStack 变成"贪婪"布局，
-                //    在 App 内预览（父级给了固定 920pt 高）时整张卡被撑成一整块，
-                //    文字全被挤没（2026-11-05 主人截图：只剩两个箭头悬在壁纸上）。
-                //    用固定上间距代替，高度始终由内容决定。
-                if state.pendingCount > 1 {
-                    VStack(spacing: 8) {
-                        Button(intent: PreviousPickupIntent()) {
-                            Image(systemName: "chevron.up")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(secondaryInk)
-                                .frame(width: 44, height: 38)
-                                .background(Capsule().fill(.white.opacity(0.16)))
-                        }
-                        .buttonStyle(.plain)
-
-                        Button(intent: NextPickupIntent()) {
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(secondaryInk)
-                                .frame(width: 44, height: 38)
-                                .background(Capsule().fill(.white.opacity(0.16)))
-                        }
-                        .buttonStyle(.plain)
+            // 右侧翻页：只在超过一页时出现（一页装得下就别给多余控件）
+            if state.pendingCount > PickupActivityAttributes.LockScreenMetrics.perPage {
+                VStack(spacing: 4) {
+                    Button(intent: PreviousPickupIntent()) {
+                        Image(systemName: "chevron.up")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(secondaryInk)
+                            .frame(width: 34, height: 30)
+                            .background(Capsule().fill(.white.opacity(0.16)))
                     }
-                    .padding(.top, 2)
+                    .buttonStyle(.plain)
+
+                    Text("\(state.pendingCount) 条")
+                        .font(.system(size: 10, weight: .medium))
+                        .monospacedDigit()
+                        .foregroundStyle(secondaryInk)
+
+                    Button(intent: NextPickupIntent()) {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(secondaryInk)
+                            .frame(width: 34, height: 30)
+                            .background(Capsule().fill(.white.opacity(0.16)))
+                    }
+                    .buttonStyle(.plain)
                 }
+                .padding(.top, 2)
             }
         }
-        .padding(.vertical, 2)
-        // 🔴 2026-11-08 主人：高度要用到 **Apple 规范的最大值**，不是随手定。
-        //    HIG「Live Activities › iOS dimensions」：
-        //      锁屏卡 高 **84–160pt**（宽 = 屏宽 − 22），标准内边距 **14pt**。
-        //    所以内容区按 160 − 14×2 = **132pt** 排：顶部来源行、中部大码、底部地址各占一层，
-        //    空余用 Spacer 均分，卡面下缘不再留一条空白。
-        //    ⚠️ 不能写 `maxHeight: .infinity`（外层是整屏舞台，会贪婪撑满导致文字被挤出）。
+        // HIG：锁屏卡 84–160pt，取上限 160；减去上下 14pt 内边距 = 内容区 132pt。
+        // 用**定高**（不是 Spacer）：外层舞台是整屏提案，Spacer 会把卡撑成整屏。
+        .frame(height: PickupActivityAttributes.LockScreenMetrics.contentHeight,
+               alignment: .topLeading)
+    }
+
+    /// 一行：品牌图标 + 取件码（主角）+ 地址
+    private func row(_ item: PickupActivityAttributes.Item) -> some View {
+        HStack(spacing: 10) {
+            CourierLogo(company: item.displayName, size: 22, showsShadow: false)
+
+            VStack(alignment: .leading, spacing: 1) {
+                PickupCodeEmphasis.text(item.code,
+                                        tint: islandInk(item.tint),
+                                        headOpacity: 0.78)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .monospaced()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.55)
+                    .allowsTightening(true)
+                    .shadow(color: inkShadow, radius: 2, x: 0, y: 0.5)
+
+                if !item.address.isEmpty {
+                    Text(item.address.L)
+                        .font(.system(size: 11))
+                        .foregroundStyle(secondaryInk)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 7)
     }
 }
 

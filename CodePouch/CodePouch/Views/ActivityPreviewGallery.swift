@@ -360,8 +360,16 @@ struct ActivityPreviewGallery: View {
     private var items: [PickupActivityAttributes.Item] {
         // 截图脚手架：ACTIVITY_LONG_CODE=1 → 用 13 位运单号压测「码太长会不会冲出卡片」
         if ProcessInfo.processInfo.environment["ACTIVITY_LONG_CODE"] == "1" {
-            return [.init(id: "long-1", company: "圆通速递", code: "YT8861990771306",
-                          address: "家佳福超市甘州院子店", tint: 0x5D3FD3, locker: nil)]
+            return [
+                .init(id: "long-1", company: "圆通速递", code: "YT8861990771306",
+                      address: "家佳福超市甘州院子店", tint: 0x5D3FD3, locker: nil),
+                .init(id: "long-2", company: "顺丰速运", code: "8-2-4031",
+                      address: "丰巢智能柜 · 望京SOHO T1 大堂", tint: 0x000000, locker: "2号柜"),
+                .init(id: "long-3", company: "拼多多", code: "D-1-3516",
+                      address: "菜鸟驿站 · 恒大名都东门", tint: 0xE4002B, locker: nil),
+                .init(id: "long-4", company: "申通快递", code: "3-7-12",
+                      address: "蓝山公馆六期西门免喜生活", tint: 0x1B6AC9, locker: nil),
+            ]
         }
         return realItems.isEmpty ? Self.sampleItems : realItems
     }
@@ -370,7 +378,11 @@ struct ActivityPreviewGallery: View {
 
     /// 带「还有 N 条」的状态：卡面只画一条，其余用计数交代
     private var multiState: PickupActivityAttributes.ContentState {
-        .init(item: items[0], pendingCount: items.count)
+        // 锁屏卡一页三条：把预览也按三条给，才能看出翻页与分隔线
+        let page = Array(items.prefix(PickupActivityAttributes.LockScreenMetrics.perPage))
+        return .init(item: page.first ?? items[0],
+                     pendingCount: max(items.count, 5),
+                     items: page.isEmpty ? items : page)
     }
 
     /// 单条状态：不出现计数文案，用来对照两种排布
