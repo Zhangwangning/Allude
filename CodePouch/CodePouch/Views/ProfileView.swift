@@ -150,7 +150,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     /// 单列布局与 iPad 分栏都从这三个数组渲染，不要再各写一份。
     static let generalGroupAll: [SettingsPane] = [
         .automation, .notification, .widget, .activity, .courier, .station,
-        .guide, .appIcon, .appearance, .fontSize, .language,
+        .appIcon, .appearance, .fontSize, .language,
     ]
     static let aboutGroupAll: [SettingsPane] = [
         .help, .softwareInfo, .privacyDoc, .termsDoc, .version, .disclaimer, .aiCapability,

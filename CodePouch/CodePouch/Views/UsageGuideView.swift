@@ -45,13 +45,6 @@ struct UsageGuideView: View {
     ///
     /// 自动化只能监听「收到短信」。微信群转发的取件通知、快递 App 的推送、驿站发来的
     /// 聊天截图 —— 这些都没有可监听的系统事件，用户手上唯一能做的动作就是「截屏」。
-    private let screenshotSteps: [(String, String)] = [
-        ("新建一条快捷指令", "切到「**快捷指令**」标签页（不是「自动化」），点右上角「+」。"),
-        ("第一个动作：截屏", "搜索「**截屏**」拖进来，它会截下当前屏幕。"),
-        ("第二个动作：识别取件截图", "搜索「**拾码**」，选「**识别取件截图**」；「截图」一栏会自动接上一步的输出，不用手动挑。"),
-        ("（可选）放到随手能按的地方", "长按这条快捷指令 → 分享 →「添加到主屏幕」；或到「设置 › 辅助功能 › 触控 › 轻点背面」绑成双击。"),
-    ]
-
     /// 认识拾码三点（原首启引导欢迎页收编）。
     private let introPoints: [(String, String, Color, String)] = [
         ("bubble.left.and.text.bubble.right.fill", "自动收码", AppTheme.accent,
@@ -149,46 +142,17 @@ struct UsageGuideView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "截屏收件")
 
-            VStack(alignment: .leading, spacing: 12) {
-                Text("自动化只能监听「收到短信」。微信群转发的取件通知、快递 App 的推送、驿站发来的聊天截图 —— 这些都没有可监听的系统事件，这时用一条**手动快捷指令**：截屏 → 一键收纳。".richText)
-                    .font(AppTheme.TypeScale.body)
-                    .foregroundStyle(.secondary)
-                    .lineSpacing(4)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(Array(screenshotSteps.enumerated()), id: \.offset) { position, item in
-                        HStack(alignment: .top, spacing: 10) {
-                            Text("\(position + 1)")
-                                .font(AppTheme.TypeScale.badge)
-                                .frame(width: 20, height: 20)
-                                .background(AppTheme.sky.opacity(0.15), in: .circle)
-                                .foregroundStyle(AppTheme.sky)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(item.0)
-                                    .font(AppTheme.TypeScale.note.weight(.medium))
-                                Text(item.1.richText)
-                                    .font(AppTheme.TypeScale.note)
-                                    .foregroundStyle(.tertiary)
-                                    .lineSpacing(3)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-
-                            Spacer(minLength: 0)
-                        }
-                    }
-                }
-
-                Text("截图里没有取件信息（比如截了个聊天记录、截了个网页）就**什么都不会写入**，「待取」不会被污染。".richText)
-                    .font(AppTheme.TypeScale.note)
-                    .foregroundStyle(.tertiary)
-                    .lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .cardSurface()
+            // 🔴 2026-11-08 主人：截屏收件先一句话带过。
+            //    原因：文字识别要靠端侧模型（国内机型暂不可用），只靠正则从截图里
+            //    抽码并不可靠，写长了反而抬高预期。收码正路是上面的自动化。
+            Text("截图取码是实验性功能：识别效果依赖端侧模型，部分机型暂不支持，日常收码建议用上面的自动化。".richText)
+                .font(AppTheme.TypeScale.body)
+                .foregroundStyle(.secondary)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .cardSurface()
         }
     }
 

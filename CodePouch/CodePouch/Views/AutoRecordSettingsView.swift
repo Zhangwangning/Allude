@@ -40,6 +40,16 @@ struct AutoRecordSettingsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 keywordsCard
                 note
+
+                // 🔴 2026-11-08 主人：和使用教程合并 —— 一键导入与「自己创建」放同一页。
+                NavigationLink {
+                    UsageGuideView()
+                } label: {
+                    SettingsRow(symbol: "book.fill", title: "不会用？教你自己创建",
+                                tint: AppTheme.violet)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 4)
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.vertical, 18)
