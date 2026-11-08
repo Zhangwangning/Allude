@@ -31,19 +31,6 @@ import WidgetKit
 /// 预览**不响应点击**：勾选框与翻页控件在真实小组件里由 AppIntent 直接写数据，
 /// 而在 App 内预览时点击既不会更新界面、又会让内存副本与文件不一致，
 /// 因此整块 `allowsHitTesting(false)`，只作视觉对照。
-/// 预览尺寸换算用的屏宽比例。
-///
-/// 取当前窗口宽度（不是 `UIScreen.main` —— 它在多窗口/折叠屏下已弃用且不准）。
-/// 拿不到窗口时按 390pt 基准，等于 `scale = 1`，不会把界面撑坏。
-enum WidgetPreviewMetrics {
-    /// 由页面用 `onGeometryChange` 实测写入（窗口宽度）。
-    /// 为什么不用 `UIApplication…keyWindow`：SwiftUI 里那一刻常拿不到 keyWindow，
-    /// 结果 scale 恒为 1、预览还是按 390pt 渲染（2026-11-08 实测踩过）。
-    static var deviceWidth: CGFloat = 393
-
-    static var scale: CGFloat { deviceWidth / 393 }
-}
-
 struct WidgetCanvas: View {
     enum Style: String, CaseIterable {
         case small
@@ -59,41 +46,19 @@ struct WidgetCanvas: View {
         /// 于是预览永远比真机小一圈。
         ///
         /// 基准值 158 / 338 / 354 是 iPhone 15·16 Pro（**393pt**）实测，按屏宽等比缩放。
-        /// 预览尺寸。
+        /// 预览尺寸（2026-11-08 回滚到「之前看着合适」的那组固定值）。
         ///
-        /// 🔴 2026-11-08 第三次校准：**用真机截图量出来的**，不再猜。
-        ///
-        /// 量的是 16 Pro（402pt）桌面上的中尺寸小组件：
-        ///   左 26.7 / 右 375.3 → 宽 **348.7pt**，高 **164pt**
-        ///   → 宽 = 屏宽 × 0.8674，高 = 宽 × 0.470
-        ///
-        /// 换算成比例后与旧值 338 / 390 = 0.867 完全吻合：
-        /// **旧代码的比例是对的，错的是"写死 pt、不随屏宽缩放"。**
-        /// （上一版我误信了「iOS 17 组件变大」的说法，把比例改成 0.926，这是错的。）
+        /// 教训：我按屏宽比例缩放 + 读实测值，把这一页改坏了两版。
+        /// 固定 158 / 338 / 354 是当年在真机上对过、主人认可的观感，
+        /// 在没拿到可靠真机数据之前不要动它。
         var size: CGSize {
-            let w = WidgetPreviewMetrics.deviceWidth
-            let medW = w * 0.8674
-            let estimate: CGSize
             switch self {
-            case .small:
-                // 小尺寸是正方形，宽 = 屏宽 × 0.405（由同一组真机比例推得：158/390）
-                estimate = CGSize(width: w * 0.405, height: w * 0.405)
-            case .medium:
-                estimate = CGSize(width: medW, height: medW * 0.470)
-            case .large:
-                // 大尺寸与中同宽，高 = 宽的 1.047 倍（354/338）
-                estimate = CGSize(width: medW, height: medW * 1.047)
-            case .extraLarge:
-                estimate = CGSize(width: w * 1.80, height: medW * 0.470)
-            case .extraLargePortrait:
-                estimate = CGSize(width: medW, height: medW * 1.047 * 2)
+            case .small:  CGSize(width: 158, height: 158)
+            case .medium: CGSize(width: 338, height: 158)
+            case .large:  CGSize(width: 338, height: 354)
+            case .extraLarge: CGSize(width: 690, height: 354)
+            case .extraLargePortrait: CGSize(width: 338, height: 690)
             }
-
-            // 真机渲染过小组件时，App Group 里有 WidgetKit 给的实测值 —— 优先用它
-            if let measured = WidgetMeasuredSize.load(family: pageKey, expected: estimate) {
-                return measured
-            }
-            return estimate
         }
 
         var title: String {
@@ -420,15 +385,8 @@ struct WidgetPreviewGallery: View {
                     }
                 }
             }
-            // 12pt：真机中尺寸 ≈ 屏宽 − 30（左右各 15），页内 20pt 会把真尺寸挤到溢出
-            .padding(12)
+            .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
-            // 实测容器宽度 → 换算成屏宽比例，让预览与真机小组件同尺寸
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.size.width
-            } action: { width in
-                if width > 0 { WidgetPreviewMetrics.deviceWidth = width }
-            }
         }
         .navigationTitle("桌面小组件")
         .navigationBarTitleDisplayMode(.inline)

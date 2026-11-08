@@ -141,12 +141,8 @@ struct PickupWidget: Widget {
         AppIntentConfiguration(kind: "CodeClipPickupWidget",
                                intent: PickupWidgetIntent.self,
                                provider: PickupTimelineProvider()) { entry in
-            // 🔴 2026-11-08：系统小组件的**真实尺寸只有 WidgetKit 自己知道**
-            //    （Apple 按屏宽比例算，没有公开的 pt 表）。挂一个静默探针量一次，
-            //    写进 App Group —— 用户加过一次小组件之后，设置页预览就是真尺寸。
             PickupWidgetEntryView(entry: entry)
                 .containerBackground(for: .widget) { WidgetSurface() }
-                .background(WidgetSizeProbe())
         }
         .configurationDisplayName("待取件")
         .description("不打开 App，也能看到最近要取的快递；点上下箭头可翻看更多。")
