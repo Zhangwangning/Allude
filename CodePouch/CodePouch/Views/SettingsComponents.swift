@@ -206,7 +206,8 @@ struct SettingsCard<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             VStack(spacing: 0) { content }
-                .cardSurface()
+                // 设置类页面统一卡片：iOS 26+ 玻璃胶囊 / iOS 18 系统卡片
+                .settingsCard()
 
             if let note {
                 Text(note.L)

@@ -455,7 +455,7 @@ struct ActivityPreviewGallery: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface()
+        .settingsCard()
     }
 
     /// 截图脚手架：`ACTIVITY_AUTOPLAY=1` 每 2.4 秒自动翻一页。
