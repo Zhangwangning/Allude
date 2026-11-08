@@ -335,7 +335,7 @@ struct CourierGalleryView: View {
                             }
                         }
                         .padding(14)
-                        .cardSurface()
+                        .settingsCard()
                     }
                     .id(category.rawValue)
                 }
@@ -382,7 +382,7 @@ struct CourierGalleryView: View {
             Spacer(minLength: 0)
         }
         .padding(14)
-        .cardSurface()
+        .settingsCard()
     }
 
     /// 承运方品牌数（三个分类合计）

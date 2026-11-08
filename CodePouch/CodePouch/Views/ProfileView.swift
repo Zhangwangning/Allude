@@ -288,12 +288,12 @@ struct SettingsView: View {
     private var stackedSettings: some View {
         ScrollView {
             VStack(spacing: 16) {
+                // 🔴 2026-11-08 主人：Pro 入口恢复放到**顶部**（此前学 Widgy 挪到最下面，
+                //    体验下来还是顶部更显眼，改回来）。
+                proBanner
                 catalogSection("通用", SettingsPane.generalGroupAll)
                 catalogSection("本机数据", SettingsPane.dataGroup)
                 catalogSection("关于", SettingsPane.aboutGroupAll)
-                // 🔴 2026-11-08 主人：Pro 入口学 Widgy 放到**最下面**（商店区的位置），
-                //    不再顶在第一条 —— 用户先看到设置，想买时再往下翻。
-                proSection
                 footer
             }
             .padding(.horizontal, AppTheme.hInset)
@@ -336,15 +336,15 @@ struct SettingsView: View {
 
 
                 List {
+                    // Pro 入口回到列表第一条
+                    proBanner
+                        .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 10, trailing: 10))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+
                     settingsGroup("通用", items: filtered(SettingsPane.generalGroupAll))
                     settingsGroup("本机数据", items: filtered(SettingsPane.dataGroup))
                     settingsGroup("关于", items: filtered(SettingsPane.aboutGroupAll))
-
-                    // Pro 入口在列表最下面（学 Widgy 的商店区位置）
-                    proBanner
-                        .listRowInsets(EdgeInsets(top: 18, leading: 10, bottom: 10, trailing: 10))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)

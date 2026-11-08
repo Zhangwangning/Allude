@@ -27,7 +27,7 @@ struct AppIconSettingsView: View {
                     }
                 }
                 .padding(14)
-                .cardSurface()
+                .settingsCard()
 
                 Text("更换后，桌面、App 资源库、多任务和通知里的图标会一起改变。")
                     .font(AppTheme.TypeScale.note)
