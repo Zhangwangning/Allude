@@ -194,7 +194,7 @@ struct AddPickupSheet: View {
         if !model.hasInput {
             hintCard(symbol: "wand.and.sparkles", tint: AppTheme.sky,
                      title: "会自动识别",
-                     detail: "取件码 / 运单号 / 尾号 / 特殊取件码四类凭证，以及平台、快递公司与取件地址 —— 识别不出的字段留空。识别不了的短信不会写入。")
+                     detail: "取件码、平台、快递公司与地址；识别不出的字段留空，认不出就不写入。")
         } else if !model.parsedList.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 6) {

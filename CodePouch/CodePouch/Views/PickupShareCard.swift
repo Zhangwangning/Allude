@@ -669,8 +669,9 @@ struct SharePreviewSheet: View {
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 16)
                 .padding(.top, 14)
-                // 往上抬一点（2026-11-01 主人）：底部多留，圆形按钮不贴 Home 条
-                .padding(.bottom, 72)
+                // 🔴 2026-11-08：直板机底部原先留 72pt（那是为 Duo 外屏的 Home 条留的），
+                //    直板机看起来「按钮悬在半空」。直板机按系统安全区走，只留 24。
+                .padding(.bottom, 24)
             } else {
                 HStack(spacing: 0) {
                     if let image = model.image {
