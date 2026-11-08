@@ -258,7 +258,9 @@ struct WidgetGalleryContent: View {
             }
 
             block(title: "空态：一件待取都没有时") {
-                HStack(spacing: 16) {
+                HStack(spacing: 0) {
+                    // 与上面小/中/大尺寸同一条左缘（中尺寸居中带来的偏移要补上）
+                    Spacer().frame(width: max(0, (contentWidth - WidgetCanvas.Style.medium.size.width) / 2))
                     WidgetCanvas(.small) {
                         WidgetEmptyContent(pickedTodayCount: 0, compact: true)
                     }
