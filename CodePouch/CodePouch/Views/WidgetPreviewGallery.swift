@@ -61,30 +61,35 @@ struct WidgetCanvas: View {
         /// 基准值 158 / 338 / 354 是 iPhone 15·16 Pro（**393pt**）实测，按屏宽等比缩放。
         /// 预览尺寸。
         ///
-        /// 🔴 2026-11-08（第二次返工，读 HIG / WidgetKit 口径后重写）：
-        /// Apple 的桌面小组件尺寸是**按屏宽算的**，而且 **iOS 17 起变大了一档**：
-        ///   · iOS 16 及以前（393pt 屏）：小 158 / 中 338
-        ///   · iOS 17+（同一块 393pt 屏）：小 170 / 中 364 / 大 364×382
-        /// 原来代码里那组 158/338 是旧值，所以在 402pt 的 16 Pro 上永远偏小。
+        /// 🔴 2026-11-08 第三次校准：**用真机截图量出来的**，不再猜。
         ///
-        /// 三档比例（由 iOS 17 实测反推，随屏宽线性缩放）：
-        ///   小 = 屏宽 × 0.4325（正方形）
-        ///   中 = 屏宽 × 0.9262，高 = 宽 × 0.467
-        ///   大 = 同中宽，高 = 宽 × 1.049
+        /// 量的是 16 Pro（402pt）桌面上的中尺寸小组件：
+        ///   左 26.7 / 右 375.3 → 宽 **348.7pt**，高 **164pt**
+        ///   → 宽 = 屏宽 × 0.8674，高 = 宽 × 0.470
         ///
-        /// 系统真机若已经渲染过小组件，`WidgetMeasuredSize` 里有实测值 —— 优先用它。
+        /// 换算成比例后与旧值 338 / 390 = 0.867 完全吻合：
+        /// **旧代码的比例是对的，错的是"写死 pt、不随屏宽缩放"。**
+        /// （上一版我误信了「iOS 17 组件变大」的说法，把比例改成 0.926，这是错的。）
         var size: CGSize {
             let w = WidgetPreviewMetrics.deviceWidth
-            let med = w * 0.9262
+            let medW = w * 0.8674
             let estimate: CGSize
             switch self {
-            case .small:  estimate = CGSize(width: w * 0.4325, height: w * 0.4325)
-            case .medium: estimate = CGSize(width: med, height: med * 0.467)
-            case .large:  estimate = CGSize(width: med, height: med * 1.049)
-            case .extraLarge:        estimate = CGSize(width: w * 2.05, height: med * 0.467)
-            case .extraLargePortrait: estimate = CGSize(width: med, height: med * 1.049 * 2)
+            case .small:
+                // 小尺寸是正方形，宽 = 屏宽 × 0.405（由同一组真机比例推得：158/390）
+                estimate = CGSize(width: w * 0.405, height: w * 0.405)
+            case .medium:
+                estimate = CGSize(width: medW, height: medW * 0.470)
+            case .large:
+                // 大尺寸与中同宽，高 = 宽的 1.047 倍（354/338）
+                estimate = CGSize(width: medW, height: medW * 1.047)
+            case .extraLarge:
+                estimate = CGSize(width: w * 1.80, height: medW * 0.470)
+            case .extraLargePortrait:
+                estimate = CGSize(width: medW, height: medW * 1.047 * 2)
             }
 
+            // 真机渲染过小组件时，App Group 里有 WidgetKit 给的实测值 —— 优先用它
             if let measured = WidgetMeasuredSize.load(family: pageKey, expected: estimate) {
                 return measured
             }
