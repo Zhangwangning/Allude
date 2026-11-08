@@ -379,7 +379,9 @@ struct ActivityPreviewGallery: View {
     /// 带「还有 N 条」的状态：卡面只画一条，其余用计数交代
     private var multiState: PickupActivityAttributes.ContentState {
         // 锁屏卡一页三条：把预览也按三条给，才能看出翻页与分隔线
-        let page = Array(items.prefix(PickupActivityAttributes.LockScreenMetrics.perPage))
+        // 截图脚手架：ACTIVITY_ROWS=1|2 控制锁屏卡这一页显示几条
+        let rows = Int(ProcessInfo.processInfo.environment["ACTIVITY_ROWS"] ?? "") ?? PickupActivityAttributes.LockScreenMetrics.perPage
+        let page = Array(items.prefix(max(1, min(rows, PickupActivityAttributes.LockScreenMetrics.perPage))))
         return .init(item: page.first ?? items[0],
                      pendingCount: max(items.count, 5),
                      items: page.isEmpty ? items : page)

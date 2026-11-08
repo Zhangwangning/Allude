@@ -90,8 +90,22 @@ struct PickupActivityAttributes: ActivityAttributes {
     enum LockScreenMetrics {
         /// 一页放几条
         static let perPage = 3
-        /// 内容区高度 = 160 − 14×2
+        /// 内容区高度：三条用满上限（160 − 14×2）
         static let contentHeight: CGFloat = 132
+        /// 单条：HIG 允许的最小高度 84 − 14×2 = 56 —— 只有一条时卡面就该这么小，
+        /// 不该空着 160pt 的框子（2026-11-08 主人指出）
+        static let singleContentHeight: CGFloat = 56
+        /// 两条：介于两者之间（118 − 14×2）
+        static let doubleContentHeight: CGFloat = 90
+
+        /// 按当前页条数取内容区高度
+        static func contentHeight(for rows: Int) -> CGFloat {
+            switch rows {
+            case 0, 1: singleContentHeight
+            case 2:    doubleContentHeight
+            default:   contentHeight
+            }
+        }
         /// 卡内上下左右内边距
         static let inset: CGFloat = 14
     }
@@ -196,6 +210,48 @@ struct ActivityLockScreenCard: View {
     }
 
     var body: some View {
+        if page.count == 1, let only = page.first {
+            singleCard(only)
+        } else {
+            listCard
+        }
+    }
+
+    /// 单条：和旧版一样的大码版式，高度收到最小（84pt 总高）
+    private func singleCard(_ item: PickupActivityAttributes.Item) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            CourierLogo(company: item.displayName, size: 28, showsShadow: false)
+
+            VStack(alignment: .leading, spacing: 2) {
+                PickupCodeEmphasis.text(item.code,
+                                        tint: islandInk(item.tint),
+                                        headOpacity: 0.78)
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .monospaced()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.45)
+                    .allowsTightening(true)
+                    .shadow(color: inkShadow, radius: 2.5, x: 0, y: 0.5)
+
+                if !item.address.isEmpty {
+                    Text(item.address.L)
+                        .font(.system(size: 13))
+                        .foregroundStyle(secondaryInk)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .shadow(color: inkShadow, radius: 1.5, x: 0, y: 0.5)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: PickupActivityAttributes.LockScreenMetrics.singleContentHeight,
+               alignment: .leading)
+    }
+
+    /// 多条（2–3）：列表版式，高度用满 160pt 上限
+    private var listCard: some View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(page.enumerated()), id: \.element.id) { index, item in
@@ -241,7 +297,7 @@ struct ActivityLockScreenCard: View {
         }
         // HIG：锁屏卡 84–160pt，取上限 160；减去上下 14pt 内边距 = 内容区 132pt。
         // 用**定高**（不是 Spacer）：外层舞台是整屏提案，Spacer 会把卡撑成整屏。
-        .frame(height: PickupActivityAttributes.LockScreenMetrics.contentHeight,
+        .frame(height: PickupActivityAttributes.LockScreenMetrics.contentHeight(for: page.count),
                alignment: .topLeading)
     }
 
