@@ -97,6 +97,27 @@ struct AddPickupSheet: View {
                 .padding(.bottom, 28)
             }
             .background(Color(.systemGroupedBackground))
+            .safeAreaInset(edge: .bottom) {
+                if model.addedMessage == nil && model.hasInput {
+                    // 底部操作条：加一层薄材质，内容滚到下面时不会和按钮糊在一起
+                    VStack(spacing: 0) {
+                        Button { submit() } label: {
+                            Text("添加")
+                                .font(AppTheme.TypeScale.body.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .appGlass(.capsule, tint: AppTheme.accent, interactive: true)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(model.parsedList.isEmpty && !model.looksLikeBareCode)
+                        .padding(.horizontal, AppTheme.hInset)
+                        .padding(.top, 10)
+                        .padding(.bottom, 8)
+                    }
+                    .background(.ultraThinMaterial)
+                }
+            }
             .navigationTitle("添加取件信息")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -115,18 +136,18 @@ struct AddPickupSheet: View {
     // MARK: 输入区
 
     private var inputCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 12) {
+            // 标题行：图标 + 标题 + 字数
+            HStack(spacing: 8) {
                 Image(systemName: "text.bubble")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(AppTheme.accent)
                 Text("粘贴短信内容")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .font(AppTheme.TypeScale.rowTitleMedium)
                 Spacer(minLength: 0)
                 if model.hasInput {
                     Text("\(model.trimmed.count) 字")
-                        .font(.caption2)
+                        .font(AppTheme.TypeScale.badge)
                         .monospacedDigit()
                         .foregroundStyle(.tertiary)
                 }
@@ -134,27 +155,24 @@ struct AddPickupSheet: View {
 
             ZStack(alignment: .topLeading) {
                 TextEditor(text: $model.text)
-                    .font(.system(size: 14))
+                    .font(AppTheme.TypeScale.body)
                     .scrollContentBackground(.hidden)
-                    .frame(minHeight: 132)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
+                    .frame(minHeight: 168)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
 
                 if model.text.isEmpty {
-                    Text("把整条快递短信粘贴进来，自动识别取件码、快递平台与取件地址。")
-                        .font(.system(size: 14))
+                    Text("把整条快递短信粘贴进来")
+                        .font(AppTheme.TypeScale.body)
                         .foregroundStyle(.tertiary)
-                        .padding(.horizontal, 13)
-                        .padding(.vertical, 14)
+                        .padding(.horizontal, 17)
+                        .padding(.vertical, 18)
                         .allowsHitTesting(false)
                 }
             }
-            .background(Color(.secondarySystemGroupedBackground),
-                        in: .rect(cornerRadius: 12))
-            .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(.separator.opacity(0.5), lineWidth: 0.5)
-            }
+            // 编辑区用系统填充色：玻璃卡里再套一层玻璃会互相吃掉对比度
+            .background(Color(.tertiarySystemFill),
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
             HStack(spacing: 10) {
                 smallButton(title: "粘贴", symbol: "doc.on.clipboard",
@@ -167,10 +185,16 @@ struct AddPickupSheet: View {
                 }
                 Spacer(minLength: 0)
             }
+
+            // 原来单独一张「会自动识别」卡，并进来 —— 少一张卡，少一层视觉噪音
+            Text("会自动识别取件码、平台、快递公司与地址；识别不出就留空。")
+                .font(AppTheme.TypeScale.note)
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface()
+        .settingsCard()
     }
 
     private func smallButton(title: String, symbol: String,
@@ -192,9 +216,7 @@ struct AddPickupSheet: View {
     @ViewBuilder
     private var resultSection: some View {
         if !model.hasInput {
-            hintCard(symbol: "wand.and.sparkles", tint: AppTheme.sky,
-                     title: "会自动识别",
-                     detail: "取件码、平台、快递公司与地址；识别不出的字段留空，认不出就不写入。")
+            EmptyView()
         } else if !model.parsedList.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 6) {
@@ -259,7 +281,7 @@ struct AddPickupSheet: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface()
+        .settingsCard()
     }
 
     private func successBanner(_ message: String) -> some View {
