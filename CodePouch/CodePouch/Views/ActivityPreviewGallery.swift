@@ -359,6 +359,11 @@ struct ActivityPreviewGallery: View {
     /// 看着就像"预览在骗人"。现在只要有一条真实待办就用它，条数就用真实条数。
     private var items: [PickupActivityAttributes.Item] {
         // 截图脚手架：ACTIVITY_LONG_CODE=1 → 用 13 位运单号压测「码太长会不会冲出卡片」
+        if ProcessInfo.processInfo.environment["ACTIVITY_STATION"] == "1" {
+            return [.init(id: "st-1", company: "拼多多", courier: "圆通速递",
+                          station: "兔喜生活", code: "YT8861990771306",
+                          address: "家佳福超市甘州院子店", tint: 0x5D3FD3, locker: "2号柜")]
+        }
         if ProcessInfo.processInfo.environment["ACTIVITY_LONG_CODE"] == "1" {
             return [
                 .init(id: "long-1", company: "圆通速递", code: "YT8861990771306",

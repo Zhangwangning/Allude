@@ -220,6 +220,22 @@ struct ActivityLockScreenCard: View {
     /// 单条：**恢复加高之前的版式**（2026-11-08 主人指定）——
     /// 上面一行「快递公司 | 驿站/平台」，中间大码 + 柜位，下面一行地址；
     /// 高度由内容决定（约 78pt），不占满 160。
+    /// 码多长算「长」：≥8 位（运单号 13 位、带前缀的 8-2-4031 都算）。
+    /// 长码会把同一行挤满，柜位就搬到来源行末尾做标签。
+    private func isLongCode(_ code: String) -> Bool { code.count >= 8 }
+
+    /// 柜位标签：白字半透明胶囊，跟在文字后面时不抢主信息
+    private func lockerTag(_ locker: String) -> some View {
+        Text(locker.L)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2.5)
+            .background(Capsule().fill(.white.opacity(0.20)))
+            .overlay(Capsule().stroke(.white.opacity(0.25), lineWidth: 0.5))
+    }
+
     private func singleCard(_ item: PickupActivityAttributes.Item) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 6) {
@@ -237,6 +253,11 @@ struct ActivityLockScreenCard: View {
                         .shadow(color: inkShadow, radius: 1.5, x: 0, y: 0.5)
                 }
 
+                // 码太长时，柜位以标签形式跟在来源行文字后面（2026-11-08 主人定）
+                if isLongCode(item.code), let locker = item.locker, !locker.isEmpty {
+                    lockerTag(locker)
+                }
+
                 Spacer(minLength: 6)
             }
 
@@ -252,7 +273,7 @@ struct ActivityLockScreenCard: View {
                     .layoutPriority(1)
                     .shadow(color: inkShadow, radius: 2.5, x: 0, y: 0.5)
 
-                if let locker = item.locker, !locker.isEmpty {
+                if let locker = item.locker, !locker.isEmpty, !isLongCode(item.code) {
                     Text(locker.L)
                         .font(.system(size: 14, weight: .medium))
                         .lineLimit(1)
