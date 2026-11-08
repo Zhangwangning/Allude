@@ -395,8 +395,13 @@ enum LiveActivitySetting {
         UserDefaults(suiteName: PickupStorage.appGroupID) ?? .standard
     }
 
+    /// 🔴 实时活动是 **拾码 Pro** 功能：非订阅用户一律读作关闭
+    /// （即使文件里还留着 true —— 降级后进前台，控制器第 0 道门会当场收掉卡片）。
     static var isEnabled: Bool {
-        get { (defaults.object(forKey: key) as? Bool) ?? true }
+        get {
+            guard EntitlementSnapshot.licensedPro else { return false }
+            return (defaults.object(forKey: key) as? Bool) ?? true
+        }
         set { defaults.set(newValue, forKey: key) }
     }
 }

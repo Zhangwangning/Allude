@@ -453,6 +453,9 @@ struct ActivityPreviewGallery: View {
         .cloaksTabBar()
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: startAutoplayIfNeeded)
+        .sheet(isPresented: $showPaywall) {
+            NavigationStack { FullVersionView() }
+        }
     }
 
     /// iPhone Duo：**不做预览**，只说明原因（2026-11-01 主人定）。
@@ -813,20 +816,39 @@ struct ActivityPreviewGallery: View {
     /// 切换后立即 `sync` 一次：
     ///   · 关 → 控制器第 0 道门当场收掉正在跑的活动；
     ///   · 开 → 按当前待办立刻补起一张卡，不用等下一次数据变动。
+    /// 非 Pro 点「实时活动」开关时直接弹订阅页（预览切换按钮不受影响）
+    @State private var showPaywall = false
+
     private var activityToggleSection: some View {
         // 🔴 2026-10-28 主人：「总开关」三个字删掉 —— 卡片里那行「显示实时活动」已说明一切。
         SettingsGroup(title: "",
                       note: "在锁屏与灵动岛上显示最新待取的取件码。关闭后立刻收掉卡片，重新打开后自动恢复。") {
             // 🔴 2026-11-01 主人：去掉「显示」二字，标题就叫「实时活动」。
             SettingsPlainRow(title: "实时活动") {
-                Toggle("", isOn: Binding(
-                    get: { LiveActivitySetting.isEnabled },
-                    set: { on in
-                        LiveActivitySetting.isEnabled = on
-                        PickupActivityController.sync(pending: store.pending)
-                    }))
-                    .labelsHidden()
-                    .tint(AppTheme.accent)
+                if EntitlementSnapshot.licensedPro {
+                    Toggle("", isOn: Binding(
+                        get: { LiveActivitySetting.isEnabled },
+                        set: { on in
+                            LiveActivitySetting.isEnabled = on
+                            PickupActivityController.sync(pending: store.pending)
+                        }))
+                        .labelsHidden()
+                        .tint(AppTheme.accent)
+                } else {
+                    // 与「通知」页同一套：看着是普通关闭态开关，点一下弹订阅页，
+                    // 用 overlay 接管点击（overlay 不参与布局，开关不会被挤走）
+                    Toggle("", isOn: .constant(false))
+                        .labelsHidden()
+                        .tint(AppTheme.accent)
+                        .allowsHitTesting(false)
+                        .overlay {
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .onTapGesture { showPaywall = true }
+                                .accessibilityLabel("实时活动")
+                                .accessibilityHint("需要拾码 Pro")
+                        }
+                }
             }
         }
     }
