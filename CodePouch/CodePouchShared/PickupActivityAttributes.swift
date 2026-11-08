@@ -341,7 +341,8 @@ struct ActivityLockScreenCard: View {
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.top, 2)
+                // 翻页按钮整体垂直居中（2026-11-08 主人：别贴在卡顶）
+                .frame(maxHeight: .infinity, alignment: .center)
             }
         }
         // HIG：锁屏卡 84–160pt，取上限 160；减去上下 14pt 内边距 = 内容区 132pt。
