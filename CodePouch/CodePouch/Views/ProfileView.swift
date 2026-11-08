@@ -1177,7 +1177,11 @@ struct FullVersionView: View {
     /// 自动续期说明 + 隐私政策 / 使用条款（App Review 3.1.2 要求在订阅页能点到）
     private var finePrint: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("订阅会自动续期：确认购买后从 Apple ID 扣款，当前周期结束前 24 小时内自动续费；随时可在「设置 › Apple ID › 订阅」中取消。买断档不自动续期。")
+            // 🔴 2026-11-08 主人：买断没有「取消」这回事，不能把订阅的话套上来。
+            //    文案按当前选中的方案切换，只说这一档真实存在的规则。
+            Text(selected == .lifetime
+                 ? "买断一次付清、永久有效，不会续期，也不需要取消。"
+                 : "订阅会自动续期：确认购买后从 Apple ID 扣款，当前周期结束前 24 小时内自动续费；可随时在「设置 › Apple ID › 订阅」里取消。")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
