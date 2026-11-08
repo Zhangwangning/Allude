@@ -139,6 +139,10 @@ struct TrainingDataView: View {
                                 Text("码 \(code)").font(AppTheme.TypeScale.badge)
                                     .foregroundStyle(.secondary)
                             }
+                            if let platform = sample.platform, !platform.isEmpty {
+                                Text(platform).font(AppTheme.TypeScale.badge)
+                                    .foregroundStyle(.tertiary)
+                            }
                             Spacer(minLength: 0)
                             Button {
                                 TrainingSampleStore.delete(id: sample.id)
@@ -224,6 +228,7 @@ struct TrainingSampleComposer: View {
     @State private var address: String
     @State private var locker: String
     @State private var courier: String
+    @State private var platform: String
     @State private var station: String
     @State private var note: String
     @State private var showPicker = false
@@ -238,6 +243,7 @@ struct TrainingSampleComposer: View {
         _address = State(initialValue: editing?.address ?? "")
         _locker = State(initialValue: editing?.locker ?? "")
         _courier = State(initialValue: "")
+        _platform = State(initialValue: editing?.platform ?? "")
         _station = State(initialValue: "")
         _note = State(initialValue: editing?.note ?? "")
         _didParse = State(initialValue: editing != nil)
@@ -338,6 +344,9 @@ struct TrainingSampleComposer: View {
                 if label == "pickup" {
                     editableRow("快递公司", $courier, placeholder: "可空")
                     SettingsDivider()
+                    // 有些短信没有快递公司，只有平台（拼多多 / 菜鸟 …）
+                    editableRow("短信平台", $platform, placeholder: "可空")
+                    SettingsDivider()
                     editableRow("取件码", $code, placeholder: "可空")
                     SettingsDivider()
                     editableRow("地址", $address, placeholder: "可空")
@@ -410,6 +419,7 @@ struct TrainingSampleComposer: View {
         code = result.value
         address = result.address
         courier = result.courier.isEmpty ? result.company : result.courier
+        platform = result.company
         station = StationDirectory.shared.matchedName(in: [trimmed]) ?? ""
         locker = result.locker
     }
@@ -418,10 +428,11 @@ struct TrainingSampleComposer: View {
         if let editing {
             _ = TrainingSampleStore.update(id: editing.id, text: text, label: label,
                                            code: code, address: address,
-                                           locker: locker, note: note)
+                                           platform: platform, locker: locker, note: note)
         } else {
             _ = TrainingSampleStore.add(text: text, label: label, code: code,
-                                        address: address, locker: locker, note: note)
+                                        address: address, platform: platform,
+                                        locker: locker, note: note)
         }
         onDone()
         dismiss()
