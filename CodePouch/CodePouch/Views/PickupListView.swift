@@ -1152,27 +1152,29 @@ struct PendingStatsCard: View {
                         .foregroundStyle(.secondary)
                 }
 
-                HStack(spacing: 4) {
-                    Image(systemName: "shippingbox.fill")
-                        .font(.system(size: 9, weight: .medium))
-                    Text("顺路去取，码在这里")
-                        .font(.system(size: 10.5, weight: .medium))
-                }
-                .foregroundStyle(.tertiary)
             }
 
             Spacer(minLength: 8)
 
             // —— 次级列：今日新增 / 今日已取 ——
-            VStack(alignment: .leading, spacing: 10) {
-                miniStat("今日新增", value: todayNew,
-                         tint: AppTheme.todayTint, symbol: "arrow.down.circle.fill")
-                miniStat("今日已取", value: todayPicked,
-                         tint: AppTheme.doneTint, symbol: "checkmark.circle.fill")
+            // 🔴 2026-11-08 unslop：值为 0 的那一格不显示 ——
+            //    状态没变化时"0"只是噪音，两个都 0 就整列不出现。
+            if todayNew > 0 || todayPicked > 0 {
+                VStack(alignment: .leading, spacing: 10) {
+                    if todayNew > 0 {
+                        miniStat("今日新增", value: todayNew,
+                                 tint: AppTheme.todayTint, symbol: "arrow.down.circle.fill")
+                    }
+                    if todayPicked > 0 {
+                        miniStat("今日已取", value: todayPicked,
+                                 tint: AppTheme.doneTint, symbol: "checkmark.circle.fill")
+                    }
+                }
             }
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 16)
+        // 内边距与列表卡同一档（AppTheme.cardPadding / 12），保证内容左缘共线
+        .padding(.horizontal, AppTheme.cardPadding)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity)
         // Hero 卡用独立大圆角 + 稍强的主色氛围（主色即「待取」语义色，
         // 氛围强度走统一约束，不会退化成整卡染色）
@@ -1363,7 +1365,16 @@ struct PickupCard: View {
         // 去掉竖条后左右内边距取同一值，卡片内不再有「被竖条吃掉」的左侧偏窄感
         .padding(.horizontal, AppTheme.cardPadding)
         .padding(.vertical, 12)
-        .cardSurface(tint: brand)
+        // 🔴 2026-11-08 unslop：一屏多张彩色渐变没有主次。
+        //    卡片底改中性表面，品牌色只留在三处：左侧竖条、取件码、勾选钮。
+        .cardSurface()
+        .overlay(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(brand)
+                .frame(width: 3)
+                .padding(.vertical, 10)
+                .padding(.leading, 3)
+        }
         .opacity(isDone && selectionState == nil ? 0.72 : 1)
     }
 
