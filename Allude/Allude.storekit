@@ -58,7 +58,7 @@
               "locale": "en_US"
             }
           ],
-          "productID": "com.jikezhang.allude.pro.yearly",
+          "productID": "com.jikezhang.allude.pro.annual",
           "recurringSubscriptionPeriod": "P1Y",
           "referenceName": "每年",
           "subscriptionGroupID": "4E7C1B90-2D33-4A61-8F0E-6C5B7A9D2E11",

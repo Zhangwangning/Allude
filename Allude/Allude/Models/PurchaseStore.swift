@@ -32,8 +32,20 @@ final class PurchaseStore: ObservableObject {
 
         var id: String { rawValue }
 
-        /// 必须与 App Store Connect 里建的 ID 完全一致
-        var productID: String { "com.jikezhang.allude.pro." + rawValue }
+        /// 必须与 App Store Connect 里建的 ID 完全一致。
+        ///
+        /// 🔴 年订阅不叫 `...pro.yearly`：2026-11-11 在 ASC 里误把年费建成了
+        ///    「非消耗型项目」，删除后该 product ID **被苹果永久占用、不能复用**
+        ///    （官方文档：product ID 一旦分配给某个内购项目，即使删除原项目也不能
+        ///    在同一 App 内再次使用）。所以年订阅改用 `...pro.annual`。
+        ///    `rawValue` 保持 `yearly` 不变（权益快照/旧数据靠它解码）。
+        var productID: String {
+            switch self {
+            case .lifetime: "com.jikezhang.allude.pro.lifetime"
+            case .yearly:   "com.jikezhang.allude.pro.annual"
+            case .monthly:  "com.jikezhang.allude.pro.monthly"
+            }
+        }
 
         var title: String {
             switch self {

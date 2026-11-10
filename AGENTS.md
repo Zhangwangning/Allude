@@ -7,7 +7,7 @@ SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 
 | 商品 | Product ID | 定价 | 说明 |
 |---|---|---|---|
-| 每年 | `com.jikezhang.allude.pro.yearly` | $1.99 / 年 | 自动续期订阅 |
+| 每年 | `com.jikezhang.allude.pro.annual` | $1.99 / 年 | 自动续期订阅（⚠️ 不叫 `...yearly`：那个 ID 2026-11-11 被误建成非消耗型后删除，苹果永不复用） |
 | 终身 | `com.jikezhang.allude.pro.lifetime` | $9.99 | 非消耗型买断，**主推**（≈ 五年年费） |
 
 `pro.monthly` 已从 App Store 下架，`PurchaseStore.Plan.monthly` 只为解码旧数据保留
