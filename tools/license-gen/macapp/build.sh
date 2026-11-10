@@ -14,7 +14,7 @@ set -e
 cd "$(dirname "$0")"
 
 APP_NAME="发码"
-BUNDLE_ID="com.jikezhang.codeclip.issuer"
+BUNDLE_ID="com.jikezhang.allude.issuer"
 OUT="build/${APP_NAME}.app"
 CONFIG="${1:-release}"
 

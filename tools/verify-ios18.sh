@@ -11,8 +11,8 @@ set -euo pipefail
 
 OUT=/tmp/ios18
 mkdir -p "$OUT"
-APP=/tmp/codepouch-verify/Build/Products/Debug-iphonesimulator/CodePouch.app
-BUNDLE=com.jikezhang.codeclip
+APP=/tmp/codepouch-verify/Build/Products/Debug-iphonesimulator/Allude.app
+BUNDLE=com.jikezhang.allude
 
 # 1) 找 iOS 18 运行时
 RUNTIME=$(xcrun simctl list runtimes | grep -E "iOS 18" | grep -oE "com\.apple\.CoreSimulator\.SimRuntime\.iOS-18[^ ]*" | head -1 || true)

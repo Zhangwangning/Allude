@@ -1,20 +1,20 @@
-# 拾码 CodePouch — 项目指令
+# Allude — 项目指令
 
 iOS 取件码收纳 App。核心承诺：**数据只在本机，不联网、不上传、不需要注册**。
 SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 
 商业模式：**免费下载 + 订阅解锁**（参照 Infuse），三档同一权益：
-`com.jikezhang.codeclip.pro.monthly`（¥1/月）、`.yearly`（¥9/年）、
+`com.jikezhang.allude.pro.monthly`（¥1/月）、`.yearly`（¥9/年）、
 `.lifetime`（¥18，非消耗型买断，**主推**；≈ 两年年费）。走 StoreKit 2，价格一律取 `Product.displayPrice`。
 订阅会过期 → 权益快照必须写 `expiresAt`，否则小组件会一直按完整版渲染。
 
-> 隐私政策与使用条款有**三份副本要同步**：GitHub Pages（`Zhangwangning/codepouch-legal`，
-> App Store 表单填这个地址）、Gitee 镜像（`zhang_wangning/codepouch-legal`，国内可访问），
-> 以及 App 内打包的 `CodePouch/Legal/{privacy,terms}.html`（WKWebView 离线读，不跳浏览器）。
+> 隐私政策与使用条款有**三份副本要同步**：GitHub Pages（`Zhangwangning/allude-legal`，
+> App Store 表单填这个地址）、Gitee 镜像（`zhang_wangning/allude-legal`，国内可访问），
+> 以及 App 内打包的 `Allude/Legal/{privacy,terms}.html`（WKWebView 离线读，不跳浏览器）。
 > 改文档必须三处一起改，否则用户看到的和商店页面写的会不一致。
 
 > 托管地址：
-> 地址集中写在 `CodePouch/Models/LegalLinks.swift`。这三个 URL 已经要填进
+> 地址集中写在 `Allude/Models/LegalLinks.swift`。这三个 URL 已经要填进
 > App Store Connect 的审核表单 —— **不要改**，确需更换必须先让旧地址 301 过去。
 
 > ⚠️ **未上架期间的激活入口**：设置 › 激活（`ActivationView`）。设备码打码显示、可复制；
@@ -49,12 +49,12 @@ SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 
 | 项 | 值 | 改了会怎样 |
 |---|---|---|
-| App Bundle ID | `com.jikezhang.codeclip` | 数据容器换新，用户记录全丢 |
-| Widget Bundle ID | `com.jikezhang.codeclip.CodeClipWidget` | 系统判成新扩展，小组件需全部重加 |
-| App Group | `group.com.jikezhang.codeclip` | 主 App 与小组件的数据通道断 |
-| Widget `kind` | `CodeClipPickupWidget` | 已添加的桌面小组件失配 |
+| App Bundle ID | `com.jikezhang.allude` | 数据容器换新，用户记录全丢 |
+| Widget Bundle ID | `com.jikezhang.allude.AlludeWidget` | 系统判成新扩展，小组件需全部重加 |
+| App Group | `group.com.jikezhang.allude` | 主 App 与小组件的数据通道断 |
+| Widget `kind` | `AlludePickupWidget` | 已添加的桌面小组件失配 |
 
-这些是用户看不见的内部标识。对外名称是「拾码 CodePouch」，对外显示名改 `CFBundleDisplayName` 即可。
+这些是用户看不见的内部标识。对外名称是「Allude」，对外显示名改 `CFBundleDisplayName` 即可。
 
 ### 3. 权益枚举只增不删
 
@@ -83,12 +83,12 @@ SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 ## 路径结构（三层同名，别数错）
 
 ```
-CodePouch/                    ← 仓库根（.git 在这里）
-└── CodePouch/                ← 工程根
-    ├── CodePouch.xcodeproj
-    ├── CodePouch/            ← App 源码（Views / Models）
-    ├── CodePouchShared/      ← App 与小组件共用的代码
-    ├── CodePouchWidget/      ← 小组件扩展
+Allude/                    ← 仓库根（.git 在这里）
+└── Allude/                ← 工程根
+    ├── Allude.xcodeproj
+    ├── Allude/            ← App 源码（Views / Models）
+    ├── AlludeShared/      ← App 与小组件共用的代码
+    ├── AlludeWidget/      ← 小组件扩展
     ├── Config/               ← entitlements
     └── tools/
 ```
@@ -100,10 +100,10 @@ CodePouch/                    ← 仓库根（.git 在这里）
 ## 构建与运行
 
 ```bash
-cd CodePouch
-xcodebuild -project CodePouch.xcodeproj -scheme CodePouch \
+cd Allude
+xcodebuild -project Allude.xcodeproj -scheme Allude \
   -destination 'generic/platform=iOS Simulator' \
-  -derivedDataPath /tmp/codepouch-verify build \
+  -derivedDataPath /tmp/allude-verify build \
   CODE_SIGNING_ALLOWED=NO OTHER_SWIFT_FLAGS="-disable-sandbox"
 ```
 
@@ -118,7 +118,7 @@ xcodebuild -project CodePouch.xcodeproj -scheme CodePouch \
 （`-10004 权限违例`）。**所有面板类界面都靠 `SCREEN` 环境变量直渲**：
 
 ```bash
-xcrun simctl launch <UDID> com.jikezhang.codeclip   # 需先 SIMCTL_CHILD_SCREEN=xxx
+xcrun simctl launch <UDID> com.jikezhang.allude   # 需先 SIMCTL_CHILD_SCREEN=xxx
 xcrun simctl io <UDID> screenshot /tmp/x.png
 ```
 
@@ -132,9 +132,9 @@ xcrun simctl io <UDID> screenshot /tmp/x.png
 旧进程没死就 `launch`，会**静默沿用旧进程**——截到的是上一版界面，
 看起来像"改的代码没生效"。2026-10-31 因此误判过一次选中态。
 ```bash
-xcrun simctl terminate UDID com.jikezhang.codeclip; sleep 4
-xcrun simctl install UDID …/CodePouch.app; sleep 2
-xcrun simctl terminate UDID com.jikezhang.codeclip; sleep 4
+xcrun simctl terminate UDID com.jikezhang.allude; sleep 4
+xcrun simctl install UDID …/Allude.app; sleep 2
+xcrun simctl terminate UDID com.jikezhang.allude; sleep 4
 # 确认装上去的是新构建，再 launch + 截图
 ```
 
@@ -146,7 +146,7 @@ App 还在后台时，`simctl launch` 只把它**切回前台**，`SIMCTL_CHILD_
 —— 表现为"截图落到了列表页，脚手架像坏了一样"。实测探针：
 不加参数时 `SCREEN=nil`，加上后 `SCREEN=settings`。
 ```bash
-SIMCTL_CHILD_SCREEN=settings xcrun simctl launch --terminate-running-process <UDID> com.jikezhang.codeclip
+SIMCTL_CHILD_SCREEN=settings xcrun simctl launch --terminate-running-process <UDID> com.jikezhang.allude
 ```
 
 真机回归基准模拟器：iPhone 16 Pro `272DD31C-D94F-46B4-9CC7-974A61439777`。
@@ -181,13 +181,13 @@ iPhone 直板机已完工（0.3.3）；**iPhone Duo 折叠屏适配已开工**�
 八套内置图标，**默认是第 3 套「取件袋」**；设置 › App 图标可切换（版式同快递公司页的网格）。
 
 - 主图标：`Assets.xcassets/AppIcon.appiconset`（1024，**不能有透明通道、不能自带圆角**）。
-- 另外七套是 alternate icon，由 **真实 `CodePouch/Info.plist`** 里的
+- 另外七套是 alternate icon，由 **真实 `Allude/Info.plist`** 里的
   `CFBundleAlternateIcons` 声明（`Icon01`…`Icon08`，跳过默认的 Icon03），
   文件是 bundle 根目录的 `IconNN@2x.png`(120) / `@3x.png`(180)。
 - 图源自 512 满幅方图，**不再裁切**（早期那批是白底圆角，裁过角）。
   ⚠️ 工程已改为 `GENERATE_INFOPLIST_FILE = NO` + `INFOPLIST_FILE = Info.plist`，
   增删 Info.plist 键要改那个真实文件，`INFOPLIST_KEY_*` 不再生效。
-- 选择状态存 **App Group**（`codeclip.appIcon`）：灵动岛/锁屏由小组件进程渲染，
+- 选择状态存 **App Group**（`allude.appIcon`）：灵动岛/锁屏由小组件进程渲染，
   读不到 App 偏好。三张图在 App 与 Widget **两个**资源目录里各有一份。
 - `AppMarkIcon`（灵动岛/锁屏）、关于页顶部都读同一份选择。
 - 🔴 **给灵动岛用的图片资源，`Contents.json` 必须写两样**，否则折叠态会渲染成
@@ -212,7 +212,7 @@ iPhone 直板机已完工（0.3.3）；**iPhone Duo 折叠屏适配已开工**�
 
 App 内「关于 › 声明与免责」（`StatementView`）是唯一的对外表述来源，四段：
 
-1. **来源**：拾码 CodePouch 由极客ZHANG 独立开发，衍生自开发者本人制作的
+1. **来源**：Allude 由极客ZHANG 独立开发，衍生自开发者本人制作的
    「快递取件码」快捷指令；App 把那套取码逻辑搬进原生应用，没有第二个来源。
 2. **技术**：全部 Apple 官方工具与框架（Xcode / Swift / SwiftUI / WidgetKit /
    ActivityKit / StoreKit），零第三方依赖、零第三方 SDK。
@@ -324,7 +324,7 @@ App 内「关于 › 声明与免责」（`StatementView`）是唯一的对外�
 主人要求：**只改 iPhone Duo 外屏**的灵动岛，不要动其他设备。
 
 - 判断收在 `DuoOuterDisplay.isActive`：主 App 启动时按 **窗口高度 < 720pt**
-  判定并写进 App Group（`codeclip.duoOuter`），灵动岛由小组件进程渲染，读同一份。
+  判定并写进 App Group（`allude.duoOuter`），灵动岛由小组件进程渲染，读同一份。
   ⚠️ 不能靠 `UIScreen.main`（已弃用）或 `horizontalSizeClass`（直板机也是 compact）。
 - Duo 外屏：只剩数字、居中、>99 显示 `99+`；
   直板机：保持「待取 N」横排（原口径 2026-09-22 定调，别动）。
@@ -444,8 +444,8 @@ App 内「关于 › 声明与免责」（`StatementView`）是唯一的对外�
 
 | 档位 | 对外名称 |
 |---|---|
-| 未解锁 | **拾码 CodePouch** |
-| 已解锁 | **拾码 Pro**（完整名 拾码 CodePouch Pro） |
+| 未解锁 | **Allude** |
+| 已解锁 | **Allude Pro**（完整名 Allude Pro） |
 
 小组件头部空间窄，截断提示用最短的「Pro」（配锁图标），不再写「免费版」。
 
@@ -477,7 +477,7 @@ WidgetKit 也不暴露实例数量，说不清就别写。
 
 `DiagnosticsLog` 在 `Application Support/Diagnostics/log.txt` 滚动记录（上限 256 KB，
 超过滚成 `log.1.txt`，只留一代）。用户点「反馈 › 发送邮件反馈」时，日志作为
-`codepouch-log.txt` **附件**随邮件发出（走 `MFMailComposeViewController`，
+`allude-log.txt` **附件**随邮件发出（走 `MFMailComposeViewController`，
 `mailto:` 带不了附件）；用户可关闭「附带诊断日志」开关。
 
 🔴 **日志绝不记录用户内容**：不写短信原文、取件码、地址、电话、设备 UUID。
@@ -518,7 +518,7 @@ WidgetKit 也不暴露实例数量，说不清就别写。
 # 短信解析回归 —— **必须传语料路径**，省略会直接报「读不到语料文件」并 exit 1。
 # 精选库（64 条，基线：识别 64 / 地址 60），语料在**仓库外**，换机器可能不存在
 swiftc -O -o /tmp/parser-regression \
-  CodePouch/CodePouch/Models/PickupParser.swift \
+  Allude/Allude/Models/PickupParser.swift \
   tools/parser-regression/main.swift && \
 /tmp/parser-regression "/Volumes/ZWN/Downloads/Project/shortcuts-toolkit-master/快递取件码短信库.md"
 
@@ -529,8 +529,8 @@ swiftc -O -o /tmp/parser-regression \
 # ⚠️ 必须用**绝对路径**编译：工具靠 #filePath 推自己的目录找语料，
 #    用相对路径编译后换工作目录运行会报「读不到 cases.txt」。
 swiftc -O -o /tmp/station-check \
-  "$PWD/CodePouch/CodePouchShared/CourierBrand.swift" \
-  "$PWD/CodePouch/CodePouchShared/BrandPalette.swift" \
+  "$PWD/Allude/AlludeShared/CourierBrand.swift" \
+  "$PWD/Allude/AlludeShared/BrandPalette.swift" \
   "$PWD/tools/station-check/main.swift" && /tmp/station-check
 # 退出码 0 = 全符合基线；1 = 有差异并逐条打印。
 # 🔴 改匹配规则时不要为了让它是绿的而改基线文件 —— 先确认每处变化都符合预期。
@@ -540,8 +540,8 @@ swiftc -O -o /tmp/station-check \
 
 # 品牌表 + 资源落盘自检（必须用绝对路径编译，它靠 #filePath 推仓库根）
 swiftc -O -o /tmp/brand-check \
-  "$PWD/CodePouch/CodePouchShared/CourierBrand.swift" \
-  "$PWD/CodePouch/CodePouchShared/BrandPalette.swift" \
+  "$PWD/Allude/AlludeShared/CourierBrand.swift" \
+  "$PWD/Allude/AlludeShared/BrandPalette.swift" \
   "$PWD/tools/brand-check/main.swift" && /tmp/brand-check
 # 这条目前会 exit 1。2 项失败是**既有业务差异**，不是回归，别去「修」：
 #   ① 「某某冷门驿站」期望映射到「快递驿站」；
@@ -607,7 +607,7 @@ python3 tools/license-gen/issue-openssl.py --check "<凭证>"
    🔴 SwiftUI 不会因为 static 变量变了就重算 body，根视图用 `.id(generation)` 强制重建。
    「跟随系统」把 `DynamicTypeSize` 映射成同一量级倍率（0.88…1.62）。
 3. **语言**：不在 App 内做切换。点行 → `UIApplication.openSettingsURLString`
-   跳到 设置 › App › 拾码 › 语言。界面显示「简体中文」。
+   跳到 设置 › App › Allude › 语言。界面显示「简体中文」。
    注：系统里那条语言项只有当 App 带多个本地化时才有可选项；当前只有简体中文，
    所以入口是"能到那儿"，暂时没有可切换项。
 
@@ -620,20 +620,20 @@ python3 tools/license-gen/issue-openssl.py --check "<凭证>"
 
 做法（自动化，非人工润色）：
 
-- 文案表：`CodePouch/CodePouch/zh-Hant.lproj/Localizable.strings`（App）
-  与 `CodePouch/CodePouchWidget/zh-Hant.lproj/Localizable.strings`（小组件）。
+- 文案表：`Allude/Allude/zh-Hant.lproj/Localizable.strings`（App）
+  与 `Allude/AlludeWidget/zh-Hant.lproj/Localizable.strings`（小组件）。
   **键 = 简体原文，值 = 繁体**。来源脚本：扫全部 Swift 里不带 `\(` 插值的中文字面量，
   用 `StringTransform("Hans-Hant")` 转换，再过一张术语表
   （設置→設定、短信→簡訊、默認→預設、保存→儲存、文件→檔案、信息→訊息、網絡→網路…）。
   当前 789 条映射 / 913 条候选 ≈ 86%。
 - `Info.plist` 增加 `CFBundleLocalizations = [zh-Hans, zh-Hant]`，
-  系统「设置 › App › 拾码 › 语言」里才会出现两个选项。
+  系统「设置 › App › Allude › 语言」里才会出现两个选项。
 
 🔴 **坑：`Text(String)` 不查表**。`Text("字面量")` 会用 `LocalizedStringKey` 查表，
 但我们的标题/详情/卡片多是**动态 String**（枚举、模型），必须显式 `x.L`。
 目前已经接上的：`SettingsRow`（title/subtitle/detail）、`SectionHeader`。
 其余页面里的动态字符串仍是简体 —— 要扩覆盖就在处加 `.L`（helper 在
-`CodePouchShared/Localization.swift`）。
+`AlludeShared/Localization.swift`）。
 
 🔴 业务数据**不能进表**：快递公司名、驿站名、解析正则、OCR 关键词。
 生成脚本已跳过 `PickupParser.swift` / `CourierBrand.swift` / `BrandPalette.swift` / `PickupAICheck.swift`。
@@ -643,7 +643,7 @@ python3 tools/license-gen/issue-openssl.py --check "<凭证>"
 
 ## 快捷指令自动化（2026-11-05）
 
-设置 › 快捷指令自动化：把「收到短信 → 添加到拾码」的自动化导进系统。
+设置 › 快捷指令自动化：把「收到短信 → 添加到Allude」的自动化导进系统。
 
 **能力边界（都是实测结论，别再重试）**：
 
@@ -655,7 +655,7 @@ python3 tools/license-gen/issue-openssl.py --check "<凭证>"
 - **`WFWorkflowImportQuestions` 对触发器不生效**（B1/B2 两种 Category 都试过，
   能添加但不弹输入框）→ 自定义关键词这条路关闭，只能预定几个词。
 - `shortcuts sign` 会**剥掉 `WFWorkflowName`** → 导入后的名称只能靠**文件名**，
-  所以文件名必须是「快递取件码拾码解析「关键词」.shortcut」。
+  所以文件名必须是「Allude 取件码解析「关键词」.shortcut」。
 - 🔴 生成脚本要**同时**写名称、关键词、UUID：2026-11-05 曾漏了关键词赋值，
   四个文件全是「【」，导致主人分享出去的三条链接全是错的（下载回来验过才发现）。
 
@@ -800,7 +800,7 @@ Apple 智能页显示低版本说明页。发现并修掉一处：`appGlass()` �
 
 液态玻璃的处理：
 
-- `.glassEffect` 是 iOS 26 新增，**所有调用必须走 `appGlass()`**（`CodePouchShared/GlassCompat.swift`）：
+- `.glassEffect` 是 iOS 26 新增，**所有调用必须走 `appGlass()`**（`AlludeShared/GlassCompat.swift`）：
   系统 ≥26 且用户开关打开 → 真液态玻璃；否则 → 系统毛玻璃 `.ultraThinMaterial` + 0.5pt 描边。
 - 设置 › 外观 ›「液态玻璃」开关（仅 iOS 26+ 显示）控制是否启用，界面改动重启生效。
 - 其它已处理的低版本 API：`tabBarMinimizeBehavior`（modifier 收起）、
@@ -829,7 +829,7 @@ Apple 智能页显示低版本说明页。发现并修掉一处：`appGlass()` �
 陇ICP备2026011130号       审核通过 2026-11-06
 ```
 
-- 🔴 **App 内不显示备案号**（2026-11-07 主人定）：拾码是无服务器、不联网的单机 App，
+- 🔴 **App 内不显示备案号**（2026-11-07 主人定）：Allude是无服务器、不联网的单机 App，
   唯一网络行为是 StoreKit（仅连 Apple），按官方口径「单机不联网的 App 无需备案」，
   走苹果豁免即可 —— 因此 `PageFooter` 只显示版本号。网站备案号仍留在开发者网站。
 - 🔴 **网站备案 ≠ App 备案**：这次通过的是**网站/域名**备案（GitHub Pages、Gitee 镜像等
@@ -842,4 +842,4 @@ Apple 智能页显示低版本说明页。发现并修掉一处：`appGlass()` �
 署名 `极客ZHANG <zhang_wangning@126.com>`。提交信息用中文，
 前缀 `feat:` / `fix:` / `refactor:` / `style:` / `docs:` / `chore:`。
 
-远端：`https://github.com/Zhangwangning/CodePouch`（私有）。
+远端：`https://github.com/Zhangwangning/Allude`（私有）。

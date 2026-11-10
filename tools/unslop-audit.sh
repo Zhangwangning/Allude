@@ -13,7 +13,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-SRC=(CodePouch/CodePouch CodePouch/CodePouchShared CodePouch/CodePouchWidget)
+SRC=(Allude/Allude/AlludeShared Allude/AlludeWidget)
 ARGS=(); MODE_ALL=0; ONLY_CHANGED=0
 for a in "$@"; do
   case "$a" in

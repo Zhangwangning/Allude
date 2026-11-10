@@ -12,7 +12,7 @@
 #   一个由 `open` 启动的 App 读该卷上的文件时，stat() 立即返回，
 #   但紧接着的 open() 会在内核里永久挂起且不弹授权框 —— 表现为「双击没反应」。
 #   装到 /Applications（本机卷）后彻底绕开该门禁。
-#   App 的日常数据（私钥、台账）本就落在 ~/Library/Application Support/CodeClipIssuer/，
+#   App 的日常数据（私钥、台账）本就落在 ~/Library/Application Support/AlludeIssuer/，
 #   仓库仅作一次性导入来源，因此安装副本是自包含的。
 # ============================================================================
 

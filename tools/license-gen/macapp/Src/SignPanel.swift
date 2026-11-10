@@ -135,7 +135,7 @@ final class SignPanelController: NSViewController {
     // MARK: 交互
 
     @objc private func openMainWindow() {
-        NotificationCenter.default.post(name: .codeclipOpenMainWindow, object: nil)
+        NotificationCenter.default.post(name: .alludeOpenMainWindow, object: nil)
     }
 
     @objc private func serviceChanged() {
@@ -192,7 +192,7 @@ final class SignPanelController: NSViewController {
             do {
                 let index = try core.appendLedger(license)
                 message += " · 已记账 \(String(format: "#%04d", index))"
-                NotificationCenter.default.post(name: .codeclipLedgerChanged, object: nil)
+                NotificationCenter.default.post(name: .alludeLedgerChanged, object: nil)
             } catch {
                 message += " · ⚠️ 台账写入失败"
             }

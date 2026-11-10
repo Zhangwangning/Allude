@@ -16,7 +16,7 @@ App 的「我的 › VIP 模式 › 导入凭证」。
 - 不进 App 包
 - 换机器时手工拷过去；**丢了就再也签不出能被 App 接受的码**
 
-对应的公钥硬编码在 App 的 `CodePouchShared/OfflineLicense.swift`
+对应的公钥硬编码在 App 的 `AlludeShared/OfflineLicense.swift`
 （`LicenseVerifier.publicKeysBase64`）。
 
 > 🔴 私钥泄露 = 任何人都能自造永久会员，且没有补救手段。
@@ -136,7 +136,7 @@ cd macapp && ./build.sh          # 仅构建，产物：macapp/build/发码.app
 **这一步不只是图方便** —— 仓库在外挂卷上，而 `open` 启动的 App 读该卷文件会被
 内核门禁永久挂起（详见下节）。装到本机卷后，这个风险从根上消失。
 
-App 的数据（私钥、台账）本来就落在 `~/Library/Application Support/CodeClipIssuer/`，
+App 的数据（私钥、台账）本来就落在 `~/Library/Application Support/AlludeIssuer/`，
 仓库只作一次性导入来源，所以安装副本是**自包含**的，不需要仓库在场也能跑。
 
 > 装到 `/Applications` 后，「导入来源目录」的默认推算会失效（`build/发码.app`
@@ -275,7 +275,7 @@ App 即可独立运行：
 
 | | 路径 |
 |---|---|
-| 本机容器（App 读写此处） | `~/Library/Application Support/CodeClipIssuer/` |
+| 本机容器（App 读写此处） | `~/Library/Application Support/AlludeIssuer/` |
 | 仓库目录（同步来源） | `tools/license-gen/` |
 
 App 每签一张，追加到的是**容器**里那份台账；跑一次同步脚本即可带回仓库

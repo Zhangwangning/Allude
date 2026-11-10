@@ -1,4 +1,4 @@
-# 拾码 CodePouch · App 备案准备清单 v1
+# Allude Allude · App 备案准备清单 v1
 
 > 2026-11-07 整理。网站备案（陇ICP备2026011130号，2026-11-06 通过）只是前提，
 > App 备案要**另外提交**，两者编号不同。
@@ -28,7 +28,7 @@ App 备案要求填一个**接入服务商**。常见三种情况：
 | 你的情况 | 接入服务商 |
 |---|---|
 | App 有后端服务器 | 那台服务器所在的云厂商（阿里云/腾讯云/华为云…） |
-| **App 完全没有服务器**（拾码就是这种） | 通常填**应用分发平台**（App Store / 各安卓商店），或按当地管局口径选「无」并说明 |
+| **App 完全没有服务器**（Allude就是这种） | 通常填**应用分发平台**（App Store / 各安卓商店），或按当地管局口径选「无」并说明 |
 | 只想先备案、还没上架 | 先跟**云厂商备案客服**确认「无服务端 App 怎么填接入商」 |
 
 > 🔴 这是唯一需要你打电话确认的一步：**甘肃管局对「无服务器 App」的接入商填写口径**。
@@ -52,12 +52,12 @@ App 备案要求填一个**接入服务商**。常见三种情况：
 
 ### B. App 信息（本文件已填好，直接抄）
 
-| 备案表单字段 | 拾码的填写值 |
+| 备案表单字段 | Allude的填写值 |
 |---|---|
-| App 名称 | 拾码 CodePouch |
+| App 名称 | Allude Allude |
 | App 版本 | 0.3.6（备案填当前上架版本即可，后续改版本不用重备） |
 | 平台 | iOS（如后续上安卓需分别备案或补录） |
-| 包名 / Bundle ID | `com.jikezhang.codeclip` |
+| 包名 / Bundle ID | `com.jikezhang.allude` |
 | App 图标 | 1024×1024 不透明（`Assets.xcassets/AppIcon.appiconset`） |
 | 应用分类 | 工具类（效率 / 生活辅助） |
 | 服务内容 | 短信取件码整理与收藏（本地处理，无社交、无内容发布） |
@@ -65,8 +65,8 @@ App 备案要求填一个**接入服务商**。常见三种情况：
 | 服务器 / 域名 | 无 |
 | 是否有用户发布内容 | 否 |
 | 是否涉及新闻/出版/教育/医疗/金融等前置审批 | 否 |
-| 隐私政策 URL | https://zhangwangning.github.io/codepouch-legal/privacy.html |
-| 用户协议 URL | https://zhangwangning.github.io/codepouch-legal/terms.html |
+| 隐私政策 URL | https://zhangwangning.github.io/allude-legal/privacy.html |
+| 用户协议 URL | https://zhangwangning.github.io/allude-legal/terms.html |
 | 第三方 SDK 清单 | **无**（零第三方依赖，零 SPM 包，全部 Apple 官方框架） |
 | 是否收集个人信息 | 否（数据只在本机；App Store 隐私标签选「不收集」） |
 
@@ -87,7 +87,7 @@ App 备案要求填一个**接入服务商**。常见三种情况：
    备案后改名/换图标要办「变更」，所以上架前把名字定死。
 2. **隐私政策里要能读到：不收集、不联网、无第三方 SDK**
    （现在的三份副本已经这么写了，保持同步）
-3. **包名 `com.jikezhang.codeclip` 不要改** —— 改了等于新 App，要重新备案。
+3. **包名 `com.jikezhang.allude` 不要改** —— 改了等于新 App，要重新备案。
 4. **App 要真实可安装**：管局可能抽查，准备好 TestFlight 或 IPA。
 5. **短信权限说明**要清楚：App 不读取短信、不申请短信权限，
    只通过「快捷指令自动化」接收用户主动转发的内容 —— 这条在备案问询里可能被问到。

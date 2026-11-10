@@ -19,7 +19,7 @@ let ccDebugON: Bool = {
 
 func ccLog(_ message: String) {
     guard ccDebugON else { return }
-    let line = "[codeclip-issuer] \(message)\n"
+    let line = "[allude-issuer] \(message)\n"
     FileHandle.standardError.write(line.data(using: .utf8)!)
     let file = "/tmp/cc-issuer-debug.log"
     if let handle = FileHandle(forWritingAtPath: file) {
@@ -45,7 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupPopover()
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(openMainWindow),
-                                               name: .codeclipOpenMainWindow,
+                                               name: .alludeOpenMainWindow,
                                                object: nil)
         // 延后到 run loop 下一轮再建窗：`open` 启动路径下，此刻立即 showWindow
         // 会因前台权限尚未就绪而窗口不上屏（实测直接执行二进制却正常）

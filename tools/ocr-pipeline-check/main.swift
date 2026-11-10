@@ -8,9 +8,9 @@
 //
 // 用法：
 //   swiftc -O -o /tmp/ocr-pipeline-check \
-//     "/Volumes/ZWN/Downloads/Project/CodePouch/CodePouch/CodePouch/Models/PickupParser.swift" \
-//     "/Volumes/ZWN/Downloads/Project/CodePouch/tools/ocr-pipeline-check/main.swift"
-//   /tmp/ocr-pipeline-check "/Volumes/ZWN/Downloads/Project/CodePouch/tools/ocr-pipeline-check/sms-sample.png"
+//     "/Volumes/ZWN/Downloads/Project/Allude/Allude/Allude/Models/PickupParser.swift" \
+//     "/Volumes/ZWN/Downloads/Project/Allude/tools/ocr-pipeline-check/main.swift"
+//   /tmp/ocr-pipeline-check "/Volumes/ZWN/Downloads/Project/Allude/tools/ocr-pipeline-check/sms-sample.png"
 
 import Foundation
 import Vision

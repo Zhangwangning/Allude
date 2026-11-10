@@ -80,7 +80,7 @@ Duo 没有真机之前，用**模拟器 + 环境变量**：
 ```bash
 SIMCTL_CHILD_CODEPOUCH_DEVICE=duo \
 SIMCTL_CHILD_SCREEN=pending \
-xcrun simctl launch <UDID> com.jikezhang.codeclip
+xcrun simctl launch <UDID> com.jikezhang.allude
 ```
 
 截图逐页过：待取、已取、详情、统计、设置、关于、教程、添加面板、分享卡片。

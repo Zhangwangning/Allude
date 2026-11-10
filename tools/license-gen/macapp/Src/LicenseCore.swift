@@ -4,7 +4,7 @@ import CryptoKit
 // ============================================================================
 // 凭证核心：签发 / 验签 / 台账
 //
-// 与 tools/license-gen/issue.mjs、CodePouchShared/OfflineLicense.swift 三者
+// 与 tools/license-gen/issue.mjs、AlludeShared/OfflineLicense.swift 三者
 // **必须字节一致**，否则「卖家说签了、买家说验不过」。四处细节：
 //   ① payload JSON 字段顺序固定 s→d→i→e→n，中间不能有空格
 //   ② 载荷编码用 base64url（+→-  /→_  去掉 =）
@@ -14,7 +14,7 @@ import CryptoKit
 // ============================================================================
 
 /// 凭证档位。2026-10-30 改买断制：只保留临时（7 天）与买断（永久）。
-/// 🔴 必须与 App 侧 `CodePouchShared/OfflineLicense.swift` 的 `LicenseService` 完全一致 ——
+/// 🔴 必须与 App 侧 `AlludeShared/OfflineLicense.swift` 的 `LicenseService` 完全一致 ——
 ///    多一个 case，签出来的凭证在 App 里会解不出枚举，直接判 `malformed`。
 enum LicenseService: String, CaseIterable {
     case trial, lifetime
@@ -120,7 +120,7 @@ final class LicenseCore {
         let base = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory() + "/Library/Application Support")
-        return base.appendingPathComponent("CodeClipIssuer", isDirectory: true)
+        return base.appendingPathComponent("AlludeIssuer", isDirectory: true)
     }
 
     /// 私钥与台账的实际读写位置（本机容器内）

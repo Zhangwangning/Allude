@@ -2,8 +2,8 @@
 //
 // 用法：
 //   swiftc -O -o /tmp/notify-check \
-//     "/Volumes/ZWN/Downloads/Project/CodePouch/CodePouch/CodePouch/Models/PickupNotifier.swift" \
-//     /Volumes/ZWN/Downloads/Project/CodePouch/tools/notify-check/main.swift
+//     "/Volumes/ZWN/Downloads/Project/Allude/Allude/Allude/Models/PickupNotifier.swift" \
+//     /Volumes/ZWN/Downloads/Project/Allude/tools/notify-check/main.swift
 //   /tmp/notify-check
 //
 // 为什么需要这个脚本：通知是**唯一没法在模拟器里自动验证**的东西 ——
@@ -169,7 +169,7 @@ for title in titles { print("     · \(title)") }
 // MARK: - 7. 归组标识
 
 print("\n── 7. 归组 ──")
-expect(PickupNotifier.threadID == "com.jikezhang.codeclip.pickup",
+expect(PickupNotifier.threadID == "com.jikezhang.allude.pickup",
        "threadIdentifier 固定为 \(PickupNotifier.threadID)（同批折叠成一组）")
 
 print(failures == 0 ? "\n全部通过" : "\n✗ 有 \(failures) 项未通过")
