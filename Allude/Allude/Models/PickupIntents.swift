@@ -55,9 +55,12 @@ struct ParsePickupTextIntent: AppIntent {
     ///    改用等价的 `openAppWhenRun = false`（iOS 16 起可用）：后台执行、不拉起 App。
     static var openAppWhenRun: Bool { false }
 
+    // ⚠️ 2026-11-11 部署目标降到 iOS 17：`inputConnectionBehavior` 是 iOS 18 的
+    //    `@Parameter` 初始化参数，低版本编不过，这里只用 title/description。
+    //    导入我们预签好的 .shortcut 时参数绑定已写在文件里，不受影响；
+    //    手动新建的用户按教程选「快捷指令输入」即可。
     @Parameter(title: "短信内容",
-               description: "选择「快捷指令输入」，自动化触发时即为刚收到的那条短信",
-               inputConnectionBehavior: .connectToPreviousIntentResult)
+               description: "选择「快捷指令输入」，自动化触发时即为刚收到的那条短信")
     var text: String
 
     @MainActor
@@ -97,10 +100,11 @@ struct ParsePickupImageIntent: AppIntent {
     ///    改用等价的 `openAppWhenRun = false`（iOS 16 起可用）：后台执行、不拉起 App。
     static var openAppWhenRun: Bool { false }
 
+    // ⚠️ 2026-11-11 部署目标降到 iOS 17：`supportedContentTypes` / `inputConnectionBehavior`
+    //    都是 iOS 18 才有的 `@Parameter` 初始化参数，低版本编不过，这里只用 title/description。
+    //    截图动作的输出本来就是 `IntentFile`，类型本身已限定成图片。
     @Parameter(title: "截图",
-               description: "选「截屏」动作的输出，或任意含取件信息的图片",
-               supportedContentTypes: [.image],
-               inputConnectionBehavior: .connectToPreviousIntentResult)
+               description: "选「截屏」动作的输出，或任意含取件信息的图片")
     var image: IntentFile
 
     static var parameterSummary: some ParameterSummary {

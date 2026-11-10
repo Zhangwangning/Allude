@@ -466,7 +466,7 @@ struct AppMarkIcon: View {
         Image(AppIconStore.current.assetName)
             .renderingMode(.original)
             .resizable()
-            .widgetAccentedRenderingMode(.fullColor)
+            .widgetAccentedFullColor()
             .scaledToFill()
             .frame(width: size, height: size)
             .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))

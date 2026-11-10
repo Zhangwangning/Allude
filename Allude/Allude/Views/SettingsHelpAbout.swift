@@ -262,7 +262,7 @@ struct AboutView: View {
     }
 
     /// 与工程 `IPHONEOS_DEPLOYMENT_TARGET` 保持一致（改部署目标时同步这里）
-    static let minimumOS = "iOS 18.0"
+    static let minimumOS = "iOS 17.0"
 
     private var header: some View {
         VStack(spacing: 8) {

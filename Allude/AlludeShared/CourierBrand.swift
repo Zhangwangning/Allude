@@ -706,7 +706,7 @@ struct CourierLogo: View {
             Image(uiImage: image)
                 .renderingMode(.original)
                 .resizable()
-                .widgetAccentedRenderingMode(.fullColor)
+                .widgetAccentedFullColor()
                 .scaledToFill()
         } else {
             let _ = BrandDebug.trace("name=\(info.name) asset=\(info.asset ?? "nil") loaded=false")

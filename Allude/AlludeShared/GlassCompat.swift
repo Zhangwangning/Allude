@@ -78,3 +78,20 @@ extension View {
         }
     }
 }
+
+// MARK: - `widgetAccentedRenderingMode` 兼容（2026-11-11 支持 iOS 17）
+
+// `.widgetAccentedRenderingMode(.fullColor)` 是 iOS 18 才有的 API：灵动岛折叠态 /
+// 小组件里不声明的话，方形品牌图会被 accented 渲染管线涂成单色灰块。
+// 部署目标降到 iOS 17 后这行编不过；iOS 17 还没有「着色小组件」管线，本来也不会被重涂，
+// 低版本直接返回原图即可。
+extension Image {
+    @ViewBuilder
+    func widgetAccentedFullColor() -> some View {
+        if #available(iOS 18.0, *) {
+            self.widgetAccentedRenderingMode(.fullColor)
+        } else {
+            self
+        }
+    }
+}

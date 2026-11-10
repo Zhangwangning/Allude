@@ -1,34 +1,34 @@
 #!/usr/bin/env bash
-# iOS 18 兼容回归（等运行时装好后再跑）
+# iOS 17 兼容回归（等运行时装好后再跑；部署目标 2026-11-11 已降到 17.0）
 #
 #   bash tools/verify-ios18.sh
 #
 # 做三件事：
-#   1. 找一个 iOS 18.x 的模拟器运行时；没有就报错退出（提示怎么装）
+#   1. 找一个 iOS 17.x 的模拟器运行时；没有就报错退出（提示怎么装）
 #   2. 用它建/复用一台 iPhone 16 Pro 模拟器，装上 Debug 构建
-#   3. 逐屏截图到 /tmp/ios18/，供人工对比 iOS 27 的观感
+#   3. 逐屏截图到 /tmp/ios17/，供人工对比 iOS 27 的观感
 set -euo pipefail
 
-OUT=/tmp/ios18
+OUT=/tmp/ios17
 mkdir -p "$OUT"
 APP=/tmp/allude-verify/Build/Products/Debug-iphonesimulator/Allude.app
 BUNDLE=com.jikezhang.allude
 
-# 1) 找 iOS 18 运行时
-RUNTIME=$(xcrun simctl list runtimes | grep -E "iOS 18" | grep -oE "com\.apple\.CoreSimulator\.SimRuntime\.iOS-18[^ ]*" | head -1 || true)
+# 1) 找 iOS 17 运行时
+RUNTIME=$(xcrun simctl list runtimes | grep -E "iOS 17" | grep -oE "com\.apple\.CoreSimulator\.SimRuntime\.iOS-17[^ ]*" | head -1 || true)
 if [ -z "$RUNTIME" ]; then
-  echo "✗ 没有 iOS 18 运行时。先装："
-  echo "    xcodebuild -downloadPlatform iOS -buildVersion 18.6"
+  echo "✗ 没有 iOS 17 运行时。先装："
+  echo "    xcodebuild -downloadPlatform iOS -buildVersion 17.5"
   exit 1
 fi
 echo "✓ 运行时：$RUNTIME"
 
 # 2) 建/复用模拟器
-DEVICE=$(xcrun simctl list devices | grep "iOS 18" | grep -oE "[0-9A-F-]{36}" | head -1 || true)
+DEVICE=$(xcrun simctl list devices | grep "iOS 17" | grep -oE "[0-9A-F-]{36}" | head -1 || true)
 if [ -z "$DEVICE" ]; then
   echo "→ 新建模拟器"
-  DEVICE=$(xcrun simctl create "iPhone16Pro-iOS18" \
-    com.apple.CoreSimulator.SimDeviceType.iPhone-16-Pro "$RUNTIME")
+  DEVICE=$(xcrun simctl create "iPhone15Pro-iOS17" \
+    com.apple.CoreSimulator.SimDeviceType.iPhone-15-Pro "$RUNTIME")
 fi
 echo "✓ 设备：$DEVICE"
 

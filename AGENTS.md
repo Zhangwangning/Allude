@@ -804,16 +804,23 @@ bash tools/unslop-audit.sh --json     # 机器可读
 - 2 × `SWIFT_DEVICE_SIZE_HARDCODE`：分享卡导出图写死 390×500（有意为之，
   那是**图片尺寸**不是布局尺寸，可加注释豁免）。
 
-## 系统兼容基线（2026-11-07 定稿）
+## 系统兼容基线（2026-11-11 下调到 iOS 17.0）
 
 ```
-部署目标：iOS 18.0（App 与小组件扩展一致）
+部署目标：iOS 17.0（App 与小组件扩展一致）
 ```
 
 | 设备 | 需要兼容 | 说明 |
 |---|---|---|
-| iPhone 直板机 / iPad | **iOS 18.0+** | 主力兼容范围 |
+| iPhone 直板机 / iPad | **iOS 17.0+** | 主力兼容范围（2026-11-11 主人要求从 18.0 下调） |
 | **iPhone Duo** | **iOS 27+ 即可** | 🔴 它出厂系统就是 iOS 27，**不必适配 iOS 26 以下**；Duo 专属代码可直接用 iOS 26/27 API |
+
+**iOS 17/18 兼容做法（2026-11-11）**：`widgetAccentedRenderingMode`（iOS 18）已收进
+`Allude/AlludeShared/GlassCompat.swift` 的 `Image.widgetAccentedFullColor()`（低版本原样返回）；
+`@Parameter` 的 `inputConnectionBehavior` / `supportedContentTypes`（iOS 18）在
+`Allude/Allude/Models/PickupIntents.swift` 里去掉，导入预签好的快捷指令不受影响。
+🔴 `AlludeShared` 在工程里是**显式 PBXGroup**（不是同步组）：新增文件必须手动加进
+project.pbxproj 才会参与编译，否则报「value of type ... has no member」。
 
 **iOS 18 实测记录（2026-11-08，iOS 18.2 模拟器 iPhone 16 Pro）**：
 列表 / 详情 / 设置 / 外观 / Apple 智能 / 桌面小组件全部正常；「液态玻璃」开关在 18 上**正确隐藏**；
