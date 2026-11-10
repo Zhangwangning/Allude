@@ -31,7 +31,7 @@ struct VersionHistoryView: View {
     }
 
     private let entries: [Entry] = [
-        Entry(version: "0.3.8", date: "2026-11-11", theme: "更名 Allude · 支持 iOS 17 · 自动化导入修好了", highlights: [
+        Entry(version: "1.0.0", date: "2026-11-11", theme: "首个正式版 · 更名 Allude · 支持 iOS 17", highlights: [
             "产品更名：拾码 → Allude，订阅版叫 Allude Pro；图标、关于页与法务页同步换新",
             "最低系统从 iOS 18 下调到 iOS 17：iPhone 与 iPad 上 iOS 17 也能安装使用",
             "修好首次引导里「一键导入自动化」点了没反应：现在会弹出分享面板，选「快捷指令」即可导入",
