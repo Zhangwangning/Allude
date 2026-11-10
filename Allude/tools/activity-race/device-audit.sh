@@ -124,7 +124,7 @@ say ""
 if [[ "${RESTORE}" == "1" ]]; then
   xcrun devicectl device process launch --device "${DEV_UDID}" \
     --terminate-existing "${BUNDLE}" >/dev/null 2>&1 \
-    && ok "已复位为正常模式运行" || warn "复位失败，请手动打开一次码夹"
+    && ok "已复位为正常模式运行" || warn "复位失败，请手动打开一次Allude"
 fi
 
 exit "${RC}"

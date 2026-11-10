@@ -36,7 +36,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJ_ROOT="$SCRIPT_DIR/../Allude"
 PROJ="$PROJ_ROOT/Allude.xcodeproj"
 CFG_DIR="$PROJ_ROOT/Config"
-DD="/tmp/codepouch-device"
+DD="/tmp/allude-device"
 BUNDLE_ID="com.jikezhang.allude"
 SCHEME="Allude"
 
@@ -191,29 +191,29 @@ xcodebuild -project "$PROJ" \
            -derivedDataPath "$DD" \
            -allowProvisioningUpdates \
            OTHER_SWIFT_FLAGS="-disable-sandbox" \
-           build > /tmp/codepouch-device-build.log 2>&1
+           build > /tmp/allude-device-build.log 2>&1
 rc=$?
 set -e
 # 🔴 不要写成 `xcodebuild ... | tee log | grep ...` 再取 PIPESTATUS：
 #    `|| true` 会重置 PIPESTATUS，导致构建失败也拿到 rc=0，
 #    随后把空的 .app 目录当产物去安装（报 Info.plist missing）。2026-10-30 修。
 grep -E "error:|warning:|CodeSign|BUILD SUCCEEDED|BUILD FAILED|No profiles|doesn't include" \
-  /tmp/codepouch-device-build.log || true
+  /tmp/allude-device-build.log || true
 
 if [[ $rc -ne 0 ]]; then
   say ""
-  if grep -q "application-groups" /tmp/codepouch-device-build.log; then
+  if grep -q "application-groups" /tmp/allude-device-build.log; then
     warn "签名被 App Group 拦下 —— 这正是免费账号的已知限制。"
     say ""
     say "  解决办法：改用降级模式重装"
     say "    ${C_DIM}$0 --no-appgroup${C_OFF}"
     say ""
-  elif grep -qi "developer mode" /tmp/codepouch-device-build.log; then
+  elif grep -qi "developer mode" /tmp/allude-device-build.log; then
     warn "iPhone 尚未开启开发者模式。"
     say "  设置 → 隐私与安全性 → 开发者模式 → 打开 → 重启 → 确认"
     say ""
   else
-    warn "构建失败，完整日志：/tmp/codepouch-device-build.log"
+    warn "构建失败，完整日志：/tmp/allude-device-build.log"
     say "  常见原因：Apple ID 未登录 / 描述文件额度用尽（免费账号 7 天 10 个 App ID）"
     say ""
   fi
@@ -226,7 +226,7 @@ APP="$(find "$DD/Build/Products/Debug-iphoneos" -maxdepth 1 -name "$SCHEME.app" 
 [[ -n "$APP" ]] || die "找不到构建产物 $SCHEME.app"
 # 🔴 只判断目录存在不够：构建失败时 xcodebuild 会留下一个空壳 .app 目录，
 #    安装时才报 "Info.plist: missing"。这里前置校验，把问题挡在安装之前。
-[[ -f "$APP/Info.plist" ]] || die "产物不完整（缺 Info.plist）：$APP —— 构建实际失败，请查 /tmp/codepouch-device-build.log"
+[[ -f "$APP/Info.plist" ]] || die "产物不完整（缺 Info.plist）：$APP —— 构建实际失败，请查 /tmp/allude-device-build.log"
 
 say ""
 say "── 安装到 iPhone ────────────────────────────────"

@@ -1,4 +1,4 @@
-# Allude Allude · App 备案准备清单 v1
+# Allude · App 备案准备清单 v1
 
 > 2026-11-07 整理。网站备案（陇ICP备2026011130号，2026-11-06 通过）只是前提，
 > App 备案要**另外提交**，两者编号不同。
@@ -54,8 +54,8 @@ App 备案要求填一个**接入服务商**。常见三种情况：
 
 | 备案表单字段 | Allude的填写值 |
 |---|---|
-| App 名称 | Allude Allude |
-| App 版本 | 0.3.6（备案填当前上架版本即可，后续改版本不用重备） |
+| App 名称 | Allude |
+| App 版本 | 0.3.7（备案填当前上架版本即可，后续改版本不用重备） |
 | 平台 | iOS（如后续上安卓需分别备案或补录） |
 | 包名 / Bundle ID | `com.jikezhang.allude` |
 | App 图标 | 1024×1024 不透明（`Assets.xcassets/AppIcon.appiconset`） |

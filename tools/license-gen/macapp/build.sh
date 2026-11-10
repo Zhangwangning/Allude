@@ -1,6 +1,6 @@
 #!/bin/zsh
 # ============================================================================
-# 码夹 · 发码工具（macOS 客户端）构建脚本
+# Allude · 发码工具（macOS 客户端）构建脚本
 #
 # 只依赖 Command Line Tools：xcrun swiftc + codesign，不需要 Xcode 工程。
 # 产物：build/发码.app
@@ -42,7 +42,7 @@ cat > "$OUT/Contents/Info.plist" <<PLIST
     <key>CFBundleExecutable</key><string>${APP_NAME}</string>
     <key>CFBundleIdentifier</key><string>${BUNDLE_ID}</string>
     <key>CFBundleName</key><string>${APP_NAME}</string>
-    <key>CFBundleDisplayName</key><string>码夹发码</string>
+    <key>CFBundleDisplayName</key><string>Allude 发码</string>
     <key>CFBundleDevelopmentRegion</key><string>zh-Hans</string>
     <key>CFBundleLocalizations</key>
     <array>
@@ -73,7 +73,7 @@ PLIST
 mkdir -p "$OUT/Contents/Resources/zh-Hans.lproj"
 cat > "$OUT/Contents/Resources/zh-Hans.lproj/InfoPlist.strings" <<'STRINGS'
 /* 简体中文资源占位 + 显示名本地化。 */
-CFBundleDisplayName = "码夹发码";
+CFBundleDisplayName = "Allude 发码";
 STRINGS
 
 echo "▸ 编译（${CONFIG}）"

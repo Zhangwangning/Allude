@@ -43,7 +43,7 @@ enum SigningExpiryNotifier {
 
         let content = UNMutableNotificationContent()
         content.title = "Allude的 iOS 签名明天到期"
-        content.body = "重新安装一次即可继续使用，取件记录不会丢。设置 › 激活 可查看剩余时间。"
+        content.body = "重新安装一次即可继续使用，取件记录不会丢。"
         content.sound = .default
 
         let components = Calendar.current.dateComponents(

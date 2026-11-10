@@ -3,9 +3,15 @@
 iOS 取件码收纳 App。核心承诺：**数据只在本机，不联网、不上传、不需要注册**。
 SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 
-商业模式：**免费下载 + 订阅解锁**（参照 Infuse），三档同一权益：
-`com.jikezhang.allude.pro.monthly`（¥1/月）、`.yearly`（¥9/年）、
-`.lifetime`（¥18，非消耗型买断，**主推**；≈ 两年年费）。走 StoreKit 2，价格一律取 `Product.displayPrice`。
+商业模式：**免费下载 + 订阅解锁**（参照 Infuse），同一权益。2026-11-08 主人定：**只卖两档**：
+
+| 商品 | Product ID | 定价 | 说明 |
+|---|---|---|---|
+| 每年 | `com.jikezhang.allude.pro.yearly` | $1.99 / 年 | 自动续期订阅 |
+| 终身 | `com.jikezhang.allude.pro.lifetime` | $9.99 | 非消耗型买断，**主推**（≈ 五年年费） |
+
+`pro.monthly` 已从 App Store 下架，`PurchaseStore.Plan.monthly` 只为解码旧数据保留
+（`displayedPlans` 只有 `[.lifetime, .yearly]`）。走 StoreKit 2，价格一律取 `Product.displayPrice`。
 订阅会过期 → 权益快照必须写 `expiresAt`，否则小组件会一直按完整版渲染。
 
 > 隐私政策与使用条款有**三份副本要同步**：GitHub Pages（`Zhangwangning/allude-legal`，
@@ -17,9 +23,10 @@ SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 > 地址集中写在 `Allude/Models/LegalLinks.swift`。这三个 URL 已经要填进
 > App Store Connect 的审核表单 —— **不要改**，确需更换必须先让旧地址 301 过去。
 
-> ⚠️ **未上架期间的激活入口**：设置 › 激活（`ActivationView`）。设备码打码显示、可复制；
-> 凭证由 `tools/license-gen` 签发，绑定设备码，本机离线验签。
-> 🔴 **正式上架前必须移除或改成内购** —— 用 license key 解锁完整功能是 App Review 3.1.1 的靶子。
+> ✅ **激活入口已于 2026-11-07 从设置页移除**（App Review 3.1.1）。
+> `ActivationView` 代码与 `SCREEN=activation` 截图脚手架还在，但设置里已没有任何入口；
+> 上架前可以整页删除，**不要再把粘贴凭证的入口加回来**。
+> `tools/license-gen` 只用于给内测用户签发凭证、读老快照里的 `license` 字段。
 
 > 旧的「离线签名凭证 / 绑定设备」体系已于 2026-10-31 停用（从未对外售卖）。
 > `LicenseVerifier` / `license-gen` 工具**仍在**，只为读得懂老快照里的 `license` 字段；
@@ -62,7 +69,9 @@ SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 被判 `malformed` → 用户当场掉回免费版。权益快照（`entitlement.json`）里新增字段
 一律 `decodeIfPresent` 给默认值，否则一次解码失败就是静默降级。
 
-`monthly` / `yearly` 就是为此保留的：**只读兼容，不再签发**，统一映射到 `.trial`。
+⚠️ 现状（2026-11-10 核对）：`MembershipPlan` 里已经没有 `monthly` / `yearly`
+（2026-10-30 删除），只剩 `none / trial / lifetime`；老快照解码由
+`EntitlementSnapshot.init(from:)` 按 `isPro` 兜底反推。**不要再往枚举里加 case 又删 case。**
 
 ### 4. 签名私钥绝不入库
 
@@ -73,8 +82,8 @@ SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 
 - **clean build 必须 0 warning**，弃用 API 当场迁移，不留 `@available` 兜底。
 - **不要提交构建产物**：`build/`、`build-sim/`、`DerivedData/` 已忽略。
-- **价格只能来自 StoreKit**：内购（`PurchaseStore`，订阅 + 买断三档）必须展示
-  `Product.displayPrice`，不要写死「¥18」—— 上架定价改了代码就对不上。
+- **价格只能来自 StoreKit**：内购（`PurchaseStore`，每年 + 终身两档）必须展示
+  `Product.displayPrice`，不要写死价格 —— 上架定价改了代码就对不上。
   除此之外不做销售催促、不做防盗宣示。
 
 
@@ -108,7 +117,9 @@ xcodebuild -project Allude.xcodeproj -scheme Allude \
 ```
 
 真机安装：`bash tools/install-device.sh`
-（自动探测 Team、构建、用 devicectl 装机。免费 Personal Team 签名，描述文件 7 天过期，到期重跑续签。）
+（自动探测 Team、构建、用 devicectl 装机。2026-11-10 起改用付费开发者账号
+`8499X3S9X8`（zhang_wangning@126.com），描述文件 1 年有效；
+下文「免费签名的 7 天」只适用于旧的免费团队 `SW725KU49U`。）
 
 ---
 
@@ -259,7 +270,9 @@ App 内「关于 › 声明与免责」（`StatementView`）是唯一的对外�
   `--display=3` 是展开态内屏（2007×2853）。折叠时内屏是黑的。
 - 截图必须带 `--display=`：不带参数会报 `Invalid argument`。
 - ⚠️ **`simctl` 没有 fold/unfold 命令**，展开态只能在模拟器菜单里手动切；
-  命令行验收先按折叠态做，展开态靠 `CODEPOUCH_DEVICE=duo` 脚手架 + 人工截图校对。
+  命令行验收先按折叠态做，展开态靠人工截图校对。
+  （不存在 `CODEPOUCH_DEVICE` / `ALLUDE_DEVICE` 这种切设备脚手架；`DUO_OUTER=1|0`
+  只强制灵动岛紧凑态的样式，不切屏。）
 
 ### 🔴 官方设计规范（2026-11-01 查证，优先于一切猜测）
 
@@ -663,10 +676,18 @@ python3 tools/license-gen/issue-openssl.py --check "<凭证>"
 理由：每多一条自动化就多一条系统「自动化已运行」通知，而 **iOS 27.2 起这条通知
 已无法关闭**（此前可在「设置 › 屏幕时间」里关），所以默认只推一条。
 
-**iCloud 链接**：四条都已填入 `ShortcutAutomation.icloudLinks`，
-每条都下载回来验过「名称 + 触发关键词 + 动作」三者一致。
+**iCloud 链接（2026-11-10 状态：失效待换）**：改名成 Allude 后，
+4 个 `.shortcut` 资源已全部拆包、把 App Intent 的 bundle id / 名称 / Team 改掉，
+并用 `shortcuts sign -m anyone` 重新签名（`Allude/Allude/Resources/Automations/`）。
+但 `ShortcutAutomation.icloudLinks` 里那 4 条 iCloud 记录**仍是旧 bundle 的包**
+（旧包内含 `com.jikezhang.codeclip`），点「iCloud 链接（推荐）」会导入失效动作。
+本机无法上传 iCloud → **必须由主人用快捷指令 App 重新分享这 4 条，再把新链接回填字典**；
+在那之前，UI 上只应把「用文件导入」当主路径，不要宣传 iCloud 链接。
 
 ## 免费签名的 7 天怎么算（2026-11-05 踩坑）
+
+> ⚠️ 2026-11-10 起已改用**付费开发者账号**（Team `8499X3S9X8`），描述文件 1 年有效，
+> 下面这段「7 天」是付费账号到位之前的记录，只在重新退回免费 Personal Team 时才有参考价值。
 
 主人问「为什么不到 7 天就不能用了」。真相：**7 天从苹果签发描述文件那一刻算，
 不是从装机算。**
@@ -698,6 +719,7 @@ tools/profile-expiry.sh path/to/X.ipa         # 看某个 ipa
 长期方案还是 SideStore / 付费开发者账号（1 年）。
 
 **App 内也能看到剩余天数**：设置 › 激活 › 当前状态 ›「iOS 签名」。
+⚠️ 2026-11-07 起设置里已没有「激活」入口，这一行现在只有 `SCREEN=activation` 脚手架可见。
 实现是 `SigningProfile` 直接读 bundle 里的 `embedded.mobileprovision`
 （CMS 里原样嵌着 XML plist，切出 `<?xml … </plist>` 解析 `ExpirationDate`，不联网）。
 App Store 版没有这个文件 → 整行自动不显示。

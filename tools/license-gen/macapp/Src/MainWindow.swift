@@ -14,7 +14,7 @@ final class MainWindowController: NSWindowController {
             backing: .buffered,
             defer: false
         )
-        window.title = "码夹 · 发码工具"
+        window.title = "Allude · 发码工具"
         window.minSize = NSSize(width: T.windowMinWidth, height: T.windowMinHeight)
         self.init(window: window)
         window.contentViewController = MainViewController()
@@ -52,7 +52,7 @@ final class MainViewController: NSViewController {
         root.wantsLayer = true
 
         // ── 顶部：标题 + 分段导航
-        let title = makeLabel("码夹 · 发码工具", size: T.h1, weight: .semibold)
+        let title = makeLabel("Allude · 发码工具", size: T.h1, weight: .semibold)
         let subtitle = makeLabel("设备码 → 激活凭证 · 纯离线签发", size: T.caption, color: C.tertiary)
         let titleStack = NSStackView(views: [title, subtitle])
         titleStack.orientation = .vertical

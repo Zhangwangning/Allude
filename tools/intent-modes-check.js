@@ -17,15 +17,15 @@
 //
 // 用法：
 //   node tools/intent-modes-check.js                       # 用默认 DerivedData 路径
-//   APP_PATH=/path/to/CodePouch.app node tools/intent-modes-check.js
+//   APP_PATH=/path/to/Allude.app node tools/intent-modes-check.js
 
 const fs = require("fs");
 const path = require("path");
 
-const DEFAULT_DD = "/tmp/codeclip-dd";
+const DEFAULT_DD = "/tmp/allude-dd";
 const appPath =
   process.env.APP_PATH ||
-  path.join(DEFAULT_DD, "Build/Products/Debug-iphonesimulator/CodePouch.app");
+  path.join(DEFAULT_DD, "Build/Products/Debug-iphonesimulator/Allude.app");
 
 const actionsPath = path.join(appPath, "Metadata.appintents/extract.actionsdata");
 

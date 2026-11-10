@@ -80,11 +80,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
-            let image = NSImage(systemSymbolName: "signature", accessibilityDescription: "码夹发码")
+            let image = NSImage(systemSymbolName: "signature", accessibilityDescription: "Allude 发码")
             image?.isTemplate = true
             button.image = image
             button.image?.size = NSSize(width: 17, height: 17)
-            button.toolTip = "码夹 · 发码工具"
+            button.toolTip = "Allude · 发码工具"
             button.target = self
             button.action = #selector(statusButtonClicked)
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])

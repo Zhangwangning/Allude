@@ -11,7 +11,7 @@ set -euo pipefail
 
 OUT=/tmp/ios18
 mkdir -p "$OUT"
-APP=/tmp/codepouch-verify/Build/Products/Debug-iphonesimulator/Allude.app
+APP=/tmp/allude-verify/Build/Products/Debug-iphonesimulator/Allude.app
 BUNDLE=com.jikezhang.allude
 
 # 1) 找 iOS 18 运行时
@@ -36,7 +36,7 @@ xcrun simctl boot "$DEVICE" 2>/dev/null || true
 xcrun simctl bootstatus "$DEVICE" -b >/dev/null 2>&1 || true
 
 # 3) 安装并发版截图
-[ -d "$APP" ] || { echo "✗ 先跑一次模拟器构建：/tmp/codepouch-verify"; exit 1; }
+[ -d "$APP" ] || { echo "✗ 先跑一次模拟器构建：/tmp/allude-verify"; exit 1; }
 xcrun simctl install "$DEVICE" "$APP"
 xcrun simctl terminate "$DEVICE" "$BUNDLE" 2>/dev/null || true
 

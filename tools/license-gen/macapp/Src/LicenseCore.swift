@@ -454,7 +454,7 @@ final class LicenseCore {
     // MARK: 台账
 
     private static let ledgerHeader = """
-    # 码夹 · 凭证签发台账
+    # Allude · 凭证签发台账
 
     卖家侧对账用（依据 `README.md` 第 112 行：「每单存一份设备码 + 签发记录」）。
 
