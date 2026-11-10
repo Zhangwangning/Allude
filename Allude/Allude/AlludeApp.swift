@@ -693,6 +693,16 @@ struct AlludeApp: App {
                     // 自定义驿站编辑页（添加模式，2026-10-15 名称+图标同页）
                     NavigationStack { StationEditView(mode: .add) }
 
+                case "automationShare":
+                    // 🔍 2026-11-11：验证「一键导入自动化」的分享面板（内测反馈过打不开）。
+                    //    跳过点击，启动后直接走首启引导里同一个入口，截图看面板是否弹出。
+                    RootView()
+                        .task {
+                            try? await Task.sleep(nanoseconds: 1_500_000_000)
+                            guard let preset = ShortcutAutomation.presets.first,
+                                  let url = ShortcutAutomation.preparedImportURL(for: preset) else { return }
+                            ShareSheetPresenter.present([url])
+                        }
                 case "automation", "guide":
                     NavigationStack { UsageGuideView() }
                 case "widgets":

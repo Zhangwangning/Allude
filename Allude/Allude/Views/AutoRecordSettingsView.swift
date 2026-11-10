@@ -31,8 +31,6 @@ struct SafariSheet: UIViewControllerRepresentable {
 }
 
 struct AutoRecordSettingsView: View {
-    @State private var shareURL: URL?
-    @State private var showShare = false
     @State private var linkURL: URL?
 
     var body: some View {
@@ -70,11 +68,6 @@ struct AutoRecordSettingsView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("快捷指令自动化")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showShare) {
-            if let shareURL {
-                ActivitySheet(items: [shareURL]).presentationDetents([.medium, .large])
-            }
-        }
         .sheet(item: Binding(
             get: { linkURL.map(WebLink.init) },
             set: { linkURL = $0?.url }
@@ -139,9 +132,9 @@ struct AutoRecordSettingsView: View {
                 }
             }
             Button {
-                guard let url = ShortcutAutomation.importFile(for: preset) else { return }
-                shareURL = url
-                showShare = true
+                // 与首启引导同一个修法：分享面板直接挂最上层控制器
+                guard let url = ShortcutAutomation.preparedImportURL(for: preset) else { return }
+                ShareSheetPresenter.present([url])
             } label: {
                 Label("用文件导入", systemImage: "square.and.arrow.down")
             }

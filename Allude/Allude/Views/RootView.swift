@@ -175,8 +175,6 @@ struct OnboardingView: View {
     @StateObject private var state = OnboardingPageState()
 
     // 首启页里的「导入自动化」用的分享面板
-    @State private var automationURL: URL?
-    @State private var showAutomationShare = false
 
     var body: some View {
         // 🔴 必须自带 NavigationStack：引导住在 fullScreenCover 里，
@@ -199,12 +197,6 @@ struct OnboardingView: View {
             if let raw = ProcessInfo.processInfo.environment["ONBOARDING_PAGE"],
                let page = Int(raw), (0...2).contains(page) {
                 state.page = page
-            }
-        }
-        .sheet(isPresented: $showAutomationShare) {
-            if let automationURL {
-                ActivitySheet(items: [automationURL])
-                    .presentationDetents([.medium, .large])
             }
         }
     }
@@ -299,11 +291,12 @@ struct OnboardingView: View {
             // 自动化页：一键导入 + 完整教程（都放底栏，页面圆点不会压到它们）
             if state.page == 1 {
                 Button {
+                    // 🔴 2026-11-11 内测反馈修复：分享面板直接挂到最上层控制器，
+                    //    不再塞进 SwiftUI 的 .sheet（那样在 fullScreenCover 里是空白面板）。
                     guard let preset = ShortcutAutomation.presets.first,
-                          let url = ShortcutAutomation.importFile(for: preset) else { return }
-                    automationURL = url
-                    showAutomationShare = true
+                          let url = ShortcutAutomation.preparedImportURL(for: preset) else { return }
                     ShortcutAutomation.markImported(preset.keyword)
+                    ShareSheetPresenter.present([url])
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "square.and.arrow.down.fill")

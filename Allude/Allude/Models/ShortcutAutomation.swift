@@ -83,13 +83,32 @@ enum ShortcutAutomation {
         importedKeywords = list
     }
 
+    /// 已经写好的临时文件（同一个关键词只复制一次）。
+    private static var cachedImportURLs: [String: URL] = [:]
+
+    /// 给界面用的可分享 URL：第一次调用时复制到临时目录，之后直接复用缓存。
+    @MainActor
+    static func preparedImportURL(for preset: Preset) -> URL? {
+        if let cached = cachedImportURLs[preset.keyword],
+           FileManager.default.fileExists(atPath: cached.path) {
+            return cached
+        }
+        guard let url = importFile(for: preset) else { return nil }
+        cachedImportURLs[preset.keyword] = url
+        return url
+    }
+
     /// 把预签好的文件写一份到临时目录（带好读的名字），返回可分享的 URL。
     static func importFile(for preset: Preset) -> URL? {
         guard let url = Bundle.main.url(forResource: preset.file, withExtension: "shortcut") else {
             return nil
         }
         let target = FileManager.default.temporaryDirectory
-            .appendingPathComponent("Allude·自动收录（\\(preset.keyword)）.shortcut")
+            // 🔴 2026-11-11 修：这里曾被双重转义成 `\(preset.keyword)`，
+            //    分享面板里显示成「Allude·自动收录（\(preset.…」这种字面量。
+            //    文件名 = 导入后的名称（shortcuts sign 会剥掉 WFWorkflowName），
+            //    所以直接用 displayName。
+            .appendingPathComponent("\(preset.displayName).shortcut")
         try? FileManager.default.removeItem(at: target)
         do {
             try FileManager.default.copyItem(at: url, to: target)
@@ -102,12 +121,36 @@ enum ShortcutAutomation {
 
 // MARK: - 分享面板（把 .shortcut 交给系统的「快捷指令」）
 
-struct ActivitySheet: UIViewControllerRepresentable {
-    let items: [Any]
+/// 直接把 `UIActivityViewController` 挂到当前最上层控制器上。
+///
+/// 🔴 2026-11-11（TestFlight 内测反馈）：「首次使用时一键导入自动化打不开」。
+///    原因：原来把 `UIActivityViewController` 塞进 SwiftUI 的 `.sheet` 里，
+///    系统分享面板的呈现被 SwiftUI 的 sheet 容器接管，实测会变成一张**空白/
+///    点不动的面板**（分享面板自己还要再 present 一层内容）。
+///    修法：跳过 SwiftUI 的呈现链，直接找到活跃窗口最顶层的 controller 去 present。
+///    首启引导是 fullScreenCover、设置页在 NavigationStack 里，两种上下文都能用。
+@MainActor
+enum ShareSheetPresenter {
+    static func present(_ items: [Any]) {
+        guard !items.isEmpty,
+              let scene = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .first(where: { $0.activationState == .foregroundActive }),
+              let root = scene.keyWindow?.rootViewController else { return }
 
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
+        var top = root
+        while let presented = top.presentedViewController {
+            top = presented
+        }
+
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        if let popover = controller.popoverPresentationController {
+            popover.sourceView = top.view
+            popover.sourceRect = CGRect(x: top.view.bounds.midX,
+                                        y: top.view.bounds.midY,
+                                        width: 0, height: 0)
+            popover.permittedArrowDirections = []
+        }
+        top.present(controller, animated: true)
     }
-
-    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }

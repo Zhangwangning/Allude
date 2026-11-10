@@ -947,6 +947,20 @@ struct FullVersionView: View {
 
                 if !purchase.isOwned {
                     primaryButton
+
+                    // 商品拉不到时（内测/商店暂时不可达），给一个手动的重试入口：
+                    // 商品在 App Store Connect 上架后，不退出页面也能重新拉一次。
+                    if !purchase.canPurchase {
+                        Button {
+                            Task { await purchase.loadProducts() }
+                        } label: {
+                            Text("重新获取商品信息")
+                                .font(AppTheme.TypeScale.note.weight(.medium))
+                                .foregroundStyle(AppTheme.champagneInk)
+                        }
+                        .buttonStyle(.plain)
+                        .frame(maxWidth: .infinity)
+                    }
                 }
 
                 restoreButton
