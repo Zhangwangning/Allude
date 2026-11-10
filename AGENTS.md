@@ -676,13 +676,12 @@ python3 tools/license-gen/issue-openssl.py --check "<凭证>"
 理由：每多一条自动化就多一条系统「自动化已运行」通知，而 **iOS 27.2 起这条通知
 已无法关闭**（此前可在「设置 › 屏幕时间」里关），所以默认只推一条。
 
-**iCloud 链接（2026-11-10 状态：失效待换）**：改名成 Allude 后，
-4 个 `.shortcut` 资源已全部拆包、把 App Intent 的 bundle id / 名称 / Team 改掉，
-并用 `shortcuts sign -m anyone` 重新签名（`Allude/Allude/Resources/Automations/`）。
-但 `ShortcutAutomation.icloudLinks` 里那 4 条 iCloud 记录**仍是旧 bundle 的包**
-（旧包内含 `com.jikezhang.codeclip`），点「iCloud 链接（推荐）」会导入失效动作。
-本机无法上传 iCloud → **必须由主人用快捷指令 App 重新分享这 4 条，再把新链接回填字典**；
-在那之前，UI 上只应把「用文件导入」当主路径，不要宣传 iCloud 链接。
+**iCloud 链接（2026-11-10 已换新）**：改名成 Allude 后，4 个 `.shortcut` 资源已全部拆包、
+把 App Intent 的 bundle id / 名称 / Team 改掉，并用 `shortcuts sign -m anyone` 重新签名
+（`Allude/Allude/Resources/Automations/`）。主人用快捷指令 App 重新分享后，
+`ShortcutAutomation.icloudLinks` 里的 4 条已全部回填为新包链接（均验证 HTTP 200 可下载）。
+⚠️ 旧包（含 `com.jikezhang.codeclip`）的 4 条链接已作废，别再把它们填回去；
+以后换 bundle id 或改动作定义，这 4 条必须重新分享。
 
 ## 免费签名的 7 天怎么算（2026-11-05 踩坑）
 

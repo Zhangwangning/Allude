@@ -500,7 +500,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Allude";
+				INFOPLIST_KEY_CFBundleDisplayName = Allude;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "用于扫描取件码二维码与快递面单条码，识别后自动填入待取件列表。";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "保存分享图到相册时使用。";
@@ -534,7 +534,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Allude";
+				INFOPLIST_KEY_CFBundleDisplayName = Allude;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "用于扫描取件码二维码与快递面单条码，识别后自动填入待取件列表。";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "保存分享图到相册时使用。";
@@ -569,7 +569,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AlludeWidget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Allude";
+				INFOPLIST_KEY_CFBundleDisplayName = Allude;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -598,7 +598,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AlludeWidget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Allude";
+				INFOPLIST_KEY_CFBundleDisplayName = Allude;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

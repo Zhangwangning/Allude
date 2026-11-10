@@ -48,16 +48,14 @@ enum ShortcutAutomation {
 
     /// iCloud 链接（推荐方式）。在 Shortcuts 里「共享 › 拷贝 iCloud 链接」拿到后填这里；
     /// 为空时界面只给「用文件导入」。
-    /// 🔴 每一条都**下载回来验过**：名称与触发关键词都对得上（2026-11-05 修正过三条）。
-    /// ⚠️ 2026-11-10 改名 Allude 后：包内 4 个 `.shortcut` 资源已重签为新 bundle，
-    ///    但这 4 条 iCloud 记录**仍是旧 bundle（com.jikezhang.codeclip）的包**，
-    ///    点进去导入的是失效动作。**待主人用快捷指令 App 重新分享 4 条后回填这里**；
-    ///    回填前不要把「iCloud 链接（推荐）」当成可用路径。
+    /// 🔴 2026-11-10 改名 Allude 后重新分享的一批：4 个都指向新 bundle
+    ///    （com.jikezhang.allude.ParsePickupTextIntent）的包，链接均 200 可下载。
+    ///    旧包（com.jikezhang.codeclip）的 4 条链接已全部作废，不要再用。
     static let icloudLinks: [String: String] = [
-        "【": "https://www.icloud.com/shortcuts/d784aa0874414c289977f4b7ee4efc0b",
-        "取": "https://www.icloud.com/shortcuts/43de0243d32347789c1c8730f4148154",
-        "快递": "https://www.icloud.com/shortcuts/1df8675b3c8e4ca68a787b83fb71da65",
-        "包裹": "https://www.icloud.com/shortcuts/d6d646342e5340798d05966f94a3fb76",
+        "【": "https://www.icloud.com/shortcuts/52cc69832eb449368078193dc075e470",
+        "取": "https://www.icloud.com/shortcuts/2d27df2cd8f847cbb25f6d097b49b971",
+        "快递": "https://www.icloud.com/shortcuts/e95d068d00bf439482a99dfc5a379633",
+        "包裹": "https://www.icloud.com/shortcuts/4ea6f434e78a4810a9c8b87eff6cf797",
     ]
 
     static func icloudURL(for keyword: String) -> URL? {
