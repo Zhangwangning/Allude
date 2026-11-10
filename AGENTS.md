@@ -541,9 +541,14 @@ swiftc -O -o /tmp/parser-regression \
 # 驿站匹配自检（精选 63 条 + 对抗样本 14 条，逐条比对「这条应该判成哪个驿站」）
 # ⚠️ 必须用**绝对路径**编译：工具靠 #filePath 推自己的目录找语料，
 #    用相对路径编译后换工作目录运行会报「读不到 cases.txt」。
+# `tools/swift-cli-shim.swift` 是 macOS 垫片：CourierBrand 里的 SwiftUI 图标渲染
+# （Image(uiImage:)、.widgetAccentedRenderingMode）与 BrandDebug 的 App Group 依赖
+# 在 macOS 目标下编不过，垫片只补最小定义、不改匹配逻辑。
 swiftc -O -o /tmp/station-check \
   "$PWD/Allude/AlludeShared/CourierBrand.swift" \
   "$PWD/Allude/AlludeShared/BrandPalette.swift" \
+  "$PWD/Allude/AlludeShared/Localization.swift" \
+  "$PWD/tools/swift-cli-shim.swift" \
   "$PWD/tools/station-check/main.swift" && /tmp/station-check
 # 退出码 0 = 全符合基线；1 = 有差异并逐条打印。
 # 🔴 改匹配规则时不要为了让它是绿的而改基线文件 —— 先确认每处变化都符合预期。
@@ -555,6 +560,8 @@ swiftc -O -o /tmp/station-check \
 swiftc -O -o /tmp/brand-check \
   "$PWD/Allude/AlludeShared/CourierBrand.swift" \
   "$PWD/Allude/AlludeShared/BrandPalette.swift" \
+  "$PWD/Allude/AlludeShared/Localization.swift" \
+  "$PWD/tools/swift-cli-shim.swift" \
   "$PWD/tools/brand-check/main.swift" && /tmp/brand-check
 # 这条目前会 exit 1。2 项失败是**既有业务差异**，不是回归，别去「修」：
 #   ① 「某某冷门驿站」期望映射到「快递驿站」；

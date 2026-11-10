@@ -108,6 +108,8 @@ let expectedAssets: Set<String> = [
     "brand-yishoufa", "brand-linli", "brand-kuaibao", "brand-xiongmao",
     "brand-xiaobing", "brand-xintian", "brand-niaoxiang", "brand-amazon",
     "brand-dhl", "brand-guojizhuanyun",
+    // 极兔：品牌表新增（资源在 AlludeShared/Assets.xcassets/Brands/brand-jitu.imageset）
+    "brand-jitu",
 ]
 
 print("\n── 2. 官方图标挂载 ──")
