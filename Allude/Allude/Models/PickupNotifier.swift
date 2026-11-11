@@ -176,6 +176,41 @@ enum PickupNotifier {
                                      trigger: nil)
     }
 
+    // MARK: 已送达通知的清理
+    //
+    // 2026-11-11 主人：「通知要过一会就消失，而不是一直在通知栏中」。
+    //
+    // ⚠️ iOS **没有**「已送达通知到期自动消失」的公开 API —— `UNNotificationContent`
+    //    没有 expiration，系统只会在用户手动清、或 App 主动 `removeDeliveredNotifications`
+    //    时移除。所以能做的只有两件事：
+    //      1. 回前台时清掉已经过时的（用户都在看列表了，通知中心不该再挂一串）；
+    //      2. 记录被取走 / 删除时，立刻撤掉那一条。
+    //    后台期间的通知只能等 App 下次前台才清 —— 这是系统限制，不是没做。
+
+    /// 回前台调用：移除送达时间早于 `seconds` 的通知。
+    static func clearDelivered(olderThan seconds: TimeInterval) {
+        let center = UNUserNotificationCenter.current()
+        center.getDeliveredNotifications { delivered in
+            let cutoff = Date().addingTimeInterval(-seconds)
+            let stale = delivered.filter { $0.date < cutoff }.map(\.request.identifier)
+            guard !stale.isEmpty else { return }
+            center.removeDeliveredNotifications(withIdentifiers: stale)
+        }
+    }
+
+    /// 记录被取走 / 删除时调用：撤掉这些记录对应的已送达通知。
+    ///
+    /// 两种标识都要撤：入库通知（= `recordID`）与「入库 N 小时未取」的提醒
+    /// （= `pickupReminderPrefix + recordID`）。
+    static func clearDelivered(for recordIDs: [UUID]) {
+        guard !recordIDs.isEmpty else { return }
+        let identifiers = recordIDs.flatMap { recordID in
+            [recordID.uuidString, pickupReminderPrefix + recordID.uuidString]
+        }
+        UNUserNotificationCenter.current()
+            .removeDeliveredNotifications(withIdentifiers: identifiers)
+    }
+
     // MARK: - 取件提醒（定期 / 不定期）
     //
     // 两类提醒回答两个不同的问题：

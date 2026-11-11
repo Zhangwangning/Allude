@@ -782,6 +782,10 @@ struct AlludeApp: App {
                     // 定期提醒的文案带「还有 N 件」快照 —— 回前台时重排，
                     // 避免隔了几天数据变了、提醒还在报旧数字。
                     PickupNotifier.rescheduleDailyReminder()
+                    // 通知中心里超过 10 分钟的旧通知顺手清掉（2026-11-11 主人：
+                    // 通知要过一会就消失，不能一直挂着）。iOS 没有自动过期 API，
+                    // 只能把握「回前台」这个时机；更早的清理由取件/删除触发。
+                    PickupNotifier.clearDelivered(olderThan: 10 * 60)
                 }
             }
         }

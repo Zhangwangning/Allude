@@ -31,7 +31,10 @@ final class PickupNotificationPresenter: NSObject, UNUserNotificationCenterDeleg
         // applicationState 必须在主线程读
         DispatchQueue.main.async {
             let isForeground = UIApplication.shared.applicationState == .active
-            completionHandler(isForeground ? [] : [.banner, .sound, .list])
+            // 前台：完全抑制（App 就在眼前，列表已更新）。
+            // 非前台：只弹横幅 + 声音，**不加 `.list`** —— 加了会把通知塞进
+            // 通知中心一直挂着（2026-11-11 主人：「过一会就消失」）。
+            completionHandler(isForeground ? [] : [.banner, .sound])
         }
     }
 

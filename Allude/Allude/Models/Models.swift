@@ -665,6 +665,8 @@ final class PickupStore: ObservableObject {
     func markPicked(_ record: PickupRecord) {
         guard let index = records.firstIndex(where: { $0.id == record.id }) else { return }
         setPicked(true, at: index)
+        // 已取件还在通知中心挂着，等于提醒用户去取一件已经取走的件
+        PickupNotifier.clearDelivered(for: [record.id])
     }
 
     /// 批量标记已取（多选「已取」专用）—— 一次落盘 / 一次刷新小组件。
@@ -695,6 +697,9 @@ final class PickupStore: ObservableObject {
     func toggle(_ record: PickupRecord) {
         guard let index = records.firstIndex(where: { $0.id == record.id }) else { return }
         setPicked(!records[index].isPickedUp, at: index)
+        if records[index].isPickedUp {
+            PickupNotifier.clearDelivered(for: [record.id])
+        }
     }
 
     /// 标记已取 / 恢复待取的**唯一落点** —— 状态与时间戳必须成对改。
@@ -720,6 +725,7 @@ final class PickupStore: ObservableObject {
                 }
             }
         }
+        PickupNotifier.clearDelivered(for: changed.map(\.id))
         return changed
     }
 
@@ -741,6 +747,7 @@ final class PickupStore: ObservableObject {
     /// 删除单条
     func delete(_ record: PickupRecord) {
         records.removeAll { $0.id == record.id }
+        PickupNotifier.clearDelivered(for: [record.id])
     }
 
     /// 批量删除（记录页多选删除专用）。
@@ -750,6 +757,7 @@ final class PickupStore: ObservableObject {
     func deleteMany(_ recordsToDelete: [PickupRecord]) {
         let ids = Set(recordsToDelete.map(\.id))
         records.removeAll { ids.contains($0.id) }
+        PickupNotifier.clearDelivered(for: Array(ids))
     }
 
     /// 把记录放回库中 —— 撤销「删除」专用。
@@ -765,6 +773,8 @@ final class PickupStore: ObservableObject {
 
     /// 清空已取件记录
     func clearPickedUp() {
+        let ids = records.filter(\.isPickedUp).map(\.id)
         records.removeAll { $0.isPickedUp }
+        PickupNotifier.clearDelivered(for: ids)
     }
 }
