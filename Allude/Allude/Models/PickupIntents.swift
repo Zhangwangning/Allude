@@ -69,6 +69,15 @@ struct ParsePickupTextIntent: AppIntent {
                inputConnectionBehavior: .connectToPreviousIntentResult)
     var text: String
 
+    /// 🔴 2026-11-11 主人要求：动作卡片第二行要像系统动作那样 —— **左边是标题「输入」，
+    ///    右边是可点开选择变量的槽位**（输入快捷指令的信息 / 信息 / 剪贴板）。
+    ///    只靠 `@Parameter` 时 Shortcuts 会把参数渲染成一行纯文本输入框，
+    ///    变量面板要用户自己摸到；`parameterSummary` 把参数变成摘要里的 token，
+    ///    卡片就显示成「输入 [变量槽]」，点槽位即弹出变量面板。
+    static var parameterSummary: some ParameterSummary {
+        Summary("输入 \(\.$text)")
+    }
+
     @MainActor
     func perform() async throws -> some IntentResult {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
