@@ -55,3 +55,6 @@ tools/license-gen/*.pem
 
 # 备案材料（含 App 截图与个人材料，不入库）
 备案材料/
+
+# App Store Connect API 私钥（tools/testflight-publish.py 用，只放本机 ~/.appstoreconnect）
+*.p8

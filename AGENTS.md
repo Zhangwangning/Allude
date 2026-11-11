@@ -895,6 +895,31 @@ Apple 智能页显示低版本说明页。发现并修掉一处：`appGlass()` �
   由接入服务商（云厂商/应用商店）通道提交，两者编号通常不同。
 - 法律文档三处（GitHub Pages、Gitee 镜像、App 内 `Legal/*.html`）要一起改。
 
+## TestFlight 发布（2026-11-11）
+
+Apple **不会**把新构建自动挂到「外部测试」群组（内部测试组才会自动拿到所有构建），
+每个构建都要「添加构建版本至群组」+ 填「测试内容」，所以做成了脚本：
+
+```bash
+/usr/bin/python3 tools/testflight-publish.py \
+  --build 239 \
+  --notes-file tools/testflight-notes/1.0.0-239.md
+```
+
+- 脚本做三件事（都可重复执行）：挂进外部群组「Allude公测」→ 写简体中文「测试内容」→
+  提交 Beta App 审核（已 APPROVED / 等待审核 / 审核中会跳过）。
+- 凭据：`~/.appstoreconnect/private_keys/AuthKey_34Z43R5SGY.p8`（Key ID `34Z43R5SGY`、
+  Issuer `e2936bfc-e52b-4931-a763-9f03dec868e3`，可用 `ASC_KEY_ID` / `ASC_ISSUER_ID` /
+  `ASC_KEY_PATH` 覆盖）。**私钥绝不入库**，`.gitignore` 已忽略 `*.p8`。
+- ⚠️ 必须用 **`/usr/bin/python3`**（系统自带 3.9，带系统证书）。Homebrew / python.org 的
+  3.14 会报 `CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate`。
+- 测试内容写「本版实际改了什么 + 测试重点 + 需要哪些设备验证」，**不要写「解决了一些已知问题」**
+  （2026-11-11 主人明确要求）。每版一个文件放在 `tools/testflight-notes/1.0.0-<构建号>.md`，
+  和 `Allude/Allude/Views/VersionHistoryView.swift` 的版本条目同源、不要互相矛盾。
+- 本机同时装了 `bsk` 浏览器工具链（`~/.local/bin/bsk`）：API 不可用时可借用户 Chrome 的
+  已登录 ASC 页面兜底操作（`bsk session start` → `bsk tab borrow` → `bsk cooperate sync` →
+  `bsk click/fill` → `bsk tab return` → `bsk session stop`）。
+
 ## 提交规范
 
 署名 `极客ZHANG <zhang_wangning@126.com>`。提交信息用中文，
