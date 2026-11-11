@@ -200,8 +200,15 @@ enum WidgetPageSize {
     ///    而且中尺寸一页正好 3 条，与 App 内的同屏上限对得上。
     ///
     /// 判定读小组件进程自己的 `EntitlementSnapshot.licensedPro`，不依赖主 App 运行。
+    ///
+    /// 🔴 **2026-11-11 内测反馈修复：一律注册全部尺寸，不再按档位裁剪。**
+    ///    WidgetKit 在**注册时**就缓存了 `supportedFamilies`，买完 Pro 也不会
+    ///    动态变大 —— 用户看到的现象就是「已购会员后仍然只有小/中两个尺寸」。
+    ///    现在尺寸集固定为全部，免费用户在大尺寸里渲染「解锁 Allude Pro」占位
+    ///    （见 `WidgetLockedContent`）；购买后小组件重新取时间线即可显示内容，
+    ///    不需要删掉重加，也不需要重装 App。
     static var supportedFamilies: [WidgetFamily] {
-        EntitlementSnapshot.licensedPro ? allFamilies : freeFamilies
+        allFamilies
     }
 
     /// 付费档：全部尺寸。
@@ -217,7 +224,12 @@ enum WidgetPageSize {
     }
 
     /// 免费档：只有小 / 中。
-    private static let freeFamilies: [WidgetFamily] = [.systemSmall, .systemMedium]
+    static let freeFamilies: [WidgetFamily] = [.systemSmall, .systemMedium]
+
+    /// 当前尺寸是否属于免费档（小 / 中）。大尺寸以上要 Pro。
+    static func isFreeFamily(_ family: WidgetFamily) -> Bool {
+        freeFamilies.contains(family)
+    }
 
     /// 补位空槽的**数量上限**。
     ///

@@ -506,6 +506,31 @@ struct WidgetEmptyContent: View {
     }
 }
 
+// MARK: - 大尺寸未解锁占位（免费档）
+
+/// 免费档用户添加了大尺寸小组件时的占位内容（2026-11-11 内测反馈修复）。
+///
+/// 背景：尺寸集自 2026-11-11 起固定为「全部」，不能按购买状态动态增减
+/// （WidgetKit 注册时缓存，买完 Pro 也不会变大）。免费用户在大尺寸里看到
+/// 这块占位；购买 Pro 后重新取时间线即渲染真实内容。
+struct WidgetLockedContent: View {
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(AppTheme.accent)
+            Text("Allude Pro")
+                .font(.system(size: 14, weight: .semibold))
+            Text("大尺寸小组件需要解锁 Allude Pro")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
 // MARK: - 勾选意图（桌面直接标记「已取」）
 //
 // 用途：小组件每行取件码前的圆形勾选框是一个可点击按钮，点击即把该条标记为已取，

@@ -511,6 +511,13 @@ final class TabBarCloak: ObservableObject {
     func reveal() {
         coverCount = 0
         sync()
+        // 兜底归位（2026-11-11 内测反馈「底部菜单栏漂移」）：
+        // 动画被打断 / iOS 27 浮动标签栏被系统重新布局时，transform 可能停在
+        // 半路（表现为标签栏浮在列表中间）。根页出现时无条件把位置与透明度钉回。
+        guard let bar = tabBar, !isHidden else { return }
+        bar.transform = .identity
+        bar.alpha = 1
+        bar.isUserInteractionEnabled = true
     }
 
     /// 从装配好的视图层级里接管 tabBar 引用（幂等，可重复调用）。
@@ -548,20 +555,63 @@ final class TabBarCloak: ObservableObject {
     /// 滑出 / 滑回动画。弹簧参数对齐主人认可的顺滑手感：
     /// response 0.38 / damping 0.86 ≈ UIKit spring(duration:damping:0.38/0.86)。
     private func apply(_ hide: Bool) {
-        guard let bar = tabBar else { return }
-        // 出屏位移：从当前位置滑到屏幕下缘之外（含 home indicator 区）再余 40pt。
-        let distance = bar.superview.map { $0.bounds.height - bar.frame.minY } ?? 220
-
-        UIView.animate(withDuration: 0.38,
-                       delay: 0,
-                       usingSpringWithDamping: 0.86,
-                       initialSpringVelocity: 0,
-                       options: [.beginFromCurrentState, .allowUserInteraction]) {
-            bar.transform = hide
-                ? CGAffineTransform(translationX: 0, y: distance + 40)
-                : .identity
-            bar.alpha = hide ? 0 : 1
+        // iOS 27 的浮动标签栏会在换页 / 滚动时被系统重新布局，旧引用可能已被摘掉：
+        // 拿不到视图就先重新定位一次，否则动画落在旧对象上（表现为「没反应」）。
+        if tabBar == nil || tabBar?.window == nil {
+            if let root = keyWindowRootViewController() {
+                tabBar = nil
+                locate(from: root)
+            }
         }
+        guard let bar = tabBar else { return }
+        bar.layer.removeAllAnimations()
+
+        // 出屏位移：直接按窗口高度算，不依赖 superview 的坐标系 ——
+        // iOS 27 浮动标签栏的容器尺寸不可靠，旧的 `superview.height - minY`
+        // 会算出离谱甚至负数的位移（这是「漂移」的来源之一）。
+        let distance = (bar.window?.bounds.height ?? 900) + 40
+
+        if hide {
+            UIView.animate(withDuration: 0.38,
+                           delay: 0,
+                           usingSpringWithDamping: 0.86,
+                           initialSpringVelocity: 0,
+                           options: [.beginFromCurrentState, .allowUserInteraction]) {
+                bar.transform = CGAffineTransform(translationX: 0, y: distance)
+                bar.alpha = 0
+            } completion: { _ in
+                guard self.isHidden else { return }
+                // 🔴 收敛终值：动画被打断 / 系统重新布局后，残留位移会把标签栏
+                //    停在屏幕中间。隐藏完成后清掉 transform，只留 alpha 与不可交互。
+                bar.transform = .identity
+                bar.alpha = 0
+                bar.isUserInteractionEnabled = false
+            }
+        } else {
+            // 先归位再淡入，避免任何历史位移把标签栏带偏。
+            bar.transform = .identity
+            bar.isUserInteractionEnabled = true
+            UIView.animate(withDuration: 0.38,
+                           delay: 0,
+                           usingSpringWithDamping: 0.86,
+                           initialSpringVelocity: 0,
+                           options: [.beginFromCurrentState, .allowUserInteraction]) {
+                bar.alpha = 1
+            } completion: { _ in
+                guard !self.isHidden else { return }
+                bar.transform = .identity
+                bar.alpha = 1
+            }
+        }
+    }
+
+    /// 当前 key window 的根控制器（重新定位 tabBar 用）。
+    private func keyWindowRootViewController() -> UIViewController? {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow)?
+            .rootViewController
     }
 }
 

@@ -28,6 +28,38 @@ final class HistoryModel: ObservableObject {
 
     private var copyTask: Task<Void, Never>?
 
+    // MARK: 单条删除（2026-11-11 内测反馈）
+    //
+    // 已取页此前只有「选择 → 批量删除」一条路，长按菜单里没有删除项，
+    // 用户想删一条只能先进编辑模式 —— 反馈为「已取页面无法进行删除」。
+    // 现在长按菜单直接给「删除记录」，并给 4 秒撤销条（与待取页同口径）。
+    @Published var deleteUndoRecord: PickupRecord?
+    @Published var showDeleteUndo = false
+    private var deleteUndoTask: Task<Void, Never>?
+
+    /// 删除单条并给出撤销机会。
+    func delete(_ record: PickupRecord, in store: PickupStore) {
+        withAnimation(.snappy) { store.delete(record) }
+        deleteUndoRecord = record
+        withAnimation(.snappy) { showDeleteUndo = true }
+        deleteUndoTask?.cancel()
+        deleteUndoTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.snappy) { showDeleteUndo = false }
+        }
+    }
+
+    /// 撤销刚才的单条删除：必须 `insert` 回整表，`restore` 找不到已摘掉的记录。
+    func undoDelete(in store: PickupStore) {
+        deleteUndoTask?.cancel()
+        if let record = deleteUndoRecord {
+            withAnimation(.snappy) { store.insert([record]) }
+        }
+        deleteUndoRecord = nil
+        withAnimation(.snappy) { showDeleteUndo = false }
+    }
+
     func copy(_ record: PickupRecord) {
         UIPasteboard.general.string = record.code
         // 与待取页同口径：复制后必须给回执（2026-10-25 主人要求）
@@ -255,6 +287,18 @@ struct PickedUpView: View {
                     .allowsHitTesting(false)
                 }
             }
+            // 删除撤销条（2026-11-11）：与待取页同款，4 秒内可放回
+            .overlay(alignment: .bottom) {
+                if model.showDeleteUndo {
+                    UndoToast(message: model.deleteUndoRecord.map { "已删除 \($0.company) \($0.code)" } ?? "已删除",
+                              actionTitle: "撤销") {
+                        model.undoDelete(in: store)
+                    }
+                    .padding(.horizontal, AppTheme.hInset)
+                    .padding(.bottom, 24)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
             // 📱 宽屏（iPhone Duo 展开态）内容限宽居中，与待取页同一口径
             .frame(maxWidth: AppTheme.contentMaxWidth)
             .frame(maxWidth: .infinity)
@@ -378,6 +422,13 @@ struct PickedUpView: View {
                          symbol: "arrow.uturn.backward",
                          tint: AppTheme.pendingTint,
                          action: { withAnimation(.snappy) { store.toggle(record) } }),
+            // 单条删除（2026-11-11 内测反馈补）：此前已取页只有批量删除，长按没有删除项。
+            CardMenuItem(title: "删除记录",
+                         symbol: "trash",
+                         tint: .red,
+                         role: .destructive,
+                         showsSeparatorBefore: true,
+                         action: { model.delete(record, in: store) }),
             // 编辑收进详情页（2026-10-14 主人定稿）：本页菜单不再放「编辑」。
         ]
     }

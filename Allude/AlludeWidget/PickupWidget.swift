@@ -105,7 +105,11 @@ struct PickupWidgetEntryView: View {
         let options = entry.options
         let isSmall = family == .systemSmall
 
-        if snapshot.isEmpty {
+        // 🔴 2026-11-11：尺寸集固定为全部（见 WidgetPageSize.supportedFamilies），
+        //    免费用户在大尺寸里显示「解锁 Allude Pro」占位，而不是空白/空态。
+        if !EntitlementSnapshot.licensedPro && !WidgetPageSize.isFreeFamily(family) {
+            WidgetLockedContent()
+        } else if snapshot.isEmpty {
             WidgetEmptyContent(pickedTodayCount: snapshot.pickedTodayCount,
                                compact: isSmall)
         } else if isSmall {

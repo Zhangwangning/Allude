@@ -12,6 +12,9 @@ import WidgetKit
 
 // MARK: - 示例数据（取自真实短信语料的解析结果）
 
+// 🔴 2026-11-11 内测反馈：Release 包**不得**再带开发者的测试记录。
+//    示例数据只是 Debug 的截图/统计样本，整块用 `#if DEBUG` 关掉。
+#if DEBUG
 enum SampleData {
     static func make() -> [PickupRecord] {
         let now = Date()
@@ -72,6 +75,7 @@ enum SampleData {
         return records
     }
 }
+#endif
 
 // MARK: - 解析结果归一
 
@@ -253,8 +257,22 @@ final class PickupStore: ObservableObject {
         // 那等于用示例数据覆盖掉用户真实数据 —— 宁可显示空列表，也不能这样丢。
         let hasStoreFile = PickupStorage.fileExists
         let loaded = hasStoreFile ? PickupStorage.load() : []
-        records = hasStoreFile ? loaded : SampleData.make()
-        if !hasStoreFile { PickupStorage.save(records) }
+        // 🔴 2026-11-11 内测反馈修复：示例数据**只在 Debug（截图/自测）里铺**。
+        //    之前这里无条件 `SampleData.make()`，TestFlight（Release）首次安装就把
+        //    开发者的测试记录灌进用户手机 —— 用户反馈「初次安装残留大量测试快递」。
+        //    Release 首启必须是一张干净的空白列表。
+        if hasStoreFile {
+            records = loaded
+        } else {
+            #if DEBUG
+            // 只有 Debug + 脚手架打开时才铺示例（截图/统计页自测用）。
+            records = BuildFlags.scaffoldsEnabled ? SampleData.make() : []
+            #else
+            // Release 首启：干净的空列表。
+            records = []
+            #endif
+            PickupStorage.save(records)
+        }
 
         // 顺序有讲究：先「补空字段」，再「清仅货架地址」——
         // 反过来的话，刚补回来的地址会被下一条规则又清掉。

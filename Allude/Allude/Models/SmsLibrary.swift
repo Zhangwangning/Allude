@@ -10,6 +10,9 @@ import Foundation
 // ⚠️ 用普通多行字符串 `"""` 而非 raw string `#"..."#`：当前 Xcode-beta
 //    工具链对多行 raw string 有编译 bug。收尾 `"""` 必须独占一行。
 
+// 🔴 2026-11-11：这份语料是开发者本人的真实短信（含银行卡、验证码、地址），
+//    只给 Debug 的示例数据/截图用；Release 包不再编进去（隐私 + 体积）。
+#if DEBUG
 enum SmsLibrary {
 
     /// 内嵌完整短信语料（多行字符串，清洗后）。
@@ -583,3 +586,4 @@ enum SmsLibrary {
         PickupParser.segments(raw).map { Entry(text: $0, isPickup: PickupParser.parse($0) != nil) }
     }
 }
+#endif
