@@ -11,10 +11,10 @@ import UniformTypeIdentifiers
 //   → PickupStore 落盘 → 列表 / 桌面小组件展示。
 //
 // 关键设计：
-//  · `supportedModes = .background` —— 自动化触发时不打断用户当前操作，静默写入。
-//    ⚠️ 不用已废弃的 `openAppWhenRun`（iOS 26 起 deprecated，官方要求改用 supportedModes），
-//       两者语义在元数据里等价：.background ⟺ openAppWhenRun = false。
-//    ⚠️ 部署目标 27.0 > supportedModes 的引入版本 26.0，因此无需 @available。
+//  · 静默后台执行 —— 自动化触发时不打断用户当前操作，直接写库。
+//    ⚠️ `IntentModes`（含 `.background`）是 iOS 26 新增；部署目标是 iOS 17，
+//       所以两个动作都用等价的 `openAppWhenRun = false`（iOS 16 起可用）。
+//       语义一致：后台跑、不把 App 拉到前台。
 //  · 🔴 **绝不返回 dialog / 视图**（不声明 ProvidesDialog、不返回 value）。见下节。
 //  · 参数 `inputConnectionBehavior = .connectToPreviousIntentResult` —— 在快捷指令里
 //    拖入本动作时会**自动接上一环的输出**（自动化中即「快捷指令输入」= 刚收到的短信），
@@ -51,16 +51,22 @@ struct ParsePickupTextIntent: AppIntent {
     }
 
     /// 只支持后台执行：自动化触发时不把 App 拉到前台，快捷指令里「运行时显示」默认关闭。
-    /// 🔴 部署目标降到 iOS 18：`IntentModes`（含 `.background`）是 iOS 26 新增。
+    /// 🔴 部署目标 iOS 17：`IntentModes`（含 `.background`）是 iOS 26 新增，用不了；
     ///    改用等价的 `openAppWhenRun = false`（iOS 16 起可用）：后台执行、不拉起 App。
     static var openAppWhenRun: Bool { false }
 
-    // ⚠️ 2026-11-11 部署目标降到 iOS 17：`inputConnectionBehavior` 是 iOS 18 的
-    //    `@Parameter` 初始化参数，低版本编不过，这里只用 title/description。
-    //    导入我们预签好的 .shortcut 时参数绑定已写在文件里，不受影响；
-    //    手动新建的用户按教程选「快捷指令输入」即可。
+    // 🔴 2026-11-11 复核：`inputOptions` / `inputConnectionBehavior` 属于
+    //    `IntentParameter where Value.ValueType == String` 的初始化器，
+    //    iOS 16.0 起就有（iPhoneOS27.2.sdk 的 swiftinterface 里明写
+    //    `@available(macOS 13.0, iOS 16.0, …)`），部署目标 iOS 17 可以直接用。
+    //    之前误以为「iOS 18 才有」—— 那是 AppEntity / FileEntity 的 iOS 18 重载。
+    //    `inputConnectionBehavior = .connectToPreviousIntentResult` 让快捷指令里
+    //    拖入本动作时自动接上一环输出，也允许用户点开字段从变量面板改选
+    //    「输入快捷指令的信息 / 信息 / 剪贴板」；`multiline` 让长短信能换行读。
     @Parameter(title: "短信内容",
-               description: "选择「快捷指令输入」，自动化触发时即为刚收到的那条短信")
+               description: "接上一环的输出，或点开字段选「快捷指令输入」/「信息」/剪贴板；自动化触发时就是刚收到的那条短信",
+               inputOptions: String.IntentInputOptions(multiline: true),
+               inputConnectionBehavior: .connectToPreviousIntentResult)
     var text: String
 
     @MainActor
@@ -96,15 +102,17 @@ struct ParsePickupImageIntent: AppIntent {
     }
 
     /// 只支持后台执行：截屏后静默入库，不把 App 拉到前台打断当前操作
-    /// 🔴 部署目标降到 iOS 18：`IntentModes`（含 `.background`）是 iOS 26 新增。
+    /// 🔴 部署目标 iOS 17：`IntentModes`（含 `.background`）是 iOS 26 新增，用不了；
     ///    改用等价的 `openAppWhenRun = false`（iOS 16 起可用）：后台执行、不拉起 App。
     static var openAppWhenRun: Bool { false }
 
-    // ⚠️ 2026-11-11 部署目标降到 iOS 17：`supportedContentTypes` / `inputConnectionBehavior`
-    //    都是 iOS 18 才有的 `@Parameter` 初始化参数，低版本编不过，这里只用 title/description。
-    //    截图动作的输出本来就是 `IntentFile`，类型本身已限定成图片。
+    // ⚠️ 2026-11-11：`supportedContentTypes` 只出现在 `FileEntity` 的 iOS 18 重载上，
+    //    `IntentFile` 参数没有这个初始化参数；截图动作的输出本来就是 IntentFile，
+    //    类型本身已经把内容限定成文件。这里只补 `inputConnectionBehavior`，
+    //    效果和文本动作一致：接上一环「截屏」的输出，用户也能改选别的图片变量。
     @Parameter(title: "截图",
-               description: "选「截屏」动作的输出，或任意含取件信息的图片")
+               description: "选「截屏」动作的输出，或任意含取件信息的图片",
+               inputConnectionBehavior: .connectToPreviousIntentResult)
     var image: IntentFile
 
     static var parameterSummary: some ParameterSummary {

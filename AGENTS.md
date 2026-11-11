@@ -687,6 +687,17 @@ iOS 26 及更早的系统不支持导入带触发器的自动化 → 引导页�
   所以文件名必须是「Allude 取件码解析「关键词」.shortcut」。
 - 🔴 生成脚本要**同时**写名称、关键词、UUID：2026-11-05 曾漏了关键词赋值，
   四个文件全是「【」，导致主人分享出去的三条链接全是错的（下载回来验过才发现）。
+- 🔴 **动作参数的输入绑定不要写死成「触发器输出」**：2026-11-10 那批 wflow 里
+  `text` 绑定的是 `{"Type": "TriggerOutput", "TriggerIdentifier": "WFMessageTrigger"}`，
+  用户点开字段只能看到「输入」且无法改选（2026-11-11 主人反馈）。
+  正解是绑 `{"Type": "ExtensionInput"}`（快捷指令输入），用户就能改成
+  「输入快捷指令的信息 / 信息 / 剪贴板」任意一个。
+- 🔴 **`inputOptions` / `inputConnectionBehavior` 是 iOS 16 起的 API**，
+  别再说「iOS 18 才有」：那是 `AppEntity` / `FileEntity` 的 iOS 18 重载；
+  `IntentParameter where Value.ValueType == String` 的初始化器在
+  iPhoneOS27.2.sdk 里明确标 `@available(iOS 16.0, *)`，
+  部署目标 iOS 17 可以直接写 `inputConnectionBehavior: .connectToPreviousIntentResult`。
+  （2026-11-11 曾因此错误地把它删掉，导致手动添加动作时不会自动接上一环输出。）
 
 **关键词与通知**：`【` 是默认推荐，`取 / 快递 / 包裹` 收进「可选关键词」。
 理由：每多一条自动化就多一条系统「自动化已运行」通知，而 **iOS 27.2 起这条通知
