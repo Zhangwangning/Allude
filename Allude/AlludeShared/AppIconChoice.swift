@@ -3,7 +3,8 @@ import Foundation
 // MARK: ============================================================================
 // App 图标切换（2026-11-01 主人）
 //
-// 八套内置图标，**第 3 套（取件袋）为默认主图标**。图都是 512 满幅方图，不再裁切。
+// 八套内置图标，**第 7 套（C 标）为默认主图标**（2026-11-11 主人定）。
+// 图都是 512 满幅方图，不再裁切；主图标 art 与 alternate 的对应关系见下。
 //
 // 主图标放 `AppIcon.appiconset`；其余七套是 **alternate icon** —— 由 Info.plist 的
 // `CFBundleAlternateIcons` 声明（`Icon01` / `Icon02` / `Icon04`…`Icon08`），
@@ -18,8 +19,11 @@ import Foundation
 enum AppIconChoice: String, CaseIterable, Identifiable {
     case icon01, icon02, icon03, icon04, icon05, icon06, icon07, icon08
 
-    /// 默认图标 = 第 3 套（取件袋）
-    static let fallback: AppIconChoice = .icon03
+    /// 默认图标 = 第 7 套（C 标）。
+    ///
+    /// 🔴 2026-11-11 主人：默认图标换成「C 标」。主图标（`AppIcon.appiconset`）
+    ///    art 已同步换成 C 标；原来的「取件袋」改为 alternate icon `Icon03`。
+    static let fallback: AppIconChoice = .icon07
 
     var id: String { rawValue }
 
@@ -55,6 +59,10 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
     var assetName: String { String(format: "AppIcon%02d", number) }
 
     /// `UIApplication.setAlternateIconName` 用的名字；默认图标返回 nil
+    ///
+    /// 注意：`Icon03`（原主图标「取件袋」）现在是 alternate，必须由
+    /// `Allude/Info.plist` 的 `CFBundleAlternateIcons` 声明 + bundle 根目录的
+    /// `Icon03@2x.png`(120) / `Icon03@3x.png`(180) 两份文件，缺一不可。
     var alternateName: String? {
         self == Self.fallback ? nil : String(format: "Icon%02d", number)
     }

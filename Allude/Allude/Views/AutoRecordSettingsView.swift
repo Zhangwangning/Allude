@@ -15,6 +15,10 @@ import UIKit
 // 🔴 自定义关键词仍不可行：未签名文件导入失败（已实测），
 //    导入时询问（WFWorkflowImportQuestions）对触发器不生效（B1/B2 实测无弹窗），
 //    所以只能提供预设关键词。
+//
+// 🔴 2026-11-11 主人：**一键添加（iCloud 链接 / 文件导入）只在 iOS 27+ 可用**；
+//    iOS 26 及更早的系统不支持导入带触发器的自动化，只能照下面「手动配置」
+//    的步骤在「快捷指令」里自己新建一条。本页按系统版本分流，不给无用的按钮。
 // ============================================================================
 
 /// App 内打开网页（SFSafariViewController），不跳出 App
@@ -33,6 +37,17 @@ struct SafariSheet: UIViewControllerRepresentable {
 struct AutoRecordSettingsView: View {
     @State private var linkURL: URL?
 
+    /// 一键添加快捷指令（分享 .shortcut / 打开 iCloud 链接）只在 iOS 27+ 可用；
+    /// iOS 26 及更早只能手动新建自动化（2026-11-11 主人定）。
+    private var quickImportAvailable: Bool {
+        // 截图/验收脚手架：本机只有 iOS 27 运行时，用 FORCE_MANUAL_SHORTCUT=1
+        // 模拟 iOS 26 及更早（Release 不含脚手架）。
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["FORCE_MANUAL_SHORTCUT"] != nil { return false }
+        #endif
+        if #available(iOS 27.0, *) { return true } else { return false }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
@@ -48,9 +63,14 @@ struct AutoRecordSettingsView: View {
                 note
 
                 // 🔴 2026-11-08 主人：必须讲清楚"上面的能导入，就不用看下面的"。
-                SectionHeader(title: "手动配置（仅在上面导入不了时）")
+                // 2026-11-11：iOS 26 及更早没有一键导入，下面这段是**必看**。
+                SectionHeader(title: quickImportAvailable
+                              ? "手动配置（仅在上面导入不了时）"
+                              : "手动配置（当前系统需要手动新建）")
 
-                Text("点「添加」后，「快捷指令」里没出现这条自动化（没能直接保存），才需要照下面的步骤手动建一条。".richText)
+                Text(quickImportAvailable
+                     ? "点「添加」后，「快捷指令」里没出现这条自动化（没能直接保存），才需要照下面的步骤手动建一条。".richText
+                     : "iOS 26 及更早版本不支持一键导入自动化，请照下面的步骤在「快捷指令 › 自动化」里手动新建一条。".richText)
                     .font(AppTheme.TypeScale.body)
                     .foregroundStyle(.secondary)
                     .lineSpacing(4)
@@ -113,7 +133,9 @@ struct AutoRecordSettingsView: View {
                     .background(Capsule().fill(AppTheme.accent.opacity(0.12)))
             }
             Spacer(minLength: 8)
-            addMenu(preset)
+            if quickImportAvailable {
+                addMenu(preset)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

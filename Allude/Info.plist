@@ -25,7 +25,6 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
-
 	<key>CFBundleIcons</key>
 	<dict>
 		<key>CFBundlePrimaryIcon</key>
@@ -53,6 +52,15 @@
 				<key>CFBundleIconFiles</key>
 				<array>
 					<string>Icon02</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>Icon03</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>Icon03</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
@@ -104,7 +112,6 @@
 			</dict>
 		</dict>
 	</dict>
-
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>

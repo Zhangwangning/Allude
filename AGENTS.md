@@ -189,11 +189,15 @@ iPhone 直板机已完工（0.3.3）；**iPhone Duo 折叠屏适配已开工**�
 
 ## App 图标切换
 
-八套内置图标，**默认是第 3 套「取件袋」**；设置 › App 图标可切换（版式同快递公司页的网格）。
+八套内置图标，**默认是第 7 套「C 标」**（2026-11-11 主人改的；此前默认是第 3 套「取件袋」）。
+设置 › App 图标可切换（版式同快递公司页的网格）。原主图标「取件袋」现在作为
+alternate icon `Icon03` 保留，仍可在设置里选。
 
 - 主图标：`Assets.xcassets/AppIcon.appiconset`（1024，**不能有透明通道、不能自带圆角**）。
 - 另外七套是 alternate icon，由 **真实 `Allude/Info.plist`** 里的
-  `CFBundleAlternateIcons` 声明（`Icon01`…`Icon08`，跳过默认的 Icon03），
+  `CFBundleAlternateIcons` 声明（`Icon01`…`Icon08`，跳过默认的 Icon07；
+  ⚠️ 2026-11-11 默认换成 Icon07 后，**`Icon03` 必须新增声明**并补 bundle 根目录
+  `Icon03@2x.png`(120) / `Icon03@3x.png`(180)，否则用户切回「取件袋」会失败），
   文件是 bundle 根目录的 `IconNN@2x.png`(120) / `@3x.png`(180)。
 - 图源自 512 满幅方图，**不再裁切**（早期那批是白底圆角，裁过角）。
   ⚠️ 工程已改为 `GENERATE_INFOPLIST_FILE = NO` + `INFOPLIST_FILE = Info.plist`，
@@ -664,6 +668,11 @@ python3 tools/license-gen/issue-openssl.py --check "<凭证>"
 ## 快捷指令自动化（2026-11-05）
 
 设置 › 快捷指令自动化：把「收到短信 → 添加到Allude」的自动化导进系统。
+
+🔴 **一键添加（iCloud 链接 / 文件导入）只在 iOS 27 及以上可用**（2026-11-11 主人定）。
+iOS 26 及更早的系统不支持导入带触发器的自动化 → 引导页与设置页按
+`if #available(iOS 27.0, *)` 分流：低版本不显示「添加 / 一键导入」按钮，
+改为提示「照教程手动新建一条」。别为了好看在低版本也摆一个点不动的按钮。
 
 **能力边界（都是实测结论，别再重试）**：
 

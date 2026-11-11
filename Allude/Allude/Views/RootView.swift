@@ -239,7 +239,9 @@ struct OnboardingView: View {
             VStack(spacing: 0) {
                 OnboardingStep(index: 1, tint: AppTheme.amber,
                                title: "导入自动化",
-                               detail: "点下面的按钮，把「收到短信 → 添加到Allude」导进系统")
+                               detail: quickImportAvailable
+                                   ? "点下面的按钮，把「收到短信 → 添加到Allude」导进系统"
+                                   : "当前系统需要手动新建：点下方「查看完整使用教程」，照步骤做一次")
                 SettingsDivider()
                 OnboardingStep(index: 2, tint: AppTheme.amber,
                                title: "打开开关",
@@ -284,32 +286,56 @@ struct OnboardingView: View {
         .frame(maxWidth: .infinity)
     }
 
+    /// 一键导入自动化（分享 .shortcut → 快捷指令）只在 iOS 27 及以上可用。
+    /// iOS 26 及更早的系统不支持把带触发器/App Intent 的自动化直接导入，
+    /// 只能让用户照教程手动新建一条（2026-11-11 主人定）。
+    private var quickImportAvailable: Bool {
+        // 截图/验收脚手架：本机只有 iOS 27 运行时，用 FORCE_MANUAL_SHORTCUT=1
+        // 模拟 iOS 26 及更早（Release 不含脚手架）。
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["FORCE_MANUAL_SHORTCUT"] != nil { return false }
+        #endif
+        if #available(iOS 27.0, *) { return true } else { return false }
+    }
+
     // MARK: 底栏
 
     private var bottomBar: some View {
         VStack(spacing: 14) {
             // 自动化页：一键导入 + 完整教程（都放底栏，页面圆点不会压到它们）
             if state.page == 1 {
-                Button {
-                    // 🔴 2026-11-11 内测反馈修复：分享面板直接挂到最上层控制器，
-                    //    不再塞进 SwiftUI 的 .sheet（那样在 fullScreenCover 里是空白面板）。
-                    guard let preset = ShortcutAutomation.presets.first,
-                          let url = ShortcutAutomation.preparedImportURL(for: preset) else { return }
-                    ShortcutAutomation.markImported(preset.keyword)
-                    ShareSheetPresenter.present([url])
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "square.and.arrow.down.fill")
-                        Text("一键导入自动化（关键词：【）")
+                if quickImportAvailable {
+                    Button {
+                        // 🔴 2026-11-11 内测反馈修复：分享面板直接挂到最上层控制器，
+                        //    不再塞进 SwiftUI 的 .sheet（那样在 fullScreenCover 里是空白面板）。
+                        guard let preset = ShortcutAutomation.presets.first,
+                              let url = ShortcutAutomation.preparedImportURL(for: preset) else { return }
+                        ShortcutAutomation.markImported(preset.keyword)
+                        ShareSheetPresenter.present([url])
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "square.and.arrow.down.fill")
+                            Text("一键导入自动化（关键词：【）")
+                        }
+                        .font(AppTheme.TypeScale.body.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .appGlass(.capsule, tint: AppTheme.amber, interactive: true)
                     }
-                    .font(AppTheme.TypeScale.body.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 13)
-                    .appGlass(.capsule, tint: AppTheme.amber, interactive: true)
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 32)
+                } else {
+                    // 🔴 2026-11-11 主人：一键导入依赖 iOS 27 的快捷指令能力，
+                    //    iOS 26 及更早只能手动新建 —— 这里直接说清楚，不给按钮。
+                    Text("iOS 26 及更早版本不支持一键导入自动化，请点「查看完整使用教程」按步骤手动新建一条。")
+                        .font(AppTheme.TypeScale.note)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 32)
                 }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 32)
             }
 
             if state.page == 1 {
