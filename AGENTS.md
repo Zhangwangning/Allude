@@ -836,9 +836,12 @@ bash tools/unslop-audit.sh --json     # 机器可读
 | **iPhone Duo** | **iOS 27+ 即可** | 🔴 它出厂系统就是 iOS 27，**不必适配 iOS 26 以下**；Duo 专属代码可直接用 iOS 26/27 API |
 
 **iOS 17/18 兼容做法（2026-11-11）**：`widgetAccentedRenderingMode`（iOS 18）已收进
-`Allude/AlludeShared/GlassCompat.swift` 的 `Image.widgetAccentedFullColor()`（低版本原样返回）；
-`@Parameter` 的 `inputConnectionBehavior` / `supportedContentTypes`（iOS 18）在
-`Allude/Allude/Models/PickupIntents.swift` 里去掉，导入预签好的快捷指令不受影响。
+`Allude/AlludeShared/GlassCompat.swift` 的 `Image.widgetAccentedFullColor()`（低版本原样返回）。
+⚠️ `@Parameter` 的两个初始化参数要分清版本：
+`inputConnectionBehavior` / `inputOptions` 属于 **`String` 参数、iOS 16.0 起**（可放心用，
+2026-11-11 曾误判成 iOS 18 删掉，已恢复）；`supportedContentTypes` 只属于
+`FileEntity`（iOS 18），`IntentFile` 参数没有这个参数，别再去找。
+`IntentModes`（含 `.background`）是 iOS 26，部署目标 17 统一改用 `openAppWhenRun = false`。
 🔴 `AlludeShared` 在工程里是**显式 PBXGroup**（不是同步组）：新增文件必须手动加进
 project.pbxproj 才会参与编译，否则报「value of type ... has no member」。
 
