@@ -428,9 +428,7 @@ struct ICloudSyncView: View {
                 helpLink
                 statusCard
                 actionCard
-                notifyCard
                 footerNote
-                privacyRow
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 12)
@@ -450,19 +448,12 @@ struct ICloudSyncView: View {
     private var syncToggleCard: some View {
         Toggle(isOn: Binding(get: { sync.isEnabled },
                              set: { sync.setEnabled($0) })) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("开启同步")
-                    .font(AppTheme.TypeScale.rowTitle)
-                Text(sync.isEnabled
-                     ? "同一 Apple ID 的设备会自动合并记录"
-                     : "关闭时数据只保存在这台设备上")
-                    .font(AppTheme.TypeScale.badge)
-                    .foregroundStyle(.secondary)
-            }
+            Text("开启同步")
+                .font(AppTheme.TypeScale.rowTitle)
         }
         .tint(AppTheme.accent)
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
         .settingsCard()
     }
 
@@ -527,41 +518,6 @@ struct ICloudSyncView: View {
         .settingsCard()
     }
 
-    private var notifyCard: some View {
-        VStack(spacing: 0) {
-            Toggle(isOn: Binding(get: { sync.notifyOnICloudIssue },
-                                 set: { sync.setNotifyOnICloudIssue($0) })) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("iCloud 异常通知")
-                        .font(AppTheme.TypeScale.rowTitle)
-                    Text("同步失败时提醒一次，不重复打扰")
-                        .font(AppTheme.TypeScale.badge)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .tint(AppTheme.accent)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-
-            SettingsDivider()
-
-            Toggle(isOn: Binding(get: { sync.notifyOnNetworkIssue },
-                                 set: { sync.setNotifyOnNetworkIssue($0) })) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("网络异常通知")
-                        .font(AppTheme.TypeScale.rowTitle)
-                    Text("没有网络导致同步失败时提醒")
-                        .font(AppTheme.TypeScale.badge)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .tint(AppTheme.accent)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-        }
-        .settingsCard()
-    }
-
     @ViewBuilder
     private var footerNote: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -574,7 +530,7 @@ struct ICloudSyncView: View {
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.secondary)
             }
-            Text("只存进你自己的 iCloud（iCloud 云盘 › Allude），不经过开发者服务器；关掉开关后 App 不再读写 iCloud。")
+            Text("开启后，同一 Apple ID 的设备会自动合并记录；只存进你自己的 iCloud（iCloud 云盘 › Allude），不经过开发者服务器。关掉后 App 不再读写 iCloud，本机记录一条不少。")
                 .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.secondary)
         }
@@ -582,17 +538,6 @@ struct ICloudSyncView: View {
         .padding(.horizontal, 4)
     }
 
-    private var privacyRow: some View {
-        NavigationLink {
-            LegalDocumentView(document: .privacy)
-        } label: {
-            SettingsRow(symbol: "hand.raised.fill",
-                        title: "隐私政策",
-                        tint: AppTheme.doneTint)
-        }
-        .buttonStyle(.plain)
-        .settingsCard()
-    }
 }
 
 /// iCloud 同步说明：先讲前提，再讲开关与效果（参考同类 App 的同步教程结构）。

@@ -1,7 +1,6 @@
 import Foundation
 import Combine
 import Network
-import UserNotifications
 
 // MARK: - iCloud 同步：本机墓碑落盘 + 同步控制器
 //
@@ -83,16 +82,12 @@ final class ICloudSyncController: ObservableObject {
     /// 用 UserDefaults 而不是文件：一个布尔值，不值得再建一份文件。
     private static let enabledKey = "allude.icloudSync.enabled"
     private static let lastSyncKey = "allude.icloudSync.lastSync"
-    private static let notifyICloudKey = "allude.icloudSync.notifyICloud"
-    private static let notifyNetworkKey = "allude.icloudSync.notifyNetwork"
 
     @Published private(set) var status: Status = .disabled
     @Published private(set) var lastSyncedAt: Date?
     @Published private(set) var isEnabled: Bool
     /// 网络是否可用（只做展示 + 决定发哪种失败通知，不阻断同步逻辑）。
     @Published private(set) var networkAvailable = true
-    @Published private(set) var notifyOnICloudIssue: Bool
-    @Published private(set) var notifyOnNetworkIssue: Bool
 
     private var pendingTask: Task<Void, Never>?
     /// 合并写回本机后要压住的「自触发同步」窗口（见 `scheduleSync`）。
@@ -100,8 +95,6 @@ final class ICloudSyncController: ObservableObject {
     private let fileManager = FileManager.default
     private let pathMonitor = NWPathMonitor()
     private let pathQueue = DispatchQueue(label: "allude.sync.network")
-    /// 失败通知 1 小时最多一条，避免网络抖动时刷屏。
-    private var lastFailureNoticeAt: Date = .distantPast
 
     private init() {
         let defaults = UserDefaults(suiteName: PickupStorage.appGroupID) ?? .standard
@@ -115,26 +108,12 @@ final class ICloudSyncController: ObservableObject {
         if let stamp = defaults.object(forKey: Self.lastSyncKey) as? Date {
             lastSyncedAt = stamp
         }
-        notifyOnICloudIssue = defaults.object(forKey: Self.notifyICloudKey) as? Bool ?? true
-        notifyOnNetworkIssue = defaults.object(forKey: Self.notifyNetworkKey) as? Bool ?? true
         status = isEnabled ? .idle : .disabled
         pathMonitor.pathUpdateHandler = { [weak self] path in
             let available = path.status == .satisfied
             Task { @MainActor in self?.networkAvailable = available }
         }
         pathMonitor.start(queue: pathQueue)
-    }
-
-    // MARK: 通知偏好
-
-    func setNotifyOnICloudIssue(_ enabled: Bool) {
-        notifyOnICloudIssue = enabled
-        UserDefaults(suiteName: PickupStorage.appGroupID)?.set(enabled, forKey: Self.notifyICloudKey)
-    }
-
-    func setNotifyOnNetworkIssue(_ enabled: Bool) {
-        notifyOnNetworkIssue = enabled
-        UserDefaults(suiteName: PickupStorage.appGroupID)?.set(enabled, forKey: Self.notifyNetworkKey)
     }
 
     /// 设置页「同步状态」一行用的短文案（详细失败原因仍显示在页面底部红字）。
@@ -189,7 +168,6 @@ final class ICloudSyncController: ObservableObject {
 
         guard let directory = remoteDirectoryURL else {
             status = .unavailable
-            notifyFailure("没有找到 iCloud，请在系统设置里登录 iCloud")
             return
         }
 
@@ -213,7 +191,6 @@ final class ICloudSyncController: ObservableObject {
 
             if local.remoteTooNew {
                 status = .failed("iCloud 里是更新版本 Allude 写的记录，本版本只读不写")
-                notifyFailure("iCloud 里是更新版本 Allude 写的记录，本版本只读不写")
                 return
             }
 
@@ -238,26 +215,10 @@ final class ICloudSyncController: ObservableObject {
             status = .idle
         } catch {
             status = .failed("同步失败：\(error.localizedDescription)")
-            notifyFailure("同步失败：\(error.localizedDescription)")
         }
     }
 
-    /// 同步失败时发一条本地通知（受两个开关控制，1 小时最多一条）。
-    private func notifyFailure(_ message: String) {
-        let now = Date()
-        guard now.timeIntervalSince(lastFailureNoticeAt) > 3_600 else { return }
-        let networkCause = !networkAvailable
-        if networkCause, !notifyOnNetworkIssue { return }
-        if !networkCause, !notifyOnICloudIssue { return }
-        lastFailureNoticeAt = now
-        let content = UNMutableNotificationContent()
-        content.title = "iCloud 同步没成功"
-        content.body = message
-        content.sound = .default
-        UNUserNotificationCenter.current().add(
-            UNNotificationRequest(identifier: "allude.sync.failure", content: content, trigger: nil)
-        )
-    }
+
 
     // MARK: iCloud 容器
 
