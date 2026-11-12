@@ -106,6 +106,11 @@ enum PickupParser {
     static let tailPattern =
         #"(?<=尾号为?)\s*[:：”"\s]*\s*(?!(\+?86)?1[3-9]\d{9})(((\d+-)+\d+)|(\d?\+?[A-Za-z]+?(-?\d+)+)|(\d+[A-Za-z]\d+)|\d{4,})(?!\d)(?!.*(?:支付|快捷|(信用|银行)卡|扣款|储蓄|消费|交易|转账|转入|转出|汇出|入账|人民币))"#
 
+    /// 「按需派送运单9005」这类**没有取件码**的派送短信（2026-11-12 内测反馈）：
+    /// 4–7 位当运单尾号处理，8 位以上当运单号处理，否则整条短信会被直接拒掉。
+    static let deliveryNoPattern =
+        #"(?<=运单)\s*[:：]?\s*([A-Za-z0-9]{4,})"#
+
     /// 特殊格式取件码（保持原样；匹配后把 `、`/`,` 归一为 `-`）
     static let specialPattern =
         #"(?<=快递码)(\d+?(,|、)){2}\d+?(?=，)"#
@@ -257,7 +262,7 @@ enum PickupParser {
         // else { return nil }` 直接返回 nil。此前货架号三个正则全部缺席，
         // 导致 `shelf(from:)` 恒返回空串 —— 短信里的「3号货架」「货架号：3-12」从来没被识别过，
         // 用户只能手工去详情页补。
-        for pattern in [keywordPattern, codePattern, waybillPattern, tailPattern,
+        for pattern in [keywordPattern, codePattern, waybillPattern, tailPattern, deliveryNoPattern,
                         specialPattern, standaloneAddressPattern, matchedAddressPattern,
                         companyBracketPattern, companyFallbackPattern,
                         platformIsCourierPattern, codeChainPattern,
@@ -452,9 +457,12 @@ enum PickupParser {
         let waybill = firstMatch(waybillPattern, in: text).map(trimLeadingSeparators).flatMap { $0.isEmpty ? nil : $0 }
         let tail = firstMatch(tailPattern, in: text).map(trimLeadingSeparators).flatMap { $0.isEmpty ? nil : $0 }
         let special = firstMatch(specialPattern, in: text).map(normalizeSeparators).flatMap { $0.isEmpty ? nil : $0 }
+        // 「按需派送运单9005」：没有取件码，只有运单号/尾号（2026-11-12 内测反馈）
+        let deliveryNo = firstMatch(deliveryNoPattern, in: text)
+            .map(trimLeadingSeparators).flatMap { $0.isEmpty ? nil : $0 }
 
         // ② 全局闸门：四套全空 → 直接拒绝（V7.3.0 动作 51–62 的语义）
-        guard code != nil || waybill != nil || tail != nil || special != nil else { return nil }
+        guard code != nil || waybill != nil || tail != nil || special != nil || deliveryNo != nil else { return nil }
 
         // ②.5 「还没到」的派送通知不算取件（2026-11-05 主人标注发现）：
         //    「您的快递正在派送，将投放代收点」「快递将投递」这类短信里有运单号、有品牌，
@@ -473,6 +481,9 @@ enum PickupParser {
             outcome = (.waybill, waybill)
         } else if let tail {
             outcome = (.tail, tail)
+        } else if let deliveryNo {
+            // 「运单9005」是尾号、「运单123456789012」才是运单号
+            outcome = deliveryNo.count >= 8 ? (.waybill, deliveryNo) : (.tail, deliveryNo)
         } else {
             outcome = (.special, special ?? "")
         }
@@ -825,7 +836,13 @@ func normalizeAddressText(_ raw: String) -> String {
                           .replacingOccurrences(of: "店面", with: "店")
             head = head.trimmingCharacters(in: .whitespaces)
             tail = tail.trimmingCharacters(in: .whitespaces)
-            if !alias.isEmpty {
+            // 🔴 2026-11-12 内测反馈：申通「已放到台州天台何方赵兔喜生活店(兔喜快递超市)」
+            // 括号里是**驿站名**（兔喜快递超市），不是地址别名；原来会把它前置成
+            // 「兔喜快递超市台州天台何方赵兔喜生活店」。这种括号直接丢掉。
+            let aliasIsBrand = stationBrandWords.contains { alias.contains($0) }
+            if aliasIsBrand {
+                s = (head + tail).trimmingCharacters(in: .whitespaces)
+            } else if !alias.isEmpty {
                 var merged = alias + head + tail
                 while merged.hasSuffix("店店") { merged.removeLast() }
                 merged = merged.replacingOccurrences(of: "店站点", with: "店")
