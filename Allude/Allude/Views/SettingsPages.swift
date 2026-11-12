@@ -428,7 +428,6 @@ struct ICloudSyncView: View {
                 helpLink
                 statusCard
                 actionCard
-                footerNote
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 12)
@@ -516,26 +515,6 @@ struct ICloudSyncView: View {
         .disabled(!sync.isEnabled || sync.isSyncing)
         .opacity(sync.isEnabled ? 1 : 0.5)
         .settingsCard()
-    }
-
-    @ViewBuilder
-    private var footerNote: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if case .failed(let message) = sync.status {
-                Text(message)
-                    .font(AppTheme.TypeScale.note)
-                    .foregroundStyle(.red)
-            } else if sync.status == .unavailable {
-                Text("没有找到 iCloud。请在系统设置里登录 iCloud，并允许 Allude 使用 iCloud。")
-                    .font(AppTheme.TypeScale.note)
-                    .foregroundStyle(.secondary)
-            }
-            Text("开启后，同一 Apple ID 的设备会自动合并记录；只存进你自己的 iCloud（iCloud 云盘 › Allude），不经过开发者服务器。关掉后 App 不再读写 iCloud，本机记录一条不少。")
-                .font(AppTheme.TypeScale.note)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 4)
     }
 
 }
