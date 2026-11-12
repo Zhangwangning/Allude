@@ -920,6 +920,43 @@ Apple **不会**把新构建自动挂到「外部测试」群组（内部测试�
   已登录 ASC 页面兜底操作（`bsk session start` → `bsk tab borrow` → `bsk cooperate sync` →
   `bsk click/fill` → `bsk tab return` → `bsk session stop`）。
 
+## iCloud 同步（2026-11-12 接入）
+
+可选功能，**默认关闭**。关着的时候 App 一个字节都不碰 iCloud。
+
+- **只走用户自己的 iCloud**（iCloud Drive 里的 `Documents/Allude/records.json`），
+  不经过开发者服务器、不建账号；Apple 的隐私标签仍是「不收集数据」。
+- **合并粒度是单条记录**：同 `id` 取 `updatedAt` 新的那份（老记录没有 `updatedAt`
+  时回落 `receivedAt`）；删除用**墓碑**（`pickup-sync-tombstones.json`，90 天 TTL），
+  这样另一台设备不会把删掉的记录同步回来。
+- **不做后台常驻**：App 启动、回前台、数据改动后 1.5 秒、手动「立即同步」各同步一次。
+  合并写回本机后压 3 秒再做下一次（`suppressScheduleUntil`），防「同步→写回→再同步」。
+- 时间戳一律用**带小数秒的 ISO8601**（`PickupSyncCore.encoder/decoder`）：
+  默认 `.iso8601` 会抹掉毫秒，导致「刚写完又判定有变化」的来回同步。
+- 文件分工：`PickupSyncCore.swift`（纯合并规则，只依赖 Foundation + PickupRecord）、
+  `PickupSyncStore.swift`（控制器 / 墓碑落盘 / 状态）、`PickupStore`（盖 `updatedAt`、
+  删除记墓碑、`applySynced` 一次性写回）。
+- **删除路径必须记墓碑**：`delete` / `deleteMany` / `clearPickedUp` / FIFO 淘汰，
+  漏一处就会出现「删了又被另一台设备同步回来」。
+- 自测脚手架（Debug，模拟器没登 iCloud 时用）：
+  ```
+  SIMCTL_CHILD_ALLUDE_SYNC_ENABLED=1 \
+  SIMCTL_CHILD_ALLUDE_SYNC_REMOTE=/tmp/sync-test \
+  xcrun simctl launch --terminate-running-process <UDID> com.jikezhang.allude
+  ```
+  两个模拟器指同一个目录就等于「两台设备」。验证点：远端改一条 → App 变已取；
+  远端加墓碑 → 记录消失；连续启动两次 `records.json` 的 md5 不变（幂等）。
+- ⚠️ **签名前置**：`Allude/Config/Allude.entitlements` 有
+  `com.apple.developer.ubiquity-container-identifiers = iCloud.com.jikezhang.allude`，
+  `Allude/Info.plist` 有 `NSUbiquitousContainers`；但**开发者账号里这个 App ID 还没开 iCloud 能力**，
+  `xcodebuild archive` 会报「Provisioning profile doesn't match the entitlements file's value for
+  com.apple.developer.ubiquity-container-identifiers」。需要在 Xcode › Signing & Capabilities
+  里给 Allude target 加 iCloud（勾 iCloud Documents，容器 `iCloud.com.jikezhang.allude`），
+  或在开发者门户里给 App ID 打开 iCloud 并建容器，之后 `-allowProvisioningUpdates` 才能过。
+- 法务三处已同步（App 内 HTML、GitHub `allude-legal`、Gitee 镜像）：隐私政策新增
+  「6. iCloud 同步（可选，默认关闭）」，使用条款新增「4A. iCloud 同步」，
+  页脚/同意页改成「默认只在本机，开启 iCloud 同步后也只在你自己的 iCloud 里」。
+
 ## 提交规范
 
 署名 `极客ZHANG <zhang_wangning@126.com>`。提交信息用中文，
