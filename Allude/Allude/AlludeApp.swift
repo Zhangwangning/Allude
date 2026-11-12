@@ -726,6 +726,12 @@ struct AlludeApp: App {
                     NavigationStack { ActivityPreviewGallery() }
                 case "appearance":
                     NavigationStack { AppearanceSettingsView() }
+                case "aiHub":
+                    NavigationStack { AIExtensionsHomeView() }
+                case "aiExtensions":
+                    NavigationStack { AIExtensionsListView() }
+                case "aiProvider":
+                    NavigationStack { AIProviderDetailView(provider: .deepseek) }
                 case "aiCapability":
                     NavigationStack {
                         if #available(iOS 26.0, *) {

@@ -80,7 +80,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .feedback:     return "反馈"
         case .version:      return "版本"
         case .privacy:      return "隐私"
-        case .aiCapability: return "Apple 智能"
+        case .aiCapability: return "Apple 智能与扩展"
         case .appIcon:      return "App 图标"
         case .privacyDoc:   return "隐私政策"
         // 2026-11-12 主人：改叫「服务条款」，并把「声明与免责」并进这一页

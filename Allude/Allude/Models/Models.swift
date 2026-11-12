@@ -610,6 +610,9 @@ final class PickupStore: ObservableObject {
         if #available(iOS 26.0, *) {
             PickupAIEnhancer.schedule(merged.added)
         }
+        // 🆕 第三方模型扩展（BYOK，2026-11-13）：端侧不可用时的第二条路。
+        // 默认关闭；用户没开开关/没存 Key 时 schedule 里第一行就 return。
+        AIExtensionEnhancer.schedule(merged.added)
 
         outcome.pendingCount = pending.count
         return outcome
