@@ -42,7 +42,7 @@
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIconAlt01</string>
+					<string>Icon01</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
@@ -51,7 +51,7 @@
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIconAlt02</string>
+					<string>Icon02</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
@@ -60,7 +60,7 @@
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIconAlt03</string>
+					<string>Icon03</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
@@ -69,7 +69,7 @@
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIconAlt04</string>
+					<string>Icon04</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
@@ -78,7 +78,7 @@
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIconAlt05</string>
+					<string>Icon05</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
@@ -87,7 +87,7 @@
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIconAlt06</string>
+					<string>Icon06</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
@@ -96,7 +96,7 @@
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIconAlt07</string>
+					<string>Icon07</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
@@ -105,7 +105,7 @@
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIconAlt08</string>
+					<string>Icon08</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
@@ -114,7 +114,7 @@
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIconAlt09</string>
+					<string>Icon09</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
@@ -123,7 +123,7 @@
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIconAlt10</string>
+					<string>Icon10</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
@@ -132,7 +132,7 @@
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIconAlt11</string>
+					<string>Icon11</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
@@ -141,7 +141,7 @@
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIconAlt12</string>
+					<string>Icon12</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>

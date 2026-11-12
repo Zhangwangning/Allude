@@ -8,7 +8,9 @@ import Foundation
 // 图都是 512 满幅方图，不再裁切；主图标 art 与 alternate 的对应关系见下。
 //
 // 主图标放 `AppIcon.appiconset`；其余是 **alternate icon** —— 由 Info.plist 的
-// `CFBundleAlternateIcons` 声明，图在资产目录的 `AppIconAltNN.appiconset` 里，
+// `CFBundleAlternateIcons` 声明，图是包根目录的 `IconNN@2x/@3x`（iPad 另加
+// `IconNN~ipad` / `IconNN@2x~ipad`），**不能只放资产目录**：App Store 校验
+// ITMS-90032 会认不出资产目录里的备用图标，直接用错误退包（2026-11-12 踩过）。
 // 每套都带 Any / Dark / Tinted 三张 1024（iOS 18 起系统按外观自动选）。
 // 需要 `ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES`，否则 actool 会跳过这些图标集。
 //
@@ -75,7 +77,7 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
     /// `Allude/Info.plist` 的 `CFBundleAlternateIcons` 声明 + bundle 根目录的
     /// `Icon03@2x.png`(120) / `Icon03@3x.png`(180) 两份文件，缺一不可。
     var alternateName: String? {
-        self == Self.fallback ? nil : String(format: "AppIconAlt%02d", number)
+        self == Self.fallback ? nil : String(format: "Icon%02d", number)
     }
 }
 
