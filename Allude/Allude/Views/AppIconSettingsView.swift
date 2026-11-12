@@ -4,7 +4,8 @@ import OSLog
 // MARK: ============================================================================
 // App 图标（2026-11-01 主人）
 //
-// 版式照**快递公司页**那一套：白色卡片里 4 列自适应网格，格子 = 54pt 圆角方块 + 一行名字。
+// 版式照**快递公司页**那一套：白色卡片里自适应网格，格子 = 54pt 圆角方块。
+// 2026-11-12 主人：图标下面**不要名字**，只留图形（名字移到无障碍标签里）。
 // 换图标是系统级动作（`UIApplication.setAlternateIconName`），选中后桌面、设置、
 // 多任务、通知里的图标会一起变；灵动岛与关于页读同一份选择。
 // ============================================================================
@@ -89,7 +90,7 @@ struct AppIconSettingsView: View {
         return Button {
             apply(choice)
         } label: {
-            VStack(spacing: 7) {
+            VStack(spacing: 0) {
                 Image(choice.assetName)
                     .resizable()
                     .interpolation(.high)
@@ -109,13 +110,6 @@ struct AppIconSettingsView: View {
                                 .offset(x: 4, y: 4)
                         }
                     }
-
-                Text(choice.title.L)
-                    .font(.system(size: 10))
-                    .foregroundStyle(isOn ? AppTheme.accent : .secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                    .frame(height: 14, alignment: .top)
             }
         }
         .buttonStyle(.plain)

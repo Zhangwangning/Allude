@@ -22,36 +22,19 @@ struct RootView: View {
     /// 具体 push 详情由列表页自己消费（见 `NotificationRouter`）。
     @StateObject private var notificationRouter = NotificationRouter.shared
 
+    /// iPad（regular 宽度）用**自绘底部标签栏**：iPadOS 18+ 原生 TabView 会把标签栏
+    /// 放到屏幕顶部，而主人要的是和 iPhone 一致的底部。只在 regular 宽度走这条路，
+    /// iPhone / Duo 外屏（compact）继续用原生 TabView，一行不动。
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    private var usesPadTabBar: Bool { horizontalSizeClass == .regular }
+
     var body: some View {
         ZStack {
-            TabView(selection: $model.selection) {
-                PickupListView()
-                    .tabItem { Label("待取", systemImage: "tray.fill") }
-                    .tag(RootTab.pending)
-
-                PickedUpView()
-                    .tabItem { Label("已取", systemImage: "checkmark.circle.fill") }
-                    .tag(RootTab.picked)
-
-                StatsTabView()
-                    .tabItem { Label("统计", systemImage: "chart.bar.xaxis") }
-                    .tag(RootTab.stats)
-
-                SettingsTabRoot()
-                    .tabItem { Label("设置", systemImage: "gearshape.fill") }
-                    .tag(RootTab.settings)
+            if usesPadTabBar {
+                padTabLayout
+            } else {
+                phoneTabLayout
             }
-            // 标签栏**固定显示**，不随滚动收缩（2026-10-27 主人定）。
-            // iOS 26 默认行为是 `onScrollDown` —— 列表往下滚时标签栏会缩成
-            // 一小条胶囊、上滑再展开。主人要求常驻，所以显式设为 `.never`。
-            // ⚠️ 别改回 `.automatic`：那等同于跟系统默认走，又会收起。
-            // 注意这与下方 `TabBarCloak`（进设置二级页时**故意**收起）是两件事：
-            // 那条是有意的导航语义，不受这里影响。
-            // `.tabBarMinimizeBehavior` 是 iOS 26 新增；低版本没有这个行为，直接跳过。
-            .modifier(TabBarMinimizeNever())
-            .tint(AppTheme.accent)
-            // 装配后接管系统 tabBar 引用（见 `TabBarCloak`），供显隐动画驱动。
-            .background(NativeTabBarBridge())
 
             // ── 分享面板（全屏浮动，盖住标签栏） ──
             if let records = share.records {
@@ -101,6 +84,64 @@ struct RootView: View {
                 model.completeOnboarding()
             }
         }
+    }
+
+    // MARK: - iPhone / 紧凑宽度：原生 TabView（标签栏在底部）
+
+    private var phoneTabLayout: some View {
+        TabView(selection: $model.selection) {
+            PickupListView()
+                .tabItem { Label("待取", systemImage: "tray.fill") }
+                .tag(RootTab.pending)
+
+            PickedUpView()
+                .tabItem { Label("已取", systemImage: "checkmark.circle.fill") }
+                .tag(RootTab.picked)
+
+            StatsTabView()
+                .tabItem { Label("统计", systemImage: "chart.bar.xaxis") }
+                .tag(RootTab.stats)
+
+            SettingsTabRoot()
+                .tabItem { Label("设置", systemImage: "gearshape.fill") }
+                .tag(RootTab.settings)
+        }
+        // 标签栏**固定显示**，不随滚动收缩（2026-10-27 主人定）。
+        // iOS 26 默认行为是 `onScrollDown` —— 列表往下滚时标签栏会缩成
+        // 一小条胶囊、上滑再展开。主人要求常驻，所以显式设为 `.never`。
+        // ⚠️ 别改回 `.automatic`：那等同于跟系统默认走，又会收起。
+        // 注意这与下方 `TabBarCloak`（进设置二级页时**故意**收起）是两件事：
+        // 那条是有意的导航语义，不受这里影响。
+        // `.tabBarMinimizeBehavior` 是 iOS 26 新增；低版本没有这个行为，直接跳过。
+        .modifier(TabBarMinimizeNever())
+        .tint(AppTheme.accent)
+        // 装配后接管系统 tabBar 引用（见 `TabBarCloak`），供显隐动画驱动。
+        .background(NativeTabBarBridge())
+    }
+
+    // MARK: - iPad / regular 宽度：内容 + 自绘底部标签栏
+
+    private var padTabLayout: some View {
+        ZStack {
+            tabContent(.pending) { PickupListView() }
+            tabContent(.picked) { PickedUpView() }
+            tabContent(.stats) { StatsTabView() }
+            tabContent(.settings) { SettingsTabRoot() }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            PadBottomTabBar(selection: $model.selection)
+        }
+    }
+
+    /// 四个标签的内容都常驻（用透明度切换），避免每次切换重建页面、丢滚动位置。
+    @ViewBuilder
+    private func tabContent<Content: View>(_ tab: RootTab,
+                                           @ViewBuilder content: () -> Content) -> some View {
+        let isOn = model.selection == tab
+        content()
+            .opacity(isOn ? 1 : 0)
+            .allowsHitTesting(isOn)
+            .accessibilityHidden(!isOn)
     }
 }
 
@@ -738,5 +779,68 @@ private struct TabBarMinimizeNever: ViewModifier {
         } else {
             content
         }
+    }
+}
+
+// MARK: - iPad 自绘底部标签栏
+
+/// iPadOS 18+ 的原生标签栏会跑到屏幕顶部；主人要 iPhone 那样放在底部，
+/// 所以 regular 宽度下用这套自绘栏（外观照 iPhone 的原生胶囊玻璃栏）。
+private struct PadBottomTabBar: View {
+    @Binding var selection: RootTab
+
+    private struct Item {
+        let tab: RootTab
+        let title: String
+        let symbol: String
+    }
+
+    private let items: [Item] = [
+        .init(tab: .pending, title: "待取", symbol: "tray.fill"),
+        .init(tab: .picked, title: "已取", symbol: "checkmark.circle.fill"),
+        .init(tab: .stats, title: "统计", symbol: "chart.bar.xaxis"),
+        .init(tab: .settings, title: "设置", symbol: "gearshape.fill"),
+    ]
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(items, id: \.tab) { item in
+                let isOn = item.tab == selection
+                Button {
+                    guard !isOn else { return }
+                    selection = item.tab
+                } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: item.symbol)
+                            .font(.system(size: 17, weight: .semibold))
+                        Text(item.title.L)
+                            .font(AppTheme.TypeScale.note)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 7)
+                    .background {
+                        if isOn {
+                            Capsule(style: .continuous)
+                                .fill(AppTheme.accent.opacity(0.14))
+                        }
+                    }
+                    .foregroundStyle(isOn ? AppTheme.accent : Color.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(item.title.L)
+                .accessibilityAddTraits(isOn ? .isSelected : [])
+            }
+        }
+        .padding(6)
+        .frame(maxWidth: 560)
+        .background(.ultraThinMaterial, in: Capsule(style: .continuous))
+        .overlay {
+            Capsule(style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 8)
+        .animation(.easeInOut(duration: 0.18), value: selection)
     }
 }
