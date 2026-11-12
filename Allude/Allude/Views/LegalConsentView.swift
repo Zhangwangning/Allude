@@ -20,20 +20,28 @@ struct LegalConsentView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    header
-                    dataNotice
-                    agreement
+            // 🔴 2026-11-12 主人：iPad（尤其 iPadOS 27 大屏）上这一页内容要**居中、
+            //    落在视觉中心**，不要顶对齐后下面空一大片。
+            //    做法：GeometryReader 量出「扣掉底部按钮条之后」的可用高度
+            //    （safeAreaInset 加在 GeometryReader 外层，量到的就是内容区），
+            //    再让内容至少撑到这么高并居中对齐；内容本身超长时照常滚动。
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        header
+                        dataNotice
+                        agreement
+                    }
+                    .padding(.horizontal, AppTheme.hInset)
+                    .padding(.vertical, 24)
+                    .frame(maxWidth: AppTheme.contentMaxWidth, alignment: .leading)
+                    .frame(maxWidth: .infinity,
+                           minHeight: proxy.size.height,
+                           alignment: .center)
                 }
-                .padding(.horizontal, AppTheme.hInset)
-                .padding(.top, 24)
-                .padding(.bottom, 24)
-                .frame(maxWidth: AppTheme.contentMaxWidth)
-                .frame(maxWidth: .infinity)
+                .background(Color(.systemGroupedBackground))
             }
             .safeAreaInset(edge: .bottom) { bottomBar }
-            .background(Color(.systemGroupedBackground))
             .toolbar(.hidden, for: .navigationBar)
         }
         .alert("需要同意后才能使用", isPresented: $showDeclineAlert) {

@@ -22,9 +22,11 @@ struct RootView: View {
     /// 具体 push 详情由列表页自己消费（见 `NotificationRouter`）。
     @StateObject private var notificationRouter = NotificationRouter.shared
 
-    /// iPad（regular 宽度）用**自绘底部标签栏**：iPadOS 18+ 原生 TabView 会把标签栏
-    /// 放到屏幕顶部，而主人要的是和 iPhone 一致的底部。只在 regular 宽度走这条路，
-    /// iPhone / Duo 外屏（compact）继续用原生 TabView，一行不动。
+    /// 🔴 2026-11-12 主人：iPad 底部标签栏要**系统原生的液态玻璃**，不要自绘材质。
+    /// 实测 iPadOS 18…27 的原生 `TabView` 标签栏都在**顶部**，`defaultTabBarPlacement(.tabBar)`
+    /// （iOS 27）也挪不到底部 —— 系统没给这个能力。所以 iPad 走「内容 + `appGlass` 栏」：
+    /// 玻璃由系统 `glassEffect`（iOS 26+）或系统 `.ultraThinMaterial`（低版本）绘制，
+    /// 我们只排按钮。iPhone / Duo 外屏继续用原生 `TabView`。
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     private var usesPadTabBar: Bool { horizontalSizeClass == .regular }
 
@@ -119,7 +121,7 @@ struct RootView: View {
         .background(NativeTabBarBridge())
     }
 
-    // MARK: - iPad / regular 宽度：内容 + 自绘底部标签栏
+    // MARK: - iPad：内容 + 原生液态玻璃底部标签栏
 
     private var padTabLayout: some View {
         ZStack {
@@ -133,7 +135,7 @@ struct RootView: View {
         }
     }
 
-    /// 四个标签的内容都常驻（用透明度切换），避免每次切换重建页面、丢滚动位置。
+    /// 四个标签内容常驻（透明度切换），切换不重建页面、不丢滚动位置。
     @ViewBuilder
     private func tabContent<Content: View>(_ tab: RootTab,
                                            @ViewBuilder content: () -> Content) -> some View {
@@ -143,6 +145,7 @@ struct RootView: View {
             .allowsHitTesting(isOn)
             .accessibilityHidden(!isOn)
     }
+
 }
 
 // MARK: - 当前标签
@@ -782,10 +785,11 @@ private struct TabBarMinimizeNever: ViewModifier {
     }
 }
 
-// MARK: - iPad 自绘底部标签栏
+// MARK: - iPad 底部标签栏（原生液态玻璃）
 
-/// iPadOS 18+ 的原生标签栏会跑到屏幕顶部；主人要 iPhone 那样放在底部，
-/// 所以 regular 宽度下用这套自绘栏（外观照 iPhone 的原生胶囊玻璃栏）。
+/// iPadOS 18+ 的原生标签栏在顶部、且没有公开 API 挪到底部。这里用系统
+/// **Liquid Glass（iOS 26+ `glassEffect`，经 `appGlass`）**/ 系统毛玻璃（18 及以下）
+/// 当背景，只负责排版四个按钮 —— 玻璃本身由系统绘制，不是自绘材质。
 private struct PadBottomTabBar: View {
     @Binding var selection: RootTab
 
@@ -833,11 +837,7 @@ private struct PadBottomTabBar: View {
         }
         .padding(6)
         .frame(maxWidth: 560)
-        .background(.ultraThinMaterial, in: Capsule(style: .continuous))
-        .overlay {
-            Capsule(style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
-        }
+        .appGlass(.capsule)
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 24)
         .padding(.bottom, 8)
