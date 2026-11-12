@@ -49,6 +49,12 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     case help
     case trainingSamples
     case contactInfo
+    // 2026-11-12 设置页改版：新增三个「聚合页」入口 + 两个二级页
+    case appearanceGroup
+    case aboutAllude
+    case icloudSync
+    case encourage
+    case privacySimple
 
     var id: String { rawValue }
 
@@ -57,7 +63,8 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .appearance:   return "外观"
         case .fontSize:     return "字体大小"
         case .language:     return "语言"
-        case .automation:   return "快捷指令自动化"
+        // 2026-11-12 主人：设置首页只写「快捷指令」，二级页标题仍是「快捷指令自动化」
+        case .automation:   return "快捷指令"
         case .notification: return "通知"
         case .widget:       return "桌面小组件"
         // 🔴 2026-11-08 主人：只叫「实时活动」—— 灵动岛只有部分机型有，
@@ -68,19 +75,26 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .guide:        return "使用教程"
         case .license:      return "Allude Pro"
         case .activation:   return "激活"
-        // 组名已经是「本机数据」，行不能再同名（2026-11-08 主人：看着像重复）
-        case .storage:      return "存储"
+        // 2026-11-12 主人：改叫「存储空间」，它现在是独立入口（不再挂在「本机数据」组下）
+        case .storage:      return "存储空间"
         case .feedback:     return "反馈"
         case .version:      return "版本"
         case .privacy:      return "隐私"
         case .aiCapability: return "Apple 智能"
         case .appIcon:      return "App 图标"
         case .privacyDoc:   return "隐私政策"
-        case .termsDoc:     return "使用条款"
+        // 2026-11-12 主人：改叫「服务条款」，并把「声明与免责」并进这一页
+        case .termsDoc:     return "服务条款"
         case .disclaimer:   return "声明与免责"
         case .help:         return "帮助与反馈"
         case .trainingSamples: return "帮助改进Allude"
         case .contactInfo:  return "联系方式"
+        // 2026-11-12 设置页改版
+        case .appearanceGroup: return "外观与个性化"
+        case .aboutAllude:  return "关于 Allude"
+        case .icloudSync:   return "iCloud 同步"
+        case .encourage:    return "鼓励一下"
+        case .privacySimple: return "隐私政策（简明版）"
         }
     }
 
@@ -110,6 +124,11 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .help:         return "questionmark.bubble.fill"
         case .trainingSamples: return "sparkles.rectangle.stack.fill"
         case .contactInfo:  return "at"
+        case .appearanceGroup: return "paintbrush.fill"
+        case .aboutAllude:  return "info.circle.fill"
+        case .icloudSync:   return "icloud.fill"
+        case .encourage:    return "heart.fill"
+        case .privacySimple: return "hand.raised.fill"
         }
     }
 
@@ -139,20 +158,38 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .help:         return AppTheme.sky
         case .trainingSamples: return AppTheme.violet
         case .contactInfo:  return AppTheme.indigo
+        case .appearanceGroup: return AppTheme.accent
+        case .aboutAllude:  return AppTheme.indigo
+        case .icloudSync:   return AppTheme.sky
+        case .encourage:    return AppTheme.pendingTint
+        case .privacySimple: return AppTheme.doneTint
         }
     }
 
-    /// 侧栏分组（顺序即显示顺序，与原来长页的分组一一对应）
-    static let dataGroup: [SettingsPane] = [.storage]
-
     /// 🔴 **唯一数据源**（2026-11-07 主人：不管哪个平台、怎么排版，功能必须一模一样）。
-    /// 单列布局与 iPad 分栏都从这三个数组渲染，不要再各写一份。
+    /// 单列布局与 iPad 分栏都从这几个数组渲染，不要再各写一份。
+    ///
+    /// 2026-11-12 主人定的新排布（设置首页五块）：
+    ///   ① 通用：快捷指令 / 通知 / 桌面小组件 / 实时活动 / iCloud 同步 / Apple 智能
+    ///   ② 外观与个性化（二级页收拢 App 图标 / 外观 / 字体大小 / 语言）
+    ///   ③ 存储空间
+    ///   ④ 帮助与反馈
+    ///   ⑤ 更多：快递公司 / 驿站管理 / 关于 Allude
     static let generalGroupAll: [SettingsPane] = [
-        .automation, .notification, .widget, .activity, .courier, .station,
-        .appIcon, .appearance, .fontSize, .language,
+        .automation, .notification, .widget, .activity, .icloudSync, .aiCapability,
     ]
-    static let aboutGroupAll: [SettingsPane] = [
-        .help, .privacyDoc, .termsDoc, .version, .disclaimer, .aiCapability,
+    static let appearanceTopGroup: [SettingsPane] = [.appearanceGroup]
+    static let dataGroup: [SettingsPane] = [.storage]
+    static let supportGroup: [SettingsPane] = [.help]
+    static let aboutGroupAll: [SettingsPane] = [.courier, .station, .aboutAllude]
+
+    /// 「外观与个性化」二级页里的四条（顺序就是主人给的顺序）
+    static let appearanceDetailGroup: [SettingsPane] = [.appIcon, .appearance, .fontSize, .language]
+
+    /// 「关于 Allude」二级页的顺序：鼓励一下 / 服务条款 / 隐私政策（完整版）/
+    /// 隐私政策简明版 / 版本信息
+    static let aboutDetailGroup: [SettingsPane] = [
+        .encourage, .termsDoc, .privacyDoc, .privacySimple, .version,
     ]
 }
 
@@ -184,10 +221,21 @@ struct SettingsView: View {
         return SettingsPane(rawValue: raw) ?? .notification
     }
 
-    /// 按搜索词过滤某一组（空词 = 原样返回）
+    /// 按搜索词过滤某一组（空词 = 原样返回）。
+    /// 2026-11-12：设置页改成「聚合入口」后，搜「App 图标 / 字体 / 隐私」也要能
+    /// 命中对应的二级页所在的那个入口（否则搜索突然变笨）。
     private func filtered(_ items: [SettingsPane]) -> [SettingsPane] {
-        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return items }
-        return items.filter { $0.title.localizedCaseInsensitiveContains(query) }
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return items }
+        func hit(_ title: String) -> Bool { title.localizedCaseInsensitiveContains(q) }
+        return items.filter { item in
+            if hit(item.title) { return true }
+            switch item {
+            case .appearanceGroup: return SettingsPane.appearanceDetailGroup.contains { hit($0.title) }
+            case .aboutAllude:     return SettingsPane.aboutDetailGroup.contains { hit($0.title) }
+            default:               return false
+            }
+        }
     }
 
     var body: some View {
@@ -226,9 +274,13 @@ struct SettingsView: View {
         }
     }
 
-    private func catalogSection(_ title: String, _ items: [SettingsPane]) -> some View {
+    /// `title == nil` 表示不画组标题（2026-11-12：外观与个性化 / 存储空间 / 帮助与反馈
+    /// 各自只占一行，再给一条同名组标题就重复了）。
+    private func catalogSection(_ title: String?, _ items: [SettingsPane]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: title)
+            if let title {
+                SectionHeader(title: title)
+            }
             // 🔴 2026-11-08 主人：iOS 26+ 参考 Widgy —— 每行一条**独立玻璃胶囊**，
             //    行间留 8pt，不再用一张大白卡 + 分隔线；iOS 18 没有液态玻璃，
             //    保持原来的整卡分组（系统材质），两种版本各自成立。
@@ -294,8 +346,10 @@ struct SettingsView: View {
                 //    体验下来还是顶部更显眼，改回来）。
                 proBanner
                 catalogSection("通用", SettingsPane.generalGroupAll)
-                catalogSection("本机数据", SettingsPane.dataGroup)
-                catalogSection("关于", SettingsPane.aboutGroupAll)
+                catalogSection(nil, SettingsPane.appearanceTopGroup)
+                catalogSection(nil, SettingsPane.dataGroup)
+                catalogSection(nil, SettingsPane.supportGroup)
+                catalogSection("更多", SettingsPane.aboutGroupAll)
                 footer
             }
             .padding(.horizontal, AppTheme.hInset)
@@ -345,8 +399,10 @@ struct SettingsView: View {
                         .listRowSeparator(.hidden)
 
                     settingsGroup("通用", items: filtered(SettingsPane.generalGroupAll))
-                    settingsGroup("本机数据", items: filtered(SettingsPane.dataGroup))
-                    settingsGroup("关于", items: filtered(SettingsPane.aboutGroupAll))
+                    settingsGroup("", items: filtered(SettingsPane.appearanceTopGroup))
+                    settingsGroup("", items: filtered(SettingsPane.dataGroup))
+                    settingsGroup("", items: filtered(SettingsPane.supportGroup))
+                    settingsGroup("更多", items: filtered(SettingsPane.aboutGroupAll))
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
@@ -459,11 +515,13 @@ struct SettingsView: View {
                         .listRowSeparator(.hidden)
                 }
             } header: {
-                Text(title.L)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .textCase(nil)
-                    .padding(.leading, 10)
+                if !title.isEmpty {
+                    Text(title.L)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .textCase(nil)
+                        .padding(.leading, 10)
+                }
             }
         }
     }
@@ -511,7 +569,8 @@ struct SettingsView: View {
         case .license:    FullVersionView()
         case .activation: ActivationView()
         case .version:    VersionHistoryView()
-        case .storage:    dataDetailPane
+        // 2026-11-12 设置页改版：存储空间独立成页（不再是原来的「本机数据」面板）
+        case .storage:    StorageSpaceView()
         case .feedback:   feedbackPane
         case .privacy:    privacyPane
         case .aiCapability:
@@ -522,7 +581,8 @@ struct SettingsView: View {
             }
         case .appIcon:      AppIconSettingsView()
         case .privacyDoc:   LegalDocumentView(document: .privacy)
-        case .termsDoc:     LegalDocumentView(document: .terms)
+        // 2026-11-12 主人：服务条款与「声明与免责」合并成一页
+        case .termsDoc:     LegalDocumentView(document: .terms, extraHTML: StatementHTML.appended)
         case .disclaimer:   StatementView()
         case .help:
             // 宽屏下这页是常驻详情列，里面 push 不落地；交给它直接切 pane。
@@ -533,46 +593,24 @@ struct SettingsView: View {
             }
         case .trainingSamples: TrainingDataView()
         case .contactInfo:  ContactView()
+        // 2026-11-12 设置页改版新增
+        case .appearanceGroup:
+            AppearancePersonalizationView(
+                openPane: horizontalSizeClass == .regular ? { pane = $0 } : nil
+            )
+        case .aboutAllude:
+            AboutAlludeView(
+                openPane: horizontalSizeClass == .regular ? { pane = $0 } : nil
+            )
+        case .icloudSync:   ICloudSyncView()
+        case .encourage:    EncourageView()
+        case .privacySimple: PrivacySimpleView()
         }
     }
 
     /// 语言：App 内直接选（2026-11-08 主人：不再跳系统设置）
     private var languageDetailPane: some View {
         AppLanguageView()
-    }
-
-    /// 「已存记录 / 数据文件」面板（原 dataSection 的数据部分）
-    private var dataDetailPane: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                VStack(spacing: 0) {
-                    SettingsRow(symbol: "internaldrive.fill", title: "已存记录",
-                                detail: "\(store.records.count) 条",
-                                showsChevron: false,
-                                tint: AppTheme.todayTint)
-
-                    SettingsDivider()
-
-                    SettingsRow(symbol: "doc.text.fill", title: "数据文件",
-                                detail: PickupStorage.fileSizeDescription,
-                                showsChevron: false,
-                                tint: AppTheme.doneTint)
-                }
-                .settingsCard()
-
-                Text("数据只保存在这台设备上，不上传任何服务器。")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 4)
-            }
-            .padding(AppTheme.hInset)
-            .frame(maxWidth: AppTheme.contentMaxWidth)
-            .frame(maxWidth: .infinity)
-        }
-        .background(Color(.systemGroupedBackground))
-        .navigationTitle("本机数据")
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     /// 「反馈」面板：邮件直达 + 邮箱展示

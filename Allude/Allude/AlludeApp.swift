@@ -631,6 +631,21 @@ struct AlludeApp: App {
                     NavigationStack { NotificationSettingsView() }
                 case "appicon":
                     NavigationStack { AppIconSettingsView() }
+                // 2026-11-12 设置页改版：新二级页的独立截图入口（只给 Debug 脚手架用）
+                case "appearanceGroup":
+                    NavigationStack { AppearancePersonalizationView() }
+                case "storageSpace":
+                    NavigationStack { StorageSpaceView() }
+                case "aboutAllude":
+                    NavigationStack { AboutAlludeView() }
+                case "encourage":
+                    NavigationStack { EncourageView() }
+                case "privacySimple":
+                    NavigationStack { PrivacySimpleView() }
+                case "icloudSync":
+                    NavigationStack { ICloudSyncView() }
+                case "termsMerged":
+                    LegalDocumentView(document: .terms, extraHTML: StatementHTML.appended)
                 case "confirmClear":
                     // 弹窗是 overlay 形式，得挂在一个宿主视图上才拍得到
                     Color(.systemGroupedBackground)

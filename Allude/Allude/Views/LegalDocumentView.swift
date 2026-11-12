@@ -44,12 +44,15 @@ enum LegalDocument: String, Identifiable {
 
 struct LegalDocumentView: View {
     let document: LegalDocument
+    /// 追加到文档末尾的 HTML（2026-11-12：设置页改版后「服务条款」要**整合**
+    /// 原来的「声明与免责」，两段文字并成一页，不再给用户两个入口）。
+    var extraHTML: String? = nil
 
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
-            LegalWebView(resource: document.resource)
+            LegalWebView(resource: document.resource, extraHTML: extraHTML)
                 .ignoresSafeArea(edges: .bottom)
                 .navigationTitle(document.title)
                 .navigationBarTitleDisplayMode(.inline)
@@ -68,6 +71,8 @@ struct LegalDocumentView: View {
 /// 不在这个内嵌视图里继续导航 —— 否则用户会困在一个没有地址栏的网页里。
 private struct LegalWebView: UIViewRepresentable {
     let resource: String
+    /// 追加到 `</body>` 之前的 HTML 片段；nil 时原样加载文件。
+    var extraHTML: String? = nil
 
     func makeUIView(context: Context) -> WKWebView {
         let view = WKWebView()
@@ -76,7 +81,16 @@ private struct LegalWebView: UIViewRepresentable {
         view.backgroundColor = .clear
         view.scrollView.backgroundColor = .clear
 
-        if let url = Bundle.main.url(forResource: resource, withExtension: "html") {
+        guard let url = Bundle.main.url(forResource: resource, withExtension: "html") else {
+            return view
+        }
+
+        if let extraHTML,
+           let base = try? String(contentsOf: url, encoding: .utf8) {
+            // 插入点选在 `</body>` 前；文档里一定有这个标签（我们自己的模板）。
+            let merged = base.replacingOccurrences(of: "</body>", with: extraHTML + "\n</body>")
+            view.loadHTMLString(merged, baseURL: url.deletingLastPathComponent())
+        } else {
             view.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         }
         return view
