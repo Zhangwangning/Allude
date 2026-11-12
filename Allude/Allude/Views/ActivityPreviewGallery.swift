@@ -576,6 +576,10 @@ struct ActivityPreviewGallery: View {
     /// ⚠️ 不要只写宽度带 `400…520`：iPhone 16 Pro 的 402pt 正好在里面，
     /// 直板机会被误判成 Duo（2026-11-01 踩过）。
     private var isDuoDevice: Bool {
+        // 🔴 2026-11-12 主人：「iPad 的 UI 不要和 iPhone Duo 混在一起」。
+        //    iPad 宽度恒 > 600（iPad mini 也有 744），会被下面的几何判断误判成 Duo。
+        //    先按 idiom 闸掉 iPad；iPhone 仍用原来的几何判断。
+        guard UIDevice.current.userInterfaceIdiom == .phone else { return false }
         let size = windowSize
         return size.height < 720 || size.width > 600
     }

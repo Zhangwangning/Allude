@@ -513,8 +513,18 @@ enum DuoOuterDisplay {
 
     /// 主 App 启动时调用：窗口高度 < 720pt 即判定为 Duo 折叠态外屏
     /// （直板机最矮也有 852pt，永远不满足）。
+    ///
+    /// 🔴 2026-11-12 主人：「iPad 的 UI 不要和 iPhone Duo 混在一起」——
+    ///    iPad 在台前调度 / 分屏时窗口高度也可能 < 720，几何判断会把 iPad
+    ///    误当成 Duo 外屏（灵动岛改成纯数字）。所以这里先按 **idiom** 闸掉 iPad。
     static func refresh(windowHeight: CGFloat) {
         let defaults = UserDefaults(suiteName: PickupStorage.appGroupID) ?? .standard
+        #if canImport(UIKit)
+        if UIDevice.current.userInterfaceIdiom != .phone {
+            if defaults.bool(forKey: key) { defaults.set(false, forKey: key) }
+            return
+        }
+        #endif
         let duo = windowHeight < 720
         if defaults.bool(forKey: key) != duo {
             defaults.set(duo, forKey: key)

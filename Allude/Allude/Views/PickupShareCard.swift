@@ -450,7 +450,8 @@ struct SharePreviewSheet: View {
 
     var body: some View {
         // 矮屏（Duo 折叠态 678pt）：直板机 ≥ 850pt，永远走不到这个分支
-        let compact = Self.windowSize.height < 720
+        // 🔴 iPad 不算紧凑屏（2026-11-12 主人：iPad 不要和 Duo 混）：只对 iPhone 生效
+        let compact = UIDevice.current.userInterfaceIdiom == .phone && Self.windowSize.height < 720
 
         return ZStack {
             // 遮罩：点击关闭（RootView 级 overlay，没有下滑手势，补一个退出路径）
@@ -534,7 +535,7 @@ struct SharePreviewSheet: View {
         let inset: CGFloat = 8
         let corner = max(0, Self.displayCornerRadius - inset)
         // 🔴 矮屏（Duo 折叠态 678pt）走紧凑版式：直板机 ≥ 850pt，永远进不来。
-        let compact = size.height < 720
+        let compact = UIDevice.current.userInterfaceIdiom == .phone && size.height < 720
 
         return VStack(spacing: 0) {
             phoneHeader(compact: compact, corner: corner)
