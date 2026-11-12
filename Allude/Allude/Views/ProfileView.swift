@@ -274,13 +274,10 @@ struct SettingsView: View {
         }
     }
 
-    /// `title == nil` 表示不画组标题（2026-11-12：外观与个性化 / 存储空间 / 帮助与反馈
-    /// 各自只占一行，再给一条同名组标题就重复了）。
-    private func catalogSection(_ title: String?, _ items: [SettingsPane]) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if let title {
-                SectionHeader(title: title)
-            }
+    /// 2026-11-12 主人：首页不再显示「通用 / 外观与个性化 / 存储空间…」这类分组标题，
+    /// 每一块自己聚成一组，组与组之间只用留白分隔（见 `stackedSettings` 的 spacing）。
+    private func catalogSection(_ items: [SettingsPane]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
             // 🔴 2026-11-08 主人：iOS 26+ 参考 Widgy —— 每行一条**独立玻璃胶囊**，
             //    行间留 8pt，不再用一张大白卡 + 分隔线；iOS 18 没有液态玻璃，
             //    保持原来的整卡分组（系统材质），两种版本各自成立。
@@ -341,15 +338,15 @@ struct SettingsView: View {
     /// 窄屏：一张长页（目录驱动，与 iPad 分栏功能完全一致）。
     private var stackedSettings: some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: 28) {   // 块与块之间靠留白分隔，不再画分组标题
                 // 🔴 2026-11-08 主人：Pro 入口恢复放到**顶部**（此前学 Widgy 挪到最下面，
                 //    体验下来还是顶部更显眼，改回来）。
                 proBanner
-                catalogSection("通用", SettingsPane.generalGroupAll)
-                catalogSection(nil, SettingsPane.appearanceTopGroup)
-                catalogSection(nil, SettingsPane.dataGroup)
-                catalogSection(nil, SettingsPane.supportGroup)
-                catalogSection("更多", SettingsPane.aboutGroupAll)
+                catalogSection(SettingsPane.generalGroupAll)
+                catalogSection(SettingsPane.appearanceTopGroup)
+                catalogSection(SettingsPane.dataGroup)
+                catalogSection(SettingsPane.supportGroup)
+                catalogSection(SettingsPane.aboutGroupAll)
                 footer
             }
             .padding(.horizontal, AppTheme.hInset)
@@ -398,11 +395,11 @@ struct SettingsView: View {
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
 
-                    settingsGroup("通用", items: filtered(SettingsPane.generalGroupAll))
+                    settingsGroup("", items: filtered(SettingsPane.generalGroupAll))
                     settingsGroup("", items: filtered(SettingsPane.appearanceTopGroup))
                     settingsGroup("", items: filtered(SettingsPane.dataGroup))
                     settingsGroup("", items: filtered(SettingsPane.supportGroup))
-                    settingsGroup("更多", items: filtered(SettingsPane.aboutGroupAll))
+                    settingsGroup("", items: filtered(SettingsPane.aboutGroupAll))
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
