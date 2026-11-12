@@ -412,116 +412,25 @@ struct PrivacySimpleView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
-
 // MARK: - iCloud 同步
 
-/// 🔴 2026-11-12：这一项目前是**入口占位**，没有真正实现同步。
-/// 主人要求把它排在设置首页第一块，所以给一页把话说清楚：
-/// 现在数据只在本机；将来若做，也只会走用户自己的 iCloud 私有空间。
-/// 真做同步时替换这一页，并把隐私政策/使用条款同步改掉。
+/// 2026-11-12 实现真正同步；布局参考常见 App 的「同步状态面板」：
+/// 开关 → 状态（网络 / iCloud / 同步状态 / 最近同步）→ 立即同步 → 异常通知 → 说明。
+/// 借的是信息层级，不是样式——每行仍用 App 自己的 SettingsRow。
 struct ICloudSyncView: View {
     @StateObject private var sync = ICloudSyncController.shared
+    @State private var showHelp = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                VStack(spacing: 0) {
-                    Toggle(isOn: Binding(
-                        get: { sync.isEnabled },
-                        set: { sync.setEnabled($0) }
-                    )) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("iCloud 同步")
-                                .font(AppTheme.TypeScale.rowTitle)
-                            Text(sync.isEnabled ? "已开启" : "关闭时数据只在本机")
-                                .font(AppTheme.TypeScale.badge)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .tint(AppTheme.accent)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                }
-                .settingsCard()
-
-                if sync.isEnabled {
-                    VStack(spacing: 0) {
-                        SettingsRow(symbol: "arrow.triangle.2.circlepath",
-                                    title: "上次同步",
-                                    detail: sync.lastSyncedDescription,
-                                    showsChevron: false,
-                                    tint: AppTheme.sky)
-                        SettingsDivider()
-                        Button {
-                            sync.syncNow()
-                        } label: {
-                            SettingsRow(symbol: "arrow.clockwise",
-                                        title: "立即同步",
-                                        showsChevron: false,
-                                        tint: AppTheme.accent)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .settingsCard()
-
-                    if case .failed(let message) = sync.status {
-                        Text(message)
-                            .font(AppTheme.TypeScale.note)
-                            .foregroundStyle(.red)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    } else if sync.status == .unavailable {
-                        Text("没有找到 iCloud。请在系统设置里登录 iCloud，并允许 Allude 使用 iCloud。")
-                            .font(AppTheme.TypeScale.note)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("同步到哪里")
-                        .font(AppTheme.TypeScale.rowSubtitle.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    Text("""
-                    只存进你自己的 iCloud（iCloud 云盘里的 Allude 文件夹），用同一个 Apple ID 的设备都能看到。不经过开发者的服务器，开发者看不到你的取件记录。
-                    """)
-                    .font(AppTheme.TypeScale.body)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                    Text("冲突怎么处理")
-                        .font(AppTheme.TypeScale.rowSubtitle.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(.top, 6)
-
-                    Text("""
-                    同一件包裹在两台设备上都被改过时，保留最后改动的那一份；删掉的记录不会从另一台设备「复活」。
-                    """)
-                    .font(AppTheme.TypeScale.body)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                    Text("关掉会怎样")
-                        .font(AppTheme.TypeScale.rowSubtitle.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(.top, 6)
-
-                    Text("""
-                    关掉后 App 不再读写 iCloud，本机已有的记录一条不少；iCloud 里那份会留着，下次打开继续用。
-                    """)
-                    .font(AppTheme.TypeScale.body)
-                    .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .settingsCard()
-
-                NavigationLink {
-                    LegalDocumentView(document: .privacy)
-                } label: {
-                    SettingsRow(symbol: "hand.raised.fill", title: "隐私政策",
-                                tint: AppTheme.doneTint)
-                }
-                .buttonStyle(.plain)
-                .settingsCard()
+                syncToggleCard
+                helpLink
+                statusCard
+                actionCard
+                notifyCard
+                footerNote
+                privacyRow
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 12)
@@ -532,5 +441,211 @@ struct ICloudSyncView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("iCloud 同步")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showHelp) {
+            NavigationStack { ICloudSyncHelpView() }
+                .presentationDetents([.medium, .large])
+        }
+    }
+
+    private var syncToggleCard: some View {
+        Toggle(isOn: Binding(get: { sync.isEnabled },
+                             set: { sync.setEnabled($0) })) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("开启同步")
+                    .font(AppTheme.TypeScale.rowTitle)
+                Text(sync.isEnabled
+                     ? "同一 Apple ID 的设备会自动合并记录"
+                     : "关闭时数据只保存在这台设备上")
+                    .font(AppTheme.TypeScale.badge)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .tint(AppTheme.accent)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .settingsCard()
+    }
+
+    private var helpLink: some View {
+        Button {
+            showHelp = true
+        } label: {
+            HStack(spacing: 4) {
+                Text("点此查看 iCloud 同步说明")
+                Image(systemName: "arrow.right")
+            }
+            .font(AppTheme.TypeScale.rowSubtitle)
+            .foregroundStyle(AppTheme.accent)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 4)
+    }
+
+    private var statusCard: some View {
+        VStack(spacing: 0) {
+            SettingsRow(symbol: "wifi",
+                        title: "网络",
+                        detail: sync.networkAvailable ? "正常" : "无网络",
+                        showsChevron: false,
+                        tint: AppTheme.sky)
+            SettingsDivider()
+            SettingsRow(symbol: "icloud.fill",
+                        title: "iCloud",
+                        detail: sync.isAvailable ? "已连接" : "未启用",
+                        showsChevron: false,
+                        tint: AppTheme.accent)
+            SettingsDivider()
+            SettingsRow(symbol: "arrow.triangle.2.circlepath",
+                        title: "同步状态",
+                        detail: sync.statusSummary,
+                        showsChevron: false,
+                        tint: AppTheme.doneTint)
+            SettingsDivider()
+            SettingsRow(symbol: "clock",
+                        title: "最近同步",
+                        detail: sync.lastSyncedDescription,
+                        showsChevron: false,
+                        tint: AppTheme.indigo)
+        }
+        .settingsCard()
+    }
+
+    private var actionCard: some View {
+        Button {
+            sync.syncNow()
+        } label: {
+            SettingsRow(symbol: "arrow.clockwise",
+                        title: "立即同步",
+                        detail: sync.isEnabled ? "" : "先打开上面的开关",
+                        showsChevron: false,
+                        tint: AppTheme.accent)
+        }
+        .buttonStyle(.plain)
+        .disabled(!sync.isEnabled || sync.isSyncing)
+        .opacity(sync.isEnabled ? 1 : 0.5)
+        .settingsCard()
+    }
+
+    private var notifyCard: some View {
+        VStack(spacing: 0) {
+            Toggle(isOn: Binding(get: { sync.notifyOnICloudIssue },
+                                 set: { sync.setNotifyOnICloudIssue($0) })) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("iCloud 异常通知")
+                        .font(AppTheme.TypeScale.rowTitle)
+                    Text("同步失败时提醒一次，不重复打扰")
+                        .font(AppTheme.TypeScale.badge)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .tint(AppTheme.accent)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+
+            SettingsDivider()
+
+            Toggle(isOn: Binding(get: { sync.notifyOnNetworkIssue },
+                                 set: { sync.setNotifyOnNetworkIssue($0) })) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("网络异常通知")
+                        .font(AppTheme.TypeScale.rowTitle)
+                    Text("没有网络导致同步失败时提醒")
+                        .font(AppTheme.TypeScale.badge)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .tint(AppTheme.accent)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+        }
+        .settingsCard()
+    }
+
+    @ViewBuilder
+    private var footerNote: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if case .failed(let message) = sync.status {
+                Text(message)
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.red)
+            } else if sync.status == .unavailable {
+                Text("没有找到 iCloud。请在系统设置里登录 iCloud，并允许 Allude 使用 iCloud。")
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.secondary)
+            }
+            Text("只存进你自己的 iCloud（iCloud 云盘 › Allude），不经过开发者服务器；关掉开关后 App 不再读写 iCloud。")
+                .font(AppTheme.TypeScale.note)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 4)
+    }
+
+    private var privacyRow: some View {
+        NavigationLink {
+            LegalDocumentView(document: .privacy)
+        } label: {
+            SettingsRow(symbol: "hand.raised.fill",
+                        title: "隐私政策",
+                        tint: AppTheme.doneTint)
+        }
+        .buttonStyle(.plain)
+        .settingsCard()
+    }
+}
+
+/// iCloud 同步说明：先讲前提，再讲开关与效果（参考同类 App 的同步教程结构）。
+struct ICloudSyncHelpView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    private let steps: [(String, String)] = [
+        ("1", "两台设备登录同一个 Apple ID"),
+        ("2", "设置 › Apple ID › iCloud › iCloud 云盘 打开"),
+        ("3", "同一页的「使用 iCloud 的 App」里确认有 Allude"),
+        ("4", "回到本页打开「开启同步」，两台设备各打开一次 Allude"),
+        ("5", "之后任意一台改动，另一台启动或回到前台时自动合并")
+    ]
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("同步怎么工作")
+                    .font(AppTheme.TypeScale.section)
+                    .foregroundStyle(.secondary)
+
+                ForEach(steps, id: \.0) { number, text in
+                    HStack(alignment: .top, spacing: 12) {
+                        Text(number)
+                            .font(AppTheme.TypeScale.badge.weight(.semibold))
+                            .foregroundStyle(AppTheme.accent)
+                            .frame(width: 20, height: 20)
+                            .background(AppTheme.accent.opacity(0.12), in: Circle())
+                        Text(text)
+                            .font(AppTheme.TypeScale.body)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                Text("冲突怎么处理")
+                    .font(AppTheme.TypeScale.section)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 8)
+
+                Text("同一件包裹在两台设备上都改过时，保留最后改动的那一份；删掉的记录不会从另一台设备「复活」。关掉开关后本机记录一条不少，iCloud 里那份会留着。")
+                    .font(AppTheme.TypeScale.body)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("iCloud 同步说明")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("完成") { dismiss() }
+            }
+        }
     }
 }
