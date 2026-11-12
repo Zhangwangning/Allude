@@ -150,7 +150,7 @@ struct StorageSpaceView: View {
                 }
                 .settingsCard()
 
-                Text("数据只保存在这台设备上，不上传任何服务器。")
+                Text("默认只保存在这台设备上；开启 iCloud 同步后只存进你自己的 iCloud，不经过开发者服务器。")
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -362,8 +362,8 @@ struct PrivacySimpleView: View {
 
                     SettingsDivider()
 
-                    SettingsRow(symbol: "internaldrive.fill", title: "取件记录只在本机",
-                                subtitle: "存在这台设备的 App Group 里，主 App 与小组件共用。",
+                    SettingsRow(symbol: "internaldrive.fill", title: "取件记录默认只在本机",
+                                subtitle: "存在这台设备的 App Group 里，主 App 与小组件共用；开启 iCloud 同步后才另存一份到你自己的 iCloud。",
                                 showsChevron: false, tint: AppTheme.todayTint)
 
                     SettingsDivider()
@@ -375,7 +375,7 @@ struct PrivacySimpleView: View {
                     SettingsDivider()
 
                     SettingsRow(symbol: "trash.fill", title: "卸载或删除即消失",
-                                subtitle: "没有云端备份，也没有回收站，找不回来。",
+                                subtitle: "没有回收站。开了 iCloud 同步时，记录会留在你自己的 iCloud 里，重装后可同步回来。",
                                 showsChevron: false, tint: AppTheme.pendingTint)
 
                     SettingsDivider()
@@ -420,44 +420,92 @@ struct PrivacySimpleView: View {
 /// 现在数据只在本机；将来若做，也只会走用户自己的 iCloud 私有空间。
 /// 真做同步时替换这一页，并把隐私政策/使用条款同步改掉。
 struct ICloudSyncView: View {
+    @StateObject private var sync = ICloudSyncController.shared
+
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
                 VStack(spacing: 0) {
-                    Toggle(isOn: .constant(false)) {
+                    Toggle(isOn: Binding(
+                        get: { sync.isEnabled },
+                        set: { sync.setEnabled($0) }
+                    )) {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("iCloud 同步")
                                 .font(AppTheme.TypeScale.rowTitle)
-                            Text("尚未开放")
+                            Text(sync.isEnabled ? "已开启" : "关闭时数据只在本机")
                                 .font(AppTheme.TypeScale.badge)
                                 .foregroundStyle(.secondary)
                         }
                     }
                     .tint(AppTheme.accent)
-                    .disabled(true)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                 }
                 .settingsCard()
 
+                if sync.isEnabled {
+                    VStack(spacing: 0) {
+                        SettingsRow(symbol: "arrow.triangle.2.circlepath",
+                                    title: "上次同步",
+                                    detail: sync.lastSyncedDescription,
+                                    showsChevron: false,
+                                    tint: AppTheme.sky)
+                        SettingsDivider()
+                        Button {
+                            sync.syncNow()
+                        } label: {
+                            SettingsRow(symbol: "arrow.clockwise",
+                                        title: "立即同步",
+                                        showsChevron: false,
+                                        tint: AppTheme.accent)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .settingsCard()
+
+                    if case .failed(let message) = sync.status {
+                        Text(message)
+                            .font(AppTheme.TypeScale.note)
+                            .foregroundStyle(.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else if sync.status == .unavailable {
+                        Text("没有找到 iCloud。请在系统设置里登录 iCloud，并允许 Allude 使用 iCloud。")
+                            .font(AppTheme.TypeScale.note)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("现在：数据只在本机")
+                    Text("同步到哪里")
                         .font(AppTheme.TypeScale.rowSubtitle.weight(.semibold))
                         .foregroundStyle(.secondary)
 
                     Text("""
-                    Allude 目前不联网，取件记录只保存在这台设备上，卸载或删除后就找不回来。
+                    只存进你自己的 iCloud（iCloud 云盘里的 Allude 文件夹），用同一个 Apple ID 的设备都能看到。不经过开发者的服务器，开发者看不到你的取件记录。
                     """)
                     .font(AppTheme.TypeScale.body)
                     .fixedSize(horizontal: false, vertical: true)
 
-                    Text("以后：如果做同步")
+                    Text("冲突怎么处理")
                         .font(AppTheme.TypeScale.rowSubtitle.weight(.semibold))
                         .foregroundStyle(.secondary)
                         .padding(.top, 6)
 
                     Text("""
-                    只会用你自己的 iCloud 空间（Apple 的私有数据库），不经过开发者的服务器；那时会把隐私政策和使用条款一起改掉，再由你决定是否打开。
+                    同一件包裹在两台设备上都被改过时，保留最后改动的那一份；删掉的记录不会从另一台设备「复活」。
+                    """)
+                    .font(AppTheme.TypeScale.body)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                    Text("关掉会怎样")
+                        .font(AppTheme.TypeScale.rowSubtitle.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 6)
+
+                    Text("""
+                    关掉后 App 不再读写 iCloud，本机已有的记录一条不少；iCloud 里那份会留着，下次打开继续用。
                     """)
                     .font(AppTheme.TypeScale.body)
                     .fixedSize(horizontal: false, vertical: true)

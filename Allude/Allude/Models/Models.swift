@@ -185,6 +185,9 @@ final class PickupStore: ObservableObject {
     /// `records` 变更后的全部派生动作（写盘 / 小组件 / 实时活动 / 通知）
     private func persistSideEffects(from oldValue: [PickupRecord]) {
         PickupStorage.save(records)
+        // iCloud 同步：数据一变就排一次（控制器内部会去抖 1.5 秒；开关关着时是空操作）。
+        // PickupStore 不是 @MainActor，统一经由 bridge 转到主线程。
+        PickupSyncBridge.schedule()
         // 数据一变就请桌面小组件重画。WidgetKit 自身对刷新有预算控制，
         // 短时间内的多次请求会被系统合并，这里不再额外做去抖。
         WidgetCenter.shared.reloadAllTimelines()
@@ -284,6 +287,9 @@ final class PickupStore: ObservableObject {
         // 🔴 注意这里**不会**触发 `enforceStorageLimit()` —— 那个只在 `ingest()` 里跑，
         //    所以「免费档超量」不会在启动瞬间删数据，用户还有机会先导入凭证。
         refreshEntitlement()
+
+        // iCloud 同步：墓碑与记录分开存，启动时一并读回
+        syncTombstones = PickupTombstones.load()
     }
 
     /// 存量记录按**当前解析规则**刷新派生字段（2026-10-30）。
@@ -573,6 +579,7 @@ final class PickupStore: ObservableObject {
                                 shelf: item.shelf.isEmpty ? nil : item.shelf,
                                 locker: item.locker.isEmpty ? nil : item.locker,
                                 history: [Date()],
+                                updatedAt: Date(),
                                 pickedUpAt: nil)
         }
 
@@ -583,6 +590,15 @@ final class PickupStore: ObservableObject {
         outcome.updated = merged.updated.map(\.code)
 
         records = merged.records
+        // 同步：新入库的记录自带 updatedAt；被「同码自动完成 / 重复通知」改到的旧条
+        // 用取件码匹配后补时间戳（PickupMerge 只回传码，不传 id）。
+        let touchedCodes = Set(merged.completed + merged.updated.map(\.code))
+        if !touchedCodes.isEmpty {
+            let stamp = Date()
+            for index in records.indices where touchedCodes.contains(records[index].code) {
+                records[index].updatedAt = stamp
+            }
+        }
         enforceStorageLimit()
         // 通知**只对新写入的发**：被自动完成的旧条再发一遍毫无价值。
         // 放在落库之后，确保用户点通知进来时记录已经在列表里。
@@ -599,12 +615,48 @@ final class PickupStore: ObservableObject {
         return outcome
     }
 
+    // MARK: 同步（2026-11-12 iCloud 同步）
+
+    /// 本机删除墓碑：`id.uuidString -> 删除时间`。
+    /// 记录被删掉后，靠它告诉另一台设备「这条是删了，不是没同步过」。
+    private(set) var syncTombstones: [String: Date] = [:]
+
+    /// 同步合并完写回本机（由 `ICloudSyncController` 调用）。
+    ///
+    /// 只走一次 `batchUpdate`：合并结果可能同时改动几十条，逐条赋值会把
+    /// 「全量写盘 + 小组件刷新」放大几十倍（同 `isBatchUpdating` 的理由）。
+    func applySynced(records newRecords: [PickupRecord], tombstones: [String: Date]) {
+        syncTombstones = tombstones
+        PickupTombstones.save(tombstones)
+        batchUpdate {
+            records = newRecords
+        }
+    }
+
+    /// 给指定记录打上「刚刚改过」的时间戳（同步合并要按它判冲突）。
+    private func stampUpdated(_ ids: Set<UUID>, at date: Date = Date()) {
+        guard !ids.isEmpty else { return }
+        for index in records.indices where ids.contains(records[index].id) {
+            records[index].updatedAt = date
+        }
+    }
+
+    /// 记下删除墓碑（删除路径必须都调它，否则另一台设备会把记录同步回来）。
+    private func recordTombstones(_ ids: [UUID], at date: Date = Date()) {
+        guard !ids.isEmpty else { return }
+        for id in ids { syncTombstones[id.uuidString] = date }
+        PickupTombstones.save(syncTombstones)
+    }
+
     /// 免费版存储上限：超出后按时间淘汰最旧。全功能档不淘汰。
     private func enforceStorageLimit() {
         guard !isPro, records.count > Self.freeStorageLimit else { return }
         let newest = records.sorted { $0.receivedAt > $1.receivedAt }
             .prefix(Self.freeStorageLimit)
+        let keep = Set(newest.map(\.id))
+        let dropped = records.filter { !keep.contains($0.id) }.map(\.id)
         records = Array(newest)
+        recordTombstones(dropped)
     }
 
     /// 手动 / 扫码添加一个「裸码」—— 手上只有一串取件码、没有短信原文时的入口。
@@ -690,7 +742,9 @@ final class PickupStore: ObservableObject {
     /// `pickedUpAt` 不参与编辑 —— 传入值这些字段保持原记录即可（调用方用原记录打底）。
     func update(_ edited: PickupRecord) {
         guard let index = records.firstIndex(where: { $0.id == edited.id }) else { return }
-        records[index] = edited
+        var copy = edited
+        copy.updatedAt = Date()
+        records[index] = copy
     }
 
     /// 卡片内一键切换（首页/记录页直接调用，无需进入详情）
@@ -708,8 +762,10 @@ final class PickupStore: ObservableObject {
     /// 统计页的平均停留会把它算成异常值（耗时被记为 0 或与入库时间混为一谈）。
     /// 翻到「已取」时只在原本没有时间戳的情况下补写 —— 重复标记不刷新取件时刻。
     private func setPicked(_ picked: Bool, at index: Int) {
+        let stamp = Date()
         records[index].isPickedUp = picked
-        records[index].pickedUpAt = picked ? (records[index].pickedUpAt ?? Date()) : nil
+        records[index].pickedUpAt = picked ? (records[index].pickedUpAt ?? stamp) : nil
+        records[index].updatedAt = stamp
     }
 
     /// 批量标记已取，返回被改动的记录以便撤销
@@ -722,6 +778,7 @@ final class PickupStore: ObservableObject {
                 if let index = records.firstIndex(where: { $0.id == record.id }) {
                     records[index].isPickedUp = true
                     records[index].pickedUpAt = records[index].pickedUpAt ?? stamp
+                    records[index].updatedAt = stamp
                 }
             }
         }
@@ -739,6 +796,7 @@ final class PickupStore: ObservableObject {
                 if let index = records.firstIndex(where: { $0.id == record.id }) {
                     records[index].isPickedUp = false
                     records[index].pickedUpAt = record.pickedUpAt
+                    records[index].updatedAt = Date()
                 }
             }
         }
@@ -747,6 +805,7 @@ final class PickupStore: ObservableObject {
     /// 删除单条
     func delete(_ record: PickupRecord) {
         records.removeAll { $0.id == record.id }
+        recordTombstones([record.id])
         PickupNotifier.clearDelivered(for: [record.id])
     }
 
@@ -757,6 +816,7 @@ final class PickupStore: ObservableObject {
     func deleteMany(_ recordsToDelete: [PickupRecord]) {
         let ids = Set(recordsToDelete.map(\.id))
         records.removeAll { ids.contains($0.id) }
+        recordTombstones(Array(ids))
         PickupNotifier.clearDelivered(for: Array(ids))
     }
 
@@ -768,13 +828,20 @@ final class PickupStore: ObservableObject {
     /// 因此直接 append 即可，不必还原原位。
     func insert(_ recordsToInsert: [PickupRecord]) {
         let existing = Set(records.map(\.id))
-        records.append(contentsOf: recordsToInsert.filter { !existing.contains($0.id) })
+        let stamp = Date()
+        let fresh = recordsToInsert.filter { !existing.contains($0.id) }.map { record -> PickupRecord in
+            var copy = record
+            copy.updatedAt = stamp
+            return copy
+        }
+        records.append(contentsOf: fresh)
     }
 
     /// 清空已取件记录
     func clearPickedUp() {
         let ids = records.filter(\.isPickedUp).map(\.id)
         records.removeAll { $0.isPickedUp }
+        recordTombstones(ids)
         PickupNotifier.clearDelivered(for: ids)
     }
 }

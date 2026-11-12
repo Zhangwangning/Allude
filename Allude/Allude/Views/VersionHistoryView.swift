@@ -47,7 +47,7 @@ struct VersionHistoryView: View {
             "一键添加快捷指令自动化仅支持 iOS 27 及以上；iOS 26 及更早改为按教程手动新建一条",
             "四条快捷指令的 iCloud 链接全部换成新版（旧链接作废，请用 App 内新链接或文件导入）",
             "隐私政策与使用条款更新：补充权限清单、TestFlight 诊断信息说明、订阅与买断条款",
-            "设置页重新分组：外观与个性化、存储空间、关于 Allude 收进二级页；新增「iCloud 同步」说明与「隐私政策（简明版）」，声明与免责并入服务条款",
+            "设置页重新分组：外观与个性化、存储空间、关于 Allude 收进二级页；新增「隐私政策（简明版）」，声明与免责并入服务条款；新增可选 iCloud 同步（默认关闭，只写入你自己的 iCloud）",
         ]),
         Entry(version: "0.3.7", date: "2026-11-08", theme: "整套设置换成液态玻璃 · 细节与文案收口", highlights: [
             "iOS 26 及以上：设置首页每一行都是独立的液态玻璃胶囊，二三级页面也一并换成玻璃卡片",
@@ -301,7 +301,7 @@ struct VersionHistoryView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Allude")
                 .font(.system(size: 17, weight: .semibold))
-            Text("从第一行代码到现在的每一步。取件数据始终只在本机流转，不上传任何服务器。")
+            Text("从第一行代码到现在的每一步。取件数据默认只在本机，开启 iCloud 同步后也只在你自己的 iCloud 里。")
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
                 .lineSpacing(3)

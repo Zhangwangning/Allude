@@ -108,6 +108,15 @@ struct PickupRecord: Identifiable, Hashable, Codable {
     /// 最后一次被通知的时间（卡片右上角那个时间戳用它）
     var lastNotifiedAt: Date { history?.last ?? receivedAt }
 
+    /// **本机最后一次改动这条记录的时间**（2026-11-12 加 iCloud 同步）。
+    ///
+    /// 只给同步合并用：两台设备的同一条记录（同 `id`）冲突时，取 `updatedAt` 新的那条。
+    /// 没有单独的时间戳就只能比 `receivedAt`，会把「A 机勾了已取、B 机没勾」判平。
+    ///
+    /// 🔴 Optional + 默认 nil：旧 JSON 没这个 key，合成 Codable 走 `decodeIfPresent`，
+    ///    解码成 nil，合并时按 `receivedAt` 兜底，不会因为升级 App 就解不出旧数据。
+    var updatedAt: Date? = nil
+
     /// 取件发生的时刻（勾选「已取」的那一下），未取件时为 nil。
     ///
     /// 与 `receivedAt`（短信到达 = 入库时刻）配对，才能回答统计页里两个真问题：

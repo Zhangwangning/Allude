@@ -6,5 +6,10 @@
 	<array>
 		<string>group.com.jikezhang.allude</string>
 	</array>
+	<!-- 2026-11-12 iCloud 同步：只用到 iCloud 云盘（Documents 容器），不用 CloudKit -->
+	<key>com.apple.developer.ubiquity-container-identifiers</key>
+	<array>
+		<string>iCloud.com.jikezhang.allude</string>
+	</array>
 </dict>
 </plist>

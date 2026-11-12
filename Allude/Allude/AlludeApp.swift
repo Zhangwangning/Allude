@@ -801,6 +801,9 @@ struct AlludeApp: App {
                     // 通知要过一会就消失，不能一直挂着）。iOS 没有自动过期 API，
                     // 只能把握「回前台」这个时机；更早的清理由取件/删除触发。
                     PickupNotifier.clearDelivered(olderThan: 10 * 60)
+                    // iCloud 同步（2026-11-12）：开关打开时，回前台对齐一次
+                    // （别的设备可能刚改过；控制器内部自己判断开关与可用性）
+                    ICloudSyncController.shared.syncNow()
                 }
             }
         }

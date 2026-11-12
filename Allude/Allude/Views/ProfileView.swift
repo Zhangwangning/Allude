@@ -669,7 +669,7 @@ struct SettingsView: View {
                 }
                 .settingsCard()
 
-                Text("无账号、无联网；取件数据全程只在本机。")
+                Text("无账号、无开发者服务器；取件数据默认只在本机，开启 iCloud 同步后只存进你自己的 iCloud。")
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -787,7 +787,7 @@ struct SettingsView: View {
             Text("Allude")
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.tertiary)
-            Text("取件码只在本机流转，不上传任何服务器")
+            Text("取件码默认只在本机；开启 iCloud 同步后也只在你自己的 iCloud 里")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
