@@ -45,11 +45,7 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            if usesPadTabBar {
-                padTabLayout
-            } else {
-                phoneTabLayout
-            }
+            tabLayout
 
             // ── 分享面板（全屏浮动，盖住标签栏） ──
             if let records = share.records {
@@ -105,9 +101,11 @@ struct RootView: View {
         }
     }
 
-    // MARK: - iPhone / 紧凑宽度：原生 TabView（标签栏在底部）
-
-    private var phoneTabLayout: some View {
+    /// 全平台同一个原生 `TabView`：
+    /// · iPhone / Duo 外屏（compact）：原生底部标签栏，与以前完全一致；
+    /// · iPad（regular）：走 iOS 18 的 `sidebarAdaptable` —— 系统自己决定
+    ///   「侧边栏 / 顶部栏」形态（2026-11-13 主人定：放顶部，用系统方案，不自绘）。
+    private var tabLayout: some View {
         TabView(selection: $model.selection) {
             PickupListView()
                 .tabItem { Label("待取", systemImage: "tray.fill") }
@@ -138,35 +136,29 @@ struct RootView: View {
         .tint(AppTheme.accent)
         // 装配后接管系统 tabBar 引用（见 `TabBarCloak`），供显隐动画驱动。
         .background(NativeTabBarBridge())
+        // iPad 交给系统自适应（宽屏 = 侧边/顶部栏）；iPhone 保持原生底部栏。
+        .modifier(AdaptiveTabBarStyle(enabled: usesPadTabBar))
     }
+}
 
-    // MARK: - iPad：内容 + 原生液态玻璃底部标签栏
+// MARK: - 自适应标签栏样式
 
-    private var padTabLayout: some View {
-        ZStack {
-            tabContent(.pending) { PickupListView() }
-            tabContent(.picked) { PickedUpView() }
-            if showsStats {
-                tabContent(.stats) { StatsTabView() }
+/// iPad（宽屏）用 iOS 18 起的 `sidebarAdaptable`：系统按宽度给侧边栏或顶部标签栏。
+/// iPhone / 紧凑宽度不加这个修饰，保持原生底部标签栏（含最小化行为）。
+private struct AdaptiveTabBarStyle: ViewModifier {
+    var enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled {
+            if #available(iOS 18.0, *) {
+                content.tabViewStyle(.sidebarAdaptable)
+            } else {
+                content
             }
-            tabContent(.settings) { SettingsTabRoot() }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            PadBottomTabBar(selection: $model.selection, showsStats: showsStats)
+        } else {
+            content
         }
     }
-
-    /// 四个标签内容常驻（透明度切换），切换不重建页面、不丢滚动位置。
-    @ViewBuilder
-    private func tabContent<Content: View>(_ tab: RootTab,
-                                           @ViewBuilder content: () -> Content) -> some View {
-        let isOn = model.selection == tab
-        content()
-            .opacity(isOn ? 1 : 0)
-            .allowsHitTesting(isOn)
-            .accessibilityHidden(!isOn)
-    }
-
 }
 
 // MARK: - 底部菜单栏偏好
@@ -818,62 +810,3 @@ private struct TabBarMinimizeNever: ViewModifier {
 /// iPadOS 18+ 的原生标签栏在顶部、且没有公开 API 挪到底部。这里用系统
 /// **Liquid Glass（iOS 26+ `glassEffect`，经 `appGlass`）**/ 系统毛玻璃（18 及以下）
 /// 当背景，只负责排版四个按钮 —— 玻璃本身由系统绘制，不是自绘材质。
-private struct PadBottomTabBar: View {
-    @Binding var selection: RootTab
-    var showsStats: Bool = true
-
-    private struct Item {
-        let tab: RootTab
-        let title: String
-        let symbol: String
-    }
-
-    private let items: [Item] = [
-        .init(tab: .pending, title: "待取", symbol: "tray.fill"),
-        .init(tab: .picked, title: "已取", symbol: "checkmark.circle.fill"),
-        .init(tab: .stats, title: "统计", symbol: "chart.bar.xaxis"),
-        .init(tab: .settings, title: "设置", symbol: "gearshape.fill"),
-    ]
-
-    private var visibleItems: [Item] {
-        showsStats ? items : items.filter { $0.tab != .stats }
-    }
-
-    var body: some View {
-        HStack(spacing: 4) {
-            ForEach(visibleItems, id: \.tab) { item in
-                let isOn = item.tab == selection
-                Button {
-                    guard !isOn else { return }
-                    selection = item.tab
-                } label: {
-                    VStack(spacing: 3) {
-                        Image(systemName: item.symbol)
-                            .font(.system(size: 17, weight: .semibold))
-                        Text(item.title.L)
-                            .font(AppTheme.TypeScale.note)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 7)
-                    .background {
-                        if isOn {
-                            Capsule(style: .continuous)
-                                .fill(AppTheme.accent.opacity(0.14))
-                        }
-                    }
-                    .foregroundStyle(isOn ? AppTheme.accent : Color.secondary)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(item.title.L)
-                .accessibilityAddTraits(isOn ? .isSelected : [])
-            }
-        }
-        .padding(6)
-        .frame(maxWidth: 560)
-        .appGlass(.capsule)
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 24)
-        .padding(.bottom, 8)
-        .animation(.easeInOut(duration: 0.18), value: selection)
-    }
-}
