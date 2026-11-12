@@ -44,13 +44,8 @@ struct AppearancePersonalizationView: View {
                 VStack(spacing: 0) {
                     HStack(spacing: 12) {
                         Toggle(isOn: $showsStats) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("显示「统计」")
-                                    .font(AppTheme.TypeScale.rowTitle)
-                                Text("关掉后底部菜单栏只剩 待取 / 已取 / 设置")
-                                    .font(AppTheme.TypeScale.rowSubtitle)
-                                    .foregroundStyle(.secondary)
-                            }
+                            Text("显示「统计」")
+                                .font(AppTheme.TypeScale.rowTitle)
                         }
                         .tint(AppTheme.accent)
                     }
@@ -59,11 +54,6 @@ struct AppearancePersonalizationView: View {
                 }
                 .settingsCard()
 
-                Text("这些设置只改变界面外观，随时可以改回来。")
-                    .font(AppTheme.TypeScale.note)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 4)
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 12)
