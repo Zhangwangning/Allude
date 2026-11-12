@@ -110,6 +110,42 @@
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
+			<key>Icon09</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>Icon09</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>Icon10</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>Icon10</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>Icon11</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>Icon11</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>Icon12</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>Icon12</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
 		</dict>
 	</dict>
 	<key>ITSAppUsesNonExemptEncryption</key>

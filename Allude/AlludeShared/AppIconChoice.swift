@@ -3,7 +3,8 @@ import Foundation
 // MARK: ============================================================================
 // App 图标切换（2026-11-01 主人）
 //
-// 八套内置图标，**第 7 套（C 标）为默认主图标**（2026-11-11 主人定）。
+// 十二套内置图标，**第 7 套（C 标）为默认主图标**（2026-11-11 主人定；
+// 2026-11-12 主人又补了第 9–12 套）。
 // 图都是 512 满幅方图，不再裁切；主图标 art 与 alternate 的对应关系见下。
 //
 // 主图标放 `AppIcon.appiconset`；其余七套是 **alternate icon** —— 由 Info.plist 的
@@ -18,6 +19,7 @@ import Foundation
 
 enum AppIconChoice: String, CaseIterable, Identifiable {
     case icon01, icon02, icon03, icon04, icon05, icon06, icon07, icon08
+    case icon09, icon10, icon11, icon12
 
     /// 默认图标 = 第 7 套（C 标）。
     ///
@@ -27,7 +29,7 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    /// 序号（1–8），用于文案与文件名
+    /// 序号（1–12），用于文案与文件名
     var number: Int {
         switch self {
         case .icon01: 1
@@ -38,6 +40,10 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
         case .icon06: 6
         case .icon07: 7
         case .icon08: 8
+        case .icon09: 9
+        case .icon10: 10
+        case .icon11: 11
+        case .icon12: 12
         }
     }
 
@@ -52,6 +58,10 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
         case .icon06: "手提袋"
         case .icon07: "C 标"
         case .icon08: "卡包"
+        case .icon09: "霓虹 A"
+        case .icon10: "折纸 A"
+        case .icon11: "牛皮纸"
+        case .icon12: "包裹"
         }
     }
 
