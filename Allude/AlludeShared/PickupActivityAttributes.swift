@@ -262,7 +262,7 @@ struct ActivityLockScreenCard: View {
             }
 
             HStack(alignment: .center, spacing: 10) {
-                CourierLogo(company: item.displayName, size: 28, showsShadow: false)
+                CourierLogo(company: item.displayName, size: 28, showsShadow: false, usesStaticAsset: true)
 
                 PickupCodeEmphasis.text(item.code, tint: islandInk(item.tint), headOpacity: 0.78)
                     .font(.system(size: 31, weight: .bold, design: .rounded))
@@ -354,7 +354,7 @@ struct ActivityLockScreenCard: View {
     /// 一行：品牌图标 + 取件码（主角）+ 地址
     private func row(_ item: PickupActivityAttributes.Item) -> some View {
         HStack(spacing: 10) {
-            CourierLogo(company: item.displayName, size: 22, showsShadow: false)
+            CourierLogo(company: item.displayName, size: 22, showsShadow: false, usesStaticAsset: true)
 
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 6) {
@@ -751,7 +751,7 @@ struct IslandExpandedLeading: View {
             // 图标不允许被压缩：HStack 宽度竞争时 Image 会被压扁，
             // 真机上就表现成「图标被挡住、看不全」。
             // 图标源与 App 内一致：快递公司 > 短信平台（2026-10-25 修）
-            CourierLogo(company: state.item.displayName, size: 18)
+            CourierLogo(company: state.item.displayName, size: 18, usesStaticAsset: true)
                 .fixedSize()
 
             Text(state.item.displayName.L)

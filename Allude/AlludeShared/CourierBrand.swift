@@ -647,17 +647,28 @@ struct CourierLogo: View {
     /// 主人反馈「一点开快递公司 / 驿站管理就掉帧严重」就是这么来的。
     /// 单个展示场景（详情页、分享卡、编辑预览）保留投影，那里数量少、观感重要。
     private let showsShadow: Bool
+    /// 是否用**静态资源名**取图（`Image("brand-xxx")`）。
+    ///
+    /// 🔴 2026-11-13 真机（iPad 锁屏实时活动）实测：动态 `UIImage(named:)` 取到的位图
+    /// 在系统**跨进程渲染**的锁屏卡里会变成灰色占位方块；而 `Image(asset)` 由 SwiftUI
+    /// 直接在渲染进程里按资源名解析，能正常出图。所以实时活动 / 小组件这些
+    /// 「可能不在 App 进程里画」的地方传 `true`，App 内页面继续走动态路径。
+    private let usesStaticAsset: Bool
 
-    init(company: String, size: CGFloat = 46, showsShadow: Bool = true) {
+    init(company: String, size: CGFloat = 46, showsShadow: Bool = true,
+         usesStaticAsset: Bool = false) {
         self.info = CourierBrand.info(for: company)
         self.size = size
         self.showsShadow = showsShadow
+        self.usesStaticAsset = usesStaticAsset
     }
 
-    init(info: CourierBrand.Info, size: CGFloat = 46, showsShadow: Bool = true) {
+    init(info: CourierBrand.Info, size: CGFloat = 46, showsShadow: Bool = true,
+         usesStaticAsset: Bool = false) {
         self.info = info
         self.size = size
         self.showsShadow = showsShadow
+        self.usesStaticAsset = usesStaticAsset
     }
 
     @Environment(\.colorScheme) private var colorScheme
@@ -701,7 +712,14 @@ struct CourierLogo: View {
         //    真机仍灰。改用 `UIImage(named:)` 在**当前进程的 bundle** 里取图再交给 SwiftUI：
         //    · 拿不到图就明确走渐变兜底（不会画成一个灰占位）；
         //    · `Image(uiImage:)` 走位图路径，accented 管线不会把它当模板重涂。
-        if let asset = info.asset, let image = UIImage(named: asset) {
+        if let asset = info.asset, usesStaticAsset {
+            // 跨进程渲染：交给 SwiftUI 按资源名解析（见 usesStaticAsset 注释）。
+            Image(asset)
+                .renderingMode(.original)
+                .resizable()
+                .widgetAccentedFullColor()
+                .scaledToFill()
+        } else if let asset = info.asset, let image = UIImage(named: asset) {
             let _ = BrandDebug.trace("name=\(info.name) asset=\(asset) loaded=true")
             Image(uiImage: image)
                 .renderingMode(.original)
