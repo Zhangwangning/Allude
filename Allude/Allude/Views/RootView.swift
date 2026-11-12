@@ -30,6 +30,19 @@ struct RootView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     private var usesPadTabBar: Bool { horizontalSizeClass == .regular }
 
+    /// 底部菜单栏是否显示「统计」（外观与个性化里可关）。
+    @AppStorage(TabBarPrefs.showsStatsKey,
+                store: UserDefaults(suiteName: PickupStorage.appGroupID))
+    private var showsStatsPreference = true
+
+    /// 生效值；Debug 下可用 `ALLUDE_TAB_SHOWS_STATS=0` 强制关掉，方便截图验收。
+    private var showsStats: Bool {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["ALLUDE_TAB_SHOWS_STATS"] == "0" { return false }
+        #endif
+        return showsStatsPreference
+    }
+
     var body: some View {
         ZStack {
             if usesPadTabBar {
@@ -50,6 +63,10 @@ struct RootView: View {
         // 通知点击 → 切到这条记录所在的标签（待取 / 已取），
         // 具体打开详情由列表页消费同一个 `pendingRecordID`（2026-10-25）
         // 没有具体记录的通知（每日提醒等）被点击 → 至少切回待取
+        // 关掉「统计」时如果正停在统计页，回到待取（否则会停在一个没有入口的页）
+        .onChange(of: showsStatsPreference) { _, on in
+            if !on, model.selection == .stats { model.selection = .pending }
+        }
         .onChange(of: notificationRouter.shouldShowPendingTab) { _, show in
             guard show else { return }
             model.selection = .pending
@@ -100,9 +117,11 @@ struct RootView: View {
                 .tabItem { Label("已取", systemImage: "checkmark.circle.fill") }
                 .tag(RootTab.picked)
 
-            StatsTabView()
-                .tabItem { Label("统计", systemImage: "chart.bar.xaxis") }
-                .tag(RootTab.stats)
+            if showsStats {
+                StatsTabView()
+                    .tabItem { Label("统计", systemImage: "chart.bar.xaxis") }
+                    .tag(RootTab.stats)
+            }
 
             SettingsTabRoot()
                 .tabItem { Label("设置", systemImage: "gearshape.fill") }
@@ -127,11 +146,13 @@ struct RootView: View {
         ZStack {
             tabContent(.pending) { PickupListView() }
             tabContent(.picked) { PickedUpView() }
-            tabContent(.stats) { StatsTabView() }
+            if showsStats {
+                tabContent(.stats) { StatsTabView() }
+            }
             tabContent(.settings) { SettingsTabRoot() }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            PadBottomTabBar(selection: $model.selection)
+            PadBottomTabBar(selection: $model.selection, showsStats: showsStats)
         }
     }
 
@@ -146,6 +167,13 @@ struct RootView: View {
             .accessibilityHidden(!isOn)
     }
 
+}
+
+// MARK: - 底部菜单栏偏好
+
+/// 底部菜单栏里「统计」是否显示。放 App Group，设置页与主界面共用一份。
+enum TabBarPrefs {
+    static let showsStatsKey = "allude.tabBar.showsStats"
 }
 
 // MARK: - 当前标签
@@ -792,6 +820,7 @@ private struct TabBarMinimizeNever: ViewModifier {
 /// 当背景，只负责排版四个按钮 —— 玻璃本身由系统绘制，不是自绘材质。
 private struct PadBottomTabBar: View {
     @Binding var selection: RootTab
+    var showsStats: Bool = true
 
     private struct Item {
         let tab: RootTab
@@ -806,9 +835,13 @@ private struct PadBottomTabBar: View {
         .init(tab: .settings, title: "设置", symbol: "gearshape.fill"),
     ]
 
+    private var visibleItems: [Item] {
+        showsStats ? items : items.filter { $0.tab != .stats }
+    }
+
     var body: some View {
         HStack(spacing: 4) {
-            ForEach(items, id: \.tab) { item in
+            ForEach(visibleItems, id: \.tab) { item in
                 let isOn = item.tab == selection
                 Button {
                     guard !isOn else { return }

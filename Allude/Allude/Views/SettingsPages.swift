@@ -22,6 +22,11 @@ struct AppearancePersonalizationView: View {
     /// 宽屏分栏下由外层注入「切换右栏」的能力；窄屏为 nil，走普通 push。
     var openPane: ((SettingsPane) -> Void)? = nil
 
+    /// 底部菜单栏是否显示「统计」。放 App Group，主界面和本页读写同一份。
+    @AppStorage(TabBarPrefs.showsStatsKey,
+                store: UserDefaults(suiteName: PickupStorage.appGroupID))
+    private var showsStats = true
+
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
@@ -31,6 +36,26 @@ struct AppearancePersonalizationView: View {
                         if index > 0 { SettingsDivider() }
                         row(item)
                     }
+                }
+                .settingsCard()
+
+                // 底部菜单栏：统计页可以关掉（2026-11-13 主人要求）。
+                // 关掉后底栏只剩 待取 / 已取 / 设置，统计页也就没有入口。
+                VStack(spacing: 0) {
+                    HStack(spacing: 12) {
+                        Toggle(isOn: $showsStats) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("显示「统计」")
+                                    .font(AppTheme.TypeScale.rowTitle)
+                                Text("关掉后底部菜单栏只剩 待取 / 已取 / 设置")
+                                    .font(AppTheme.TypeScale.rowSubtitle)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .tint(AppTheme.accent)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
                 }
                 .settingsCard()
 
