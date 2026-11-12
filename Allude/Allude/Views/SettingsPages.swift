@@ -488,9 +488,12 @@ struct ICloudSyncView: View {
             SettingsDivider()
             SettingsRow(symbol: "arrow.triangle.2.circlepath",
                         title: "同步状态",
-                        detail: sync.statusSummary,
+                        detail: sync.isSyncing ? "正在同步…" : sync.statusSummary,
                         showsChevron: false,
-                        tint: AppTheme.doneTint)
+                        tint: AppTheme.doneTint,
+                        trailing: sync.isSyncing
+                            ? AnyView(ProgressView().controlSize(.small))
+                            : nil)
             SettingsDivider()
             SettingsRow(symbol: "clock",
                         title: "最近同步",
@@ -506,15 +509,19 @@ struct ICloudSyncView: View {
             sync.syncNow()
         } label: {
             SettingsRow(symbol: "arrow.clockwise",
-                        title: "立即同步",
+                        title: sync.isSyncing ? "正在同步…" : "立即同步",
                         detail: sync.isEnabled ? "" : "先打开上面的开关",
                         showsChevron: false,
-                        tint: AppTheme.accent)
+                        tint: AppTheme.accent,
+                        trailing: sync.isSyncing
+                            ? AnyView(ProgressView().controlSize(.small))
+                            : nil)
         }
         .buttonStyle(.plain)
         .disabled(!sync.isEnabled || sync.isSyncing)
         .opacity(sync.isEnabled ? 1 : 0.5)
         .settingsCard()
+        .animation(.easeInOut(duration: 0.2), value: sync.isSyncing)
     }
 
 }

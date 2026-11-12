@@ -163,15 +163,29 @@ final class ICloudSyncController: ObservableObject {
     }
 
     /// 立即同步（开关打开、回前台、用户点「立即同步」时调用）。
+    ///
+    /// 真正干活放到 `Task` 里：文件读写和 JSON 解码都在异步任务中完成，
+    /// 主线程不会被 iCloud IO 卡住 —— 否则页面上的「正在同步…」转圈会一起冻住。
     func syncNow() {
         guard isEnabled else { status = .disabled; return }
+        guard !isSyncing else { return }
+        Task { await performSync() }
+    }
 
+    private func performSync() async {
         guard let directory = remoteDirectoryURL else {
             status = .unavailable
             return
         }
 
         status = .syncing
+        #if DEBUG
+        // 截图脚手架：ALLUDE_SYNC_HOLD=秒数 时把「正在同步」状态多留一会儿，方便截动画。
+        if let hold = ProcessInfo.processInfo.environment["ALLUDE_SYNC_HOLD"],
+           let seconds = Double(hold), seconds > 0 {
+            try? await Task.sleep(nanoseconds: UInt64(min(seconds, 10) * 1_000_000_000))
+        }
+        #endif
         do {
             try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
             let remoteURL = directory.appendingPathComponent("records.json")
