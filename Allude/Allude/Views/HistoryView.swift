@@ -330,6 +330,7 @@ struct PickedUpView: View {
             .frame(maxWidth: splitPane ? .infinity : AppTheme.contentMaxWidth)
             .frame(maxWidth: .infinity)
             .background(Color(.systemGroupedBackground))
+            .contentMargins(.horizontal, AppTheme.hInset, for: .scrollContent)
             .toolbar(.hidden, for: .navigationBar)
             .toolbar {
                 if model.isEditing {

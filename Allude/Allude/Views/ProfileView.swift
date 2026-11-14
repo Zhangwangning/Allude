@@ -411,6 +411,7 @@ struct SettingsView: View {
                     settingsGroup("", items: filtered(SettingsPane.aboutGroupAll))
                 }
                 .listStyle(.plain)
+                .contentMargins(.horizontal, AppTheme.hInset, for: .scrollContent)
                 .scrollContentBackground(.hidden)
                 .background(Color(.systemGroupedBackground))
                 .toolbarBackground(.hidden, for: .navigationBar)
