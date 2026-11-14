@@ -105,6 +105,18 @@ struct RootView: View {
             model.selection = record.isPickedUp ? .picked : .pending
         }
         .onAppear {
+            #if DEBUG
+            // 截图脚手架：`SIMCTL_CHILD_TAB=pending|picked|stats|settings`
+            if let raw = ProcessInfo.processInfo.environment["TAB"] {
+                switch raw {
+                case "pending": model.selection = .pending
+                case "picked": model.selection = .picked
+                case "stats": model.selection = .stats
+                case "settings": model.selection = .settings
+                default: break
+                }
+            }
+            #endif
             // 记录"当前是不是 Duo 折叠态外屏"给小组件进程用（灵动岛由它渲染）
             if let window = UIApplication.shared.connectedScenes
                 .compactMap({ $0 as? UIWindowScene })

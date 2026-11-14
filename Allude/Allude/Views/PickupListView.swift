@@ -496,7 +496,7 @@ struct PickupListView: View {
     private var splitLayout: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             listPane
-                .navigationSplitViewColumnWidth(min: 300, ideal: 350, max: 430)
+                .navigationSplitViewColumnWidth(min: 340, ideal: 440, max: 600)
         } detail: {
             ZStack {
                 // 右栏整列铺浅灰：详情限宽 760 居中，两侧不能露出系统白
@@ -527,6 +527,19 @@ struct PickupListView: View {
     ///    否则分栏模式下会被注册到没有栈的 sidebar 列（无效且会告警）。
     private var listPane: some View {
         List {
+                if PadLayout.usesSplit, paneWidth >= 900 {
+                    // 分栏的侧栏里系统只画 inline 标题；为了和「统计」页一样用大标题，
+                    // 这里自己排一行（34pt 粗体，与 large title 同字号），并把导航标题藏掉。
+                    Section {
+                        Text("待取")
+                            .font(.system(size: 34, weight: .bold))
+                            .listRowInsets(EdgeInsets(top: 8, leading: AppTheme.hInset,
+                                                      bottom: 0, trailing: AppTheme.hInset))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                    }
+                }
+
                 // 顶部统计卡：待取 / 今日新增 / 今日已取 三格一组，只报数不切页。
                 Section {
                     PendingStatsCard(pending: scopedPending.count,
@@ -580,7 +593,8 @@ struct PickupListView: View {
             // 🔴 2026-10-08 结构重构：浏览（已取件）独立成 Tab 后，取件页不再需要
             //    分段切换器 —— 回归系统导航栏（大标题「取件」+ drawer 搜索 + 系统
             //    toolbar）。此前为「分段居中于标题位」做的自绘顶栏随分段一起退役。
-            .navigationTitle("待取")
+            .navigationTitle(PadLayout.usesSplit && paneWidth >= 900 ? "" : "待取")
+            .toolbarTitleDisplayMode(PadLayout.usesSplit && paneWidth >= 900 ? .inline : .large)
             .toolbar { toolbarContent }
             .overlay(alignment: .bottom) { bottomOverlay }
             // 🔴 不用 alert 也不用新页面：随机四位数就在**弹窗里**输入，

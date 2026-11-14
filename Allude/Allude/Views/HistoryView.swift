@@ -198,7 +198,7 @@ struct PickedUpView: View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             listPane
                 // 左右等分（与待取页同口径；主人已否掉中轴方案）
-                .navigationSplitViewColumnWidth(min: 300, ideal: 350, max: 430)
+                .navigationSplitViewColumnWidth(min: 340, ideal: 440, max: 600)
         } detail: {
             if let record = splitDetailRecord {
                 // 与待取页同口径：绑定 id，避免编辑草稿串到下一条（2026-10-25 审查修）
@@ -232,6 +232,16 @@ struct PickedUpView: View {
     /// 列表本体（两种布局共用）。`navigationDestination` 由各布局挂到自己的栈上。
     private var listPane: some View {
         List {
+                if PadLayout.usesSplit, paneWidth >= 900 {
+                    Section {
+                        Text("已取")
+                            .font(.system(size: 34, weight: .bold))
+                            .listRowInsets(EdgeInsets(top: 8, leading: AppTheme.hInset,
+                                                      bottom: 0, trailing: AppTheme.hInset))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                    }
+                }
                 if list.isEmpty {
                     Section {
                         EmptyStateView(symbol: "archivebox",
@@ -315,7 +325,8 @@ struct PickedUpView: View {
             .frame(maxWidth: AppTheme.contentMaxWidth)
             .frame(maxWidth: .infinity)
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("已取")
+            .navigationTitle(paneWidth >= 900 ? "" : "已取")
+            .toolbarTitleDisplayMode(paneWidth >= 900 ? .inline : .large)
             .toolbar {
                 if model.isEditing {
                     ToolbarItem(placement: .topBarLeading) {
