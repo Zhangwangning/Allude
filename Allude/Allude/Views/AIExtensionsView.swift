@@ -23,36 +23,49 @@ enum AIHubRoute: Hashable {
 /// 二级页：Apple 智能 + 扩展 两个入口。
 struct AIExtensionsHomeView: View {
     /// 由设置详情栈注入：分栏里 destination 型 push 会被吞，统一走显式 path。
-    var onOpen: (AIHubRoute) -> Void = { _ in }
+    /// 单栈（iPhone / 窄屏）传 nil —— 这时用普通 `NavigationLink` push，
+    /// 否则按钮点了没有栈可 append，表现就是「点不进去」（2026-11-15 主人复现）。
+    var onOpen: ((AIHubRoute) -> Void)? = nil
+
+    @ViewBuilder
+    private func hubRow(_ route: AIHubRoute, symbol: String, title: String, tint: Color) -> some View {
+        let row = SettingsRow(symbol: symbol, title: title, showsChevron: true, tint: tint)
+        if let onOpen {
+            Button { onOpen(route) } label: { row }
+                .buttonStyle(.plain)
+        } else {
+            NavigationLink {
+                switch route {
+                case .appleIntelligence:
+                    if #available(iOS 26.0, *) {
+                        AICapabilityView()
+                    } else {
+                        AICapabilityUnsupportedView()
+                    }
+                case .extensions:
+                    AIExtensionsListView()
+                }
+            } label: { row }
+            .buttonStyle(.plain)
+        }
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 // 主人 2026-11-14：功能入口在上、标题不带解释，说明统一挪到下面。
                 VStack(spacing: 0) {
-                    Button {
-                        onOpen(.appleIntelligence)
-                    } label: {
-
-                        SettingsRow(symbol: "brain.head.profile",
-                                    title: "Apple 智能",
-                                    showsChevron: true,
-                                    tint: AppTheme.violet)
-                    }
-                    .buttonStyle(.plain)
+                    hubRow(.appleIntelligence,
+                           symbol: "brain.head.profile",
+                           title: "Apple 智能",
+                           tint: AppTheme.violet)
 
                     SettingsDivider()
 
-                    Button {
-                        onOpen(.extensions)
-                    } label: {
-
-                        SettingsRow(symbol: "puzzlepiece.extension.fill",
-                                    title: "扩展",
-                                    showsChevron: true,
-                                    tint: AppTheme.accent)
-                    }
-                    .buttonStyle(.plain)
+                    hubRow(.extensions,
+                           symbol: "puzzlepiece.extension.fill",
+                           title: "扩展",
+                           tint: AppTheme.accent)
                 }
                 .settingsCard()
 

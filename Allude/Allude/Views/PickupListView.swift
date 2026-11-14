@@ -7,6 +7,7 @@ enum PickupSortMode: String, CaseIterable, Identifiable {
     case newest = "最近收到"
     case oldest = "最早收到"
     case company = "按快递公司"
+    case station = "按快递驿站"
 
     var id: String { rawValue }
 
@@ -15,6 +16,7 @@ enum PickupSortMode: String, CaseIterable, Identifiable {
         case .newest: "arrow.down"
         case .oldest: "arrow.up"
         case .company: "building.2"
+        case .station: "mappin.and.ellipse"
         }
     }
 }
@@ -298,6 +300,13 @@ struct PickupListView: View {
                 $0.company == $1.company ? $0.lastNotifiedAt > $1.lastNotifiedAt
                                           : $0.company < $1.company
             }
+        case .station:
+            // 同一驿站聚在一起，站内按时间倒序；分组由 `stationGroups` 做（组头 = 驿站名）
+            return base.sorted {
+                stationName(for: $0) == stationName(for: $1)
+                    ? $0.lastNotifiedAt > $1.lastNotifiedAt
+                    : stationName(for: $0) < stationName(for: $1)
+            }
         }
     }
 
@@ -331,6 +340,39 @@ struct PickupListView: View {
                 : $0.items.count > $1.items.count
         }
         return buckets
+    }
+
+    /// 「按快递驿站」归类分组（2026-11-15 主人）：
+    ///  · 组头 = 驿站名 + 件数；
+    ///  · 站内按收到时间倒序（最近的在最上面）；
+    ///  · 组与组之间按件数多的在前，与「按快递公司」同一取舍。
+    private var stationGroups: [(station: String, items: [PickupRecord])] {
+        var buckets: [(station: String, items: [PickupRecord])] = []
+        for record in displayed {
+            let name = stationName(for: record)
+            if let index = buckets.firstIndex(where: { $0.station == name }) {
+                buckets[index].items.append(record)
+            } else {
+                buckets.append((name, [record]))
+            }
+        }
+        for index in buckets.indices {
+            buckets[index].items.sort { $0.lastNotifiedAt > $1.lastNotifiedAt }
+        }
+        buckets.sort {
+            $0.station == "未标注驿站" ? false
+                : $1.station == "未标注驿站" ? true
+                : ($0.items.count == $1.items.count
+                    ? $0.station < $1.station
+                    : $0.items.count > $1.items.count)
+        }
+        return buckets
+    }
+
+    /// 驿站名：`station` 是派生值（词表命中 / AI 修正后的 stationOverride），空则归到「未标注驿站」。
+    private func stationName(for record: PickupRecord) -> String {
+        let name = record.station.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? "未标注驿站" : name
     }
 
     /// 归类用的名字：快递公司 > 驿站名（名称库命中）> 短信平台，
@@ -469,6 +511,7 @@ struct PickupListView: View {
     private func applySortFromScaffold() {
         switch ProcessInfo.processInfo.environment["SORT"] {
         case "company": model.sort = .company
+        case "station": model.sort = .station
         case "oldest": model.sort = .oldest
         case "newest": model.sort = .newest
         default: break
@@ -720,6 +763,24 @@ struct PickupListView: View {
                                   trailing: "\(bucket.items.count) 件",
                                   symbol: "building.2.fill",
                                   tint: CourierBrand.info(for: bucket.company).color)
+                        .padding(.horizontal, AppTheme.hInset)
+                        .padding(.top, 4)
+                        .padding(.bottom, 6)
+                        .textCase(nil)
+                }
+            }
+        } else if model.sort == .station {
+            // 「按快递驿站」= 按驿站归类显示（组头是驿站名），站内按时间倒序。
+            ForEach(stationGroups, id: \.station) { bucket in
+                Section {
+                    ForEach(bucket.items) { record in
+                        row(for: record)
+                    }
+                } header: {
+                    SectionHeader(title: bucket.station,
+                                  trailing: "\(bucket.items.count) 件",
+                                  symbol: "mappin.circle.fill",
+                                  tint: AppTheme.accent)
                         .padding(.horizontal, AppTheme.hInset)
                         .padding(.top, 4)
                         .padding(.bottom, 6)
