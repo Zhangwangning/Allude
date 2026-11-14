@@ -429,6 +429,9 @@ struct SettingsView: View {
                 NavigationStack {
                     // 照 iPad 设置的内容列：左右留白更大、内容限宽居中
                     paneContent(pane ?? .notification)
+                        // 每个 pane 一份独立栈：切面板后旧栈的路径会残留，
+                        // 表现为「点了二级页没反应」（2026-11-14 修）。
+                        .id(pane)
                         // 🔴 2026-11-07：帮助页里那两个入口是「切详情列」打开的
                         //    （push 在这层不落地），所以补一个返回按钮回到帮助与反馈。
                         .toolbar {

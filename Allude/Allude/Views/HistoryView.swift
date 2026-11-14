@@ -129,6 +129,8 @@ struct PickedUpView: View {
     /// 宽屏（iPhone Duo 展开态）判定 —— 与待取页同一口径。
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+
     /// 分栏右栏当前显示的记录 id；nil = 还没点过 → 回落第一条（见 `splitDetailRecord`）。
     @State private var splitSelection: PickupRecord.ID?
 
@@ -183,7 +185,7 @@ struct PickedUpView: View {
     /// 右栏**常驻详情**、不 push（无返回箭头）；未选中时默认显示第一条；
     /// 列宽左右等分（主人 2026-10-25 已否掉「按铰链中轴分列」）。
     private var splitLayout: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             listPane
                 // 左右等分（与待取页同口径；主人已否掉中轴方案）
                 .navigationSplitViewColumnWidth(min: 370, ideal: 434, max: 520)

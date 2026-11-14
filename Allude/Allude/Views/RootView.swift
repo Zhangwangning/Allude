@@ -5,7 +5,13 @@ import UIKit
 /// 结论：宽屏不再走 `NavigationSplitView`（顶部浮动标签栏下侧栏会被折叠、按钮丢失，
 /// 且分栏 detail 里的 push 不落地），三个标签页统一走「单栈 + 系统导航栏」。
 enum PadLayout {
-    static let usesSplit = false
+    /// iPad（仅 iOS 26+）用系统分栏：HIG 明确 iPadOS 的标签栏在顶部、
+    /// 可与侧栏共存；分栏是 iPad 上的原生信息结构，单列只是退路。
+    static var usesSplit: Bool {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return false }
+        if #available(iOS 26.0, *) { return true }
+        return false
+    }
 }
 
 /// 应用根视图：**系统原生 `TabView` + 原生 Liquid Glass 标签栏**。

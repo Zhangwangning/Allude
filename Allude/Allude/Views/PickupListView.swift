@@ -347,6 +347,10 @@ struct PickupListView: View {
     /// 与 iPad 同语义。常规 iPhone（402/440/466pt）恒为 `.compact`，走单栈老路径。
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
+    /// iPad 分栏：启动时两侧都可见（HIG：分栏对 iPad 是原生信息结构，
+    /// 不要让用户先点一次侧栏按钮才看到列表）。
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+
     /// 分栏下右侧当前显示的记录 id（2026-10-25）。
     /// **nil = 用户还没点过任何一条** → 右栏回落到列表第一条（见 `splitDetailRecord`）。
     @State private var splitSelection: PickupRecord.ID?
@@ -477,7 +481,7 @@ struct PickupListView: View {
     /// ⚠️ 主人当天先要求「按铰链中轴分列」，实测系统会把列宽夹到 ~415pt、
     ///    左栏几乎被压扁，随即改回等分 —— 不要再试中轴方案。
     private var splitLayout: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             listPane
                 .navigationSplitViewColumnWidth(min: 370, ideal: 434, max: 520)
         } detail: {
