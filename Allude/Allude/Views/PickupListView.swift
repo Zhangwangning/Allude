@@ -354,6 +354,8 @@ struct PickupListView: View {
     /// 分栏下右侧当前显示的记录 id（2026-10-25）。
     /// **nil = 用户还没点过任何一条** → 右栏回落到列表第一条（见 `splitDetailRecord`）。
     @State private var splitSelection: PickupRecord.ID?
+    /// 当前页可用宽度（只量不改布局，见 body 里的 preference）。
+    @State private var paneWidth: CGFloat = 0
 
     /// 分栏右栏要显示的记录：选中的那条优先；没选中（首次进入 / 选中项已被取走或删除）
     /// 就显示列表第一条 —— 主人定「横屏默认显示第一个卡片」。
@@ -380,12 +382,22 @@ struct PickupListView: View {
         //    宽屏改为 **NavigationSplitView 左列表 / 右详情**；
         //    常规 iPhone 仍走原来的单栈，行为与历史版本逐像素一致。
         Group {
-            if PadLayout.usesSplit, horizontalSizeClass == .regular {
+            // 🔴 2026-11-14：只看 horizontalSizeClass 不够 —— iPad mini 竖屏也是 regular，
+            //    两栏硬塞进 744pt 会把详情挤到屏幕外。改判**实际可用宽度**（≥ 900pt 才分栏）。
+            //    宽度用 preference 量，不能用 GeometryReader 包一层：那会让 NavigationSplitView
+            //    丢掉顶部安全区，标签栏直接压在详情列标题上。
+            if PadLayout.usesSplit, paneWidth >= 900 {
                 splitLayout
             } else {
                 stackedLayout
             }
         }
+        .background {
+            GeometryReader { geo in
+                Color.clear.preference(key: AlludePaneWidthKey.self, value: geo.size.width)
+            }
+        }
+        .onPreferenceChange(AlludePaneWidthKey.self) { paneWidth = $0 }
         // 长按景深：整个界面轻微后退（模糊 + 缩放），被按的卡片由浮层里的「替身」
         // 接管 —— 替身与菜单都在下面这个 overlay 里，因此始终清晰。
         .blur(radius: cardMenu.openID == nil ? 0 : CardMenuMetrics.backgroundBlur)
@@ -494,6 +506,10 @@ struct PickupListView: View {
                 // 绑定 id 后每条记录各自拥有一份状态。
                 RecordDetailView(record: record)
                     .id(record.id)
+                    // iPad 宽屏：详情卡不要拉满整列（1300pt 宽时取件码会大得离谱），
+                    // 限宽居中，读起来像 iPad 原生 App。
+                    .frame(maxWidth: 760)
+                    .frame(maxWidth: .infinity)
             } else {
                 SplitDetailPlaceholder()
             }
@@ -911,12 +927,21 @@ struct PickupListView: View {
     private func row(for record: PickupRecord) -> some View {
         let isDone = record.isPickedUp || model.completing.contains(record.id)
 
-        rowChrome(record, content: PickupCard(record: record,
-                                              isDone: isDone,
-                                              selectionState: model.selectionMode
-                                                  ? model.selectedIDs.contains(record.id)
-                                                  : nil,
-                                              onToggle: { model.complete(record, in: store) }))
+        let card = rowChrome(record, content: PickupCard(record: record,
+                                                         isDone: isDone,
+                                                         selectionState: model.selectionMode
+                                                             ? model.selectedIDs.contains(record.id)
+                                                             : nil,
+                                                         onToggle: { model.complete(record, in: store) }))
+        // 分栏时右栏显示的是哪一条，左列表要看得出来（系统不会给自绘卡片画选中态）。
+        if PadLayout.usesSplit, splitSelection == record.id {
+            card.overlay {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(Color.accentColor.opacity(0.5), lineWidth: 1.5)
+            }
+        } else {
+            card
+        }
     }
 
     /// 行外壳：内边距、点击进详情、左右侧滑、长按菜单。

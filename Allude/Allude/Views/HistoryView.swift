@@ -133,6 +133,8 @@ struct PickedUpView: View {
 
     /// 分栏右栏当前显示的记录 id；nil = 还没点过 → 回落第一条（见 `splitDetailRecord`）。
     @State private var splitSelection: PickupRecord.ID?
+    /// 当前页可用宽度（只量不改布局）
+    @State private var paneWidth: CGFloat = 0
 
     /// 通知点击待打开的记录 id（2026-10-25）
     @StateObject private var notificationRouter = NotificationRouter.shared
@@ -143,12 +145,19 @@ struct PickedUpView: View {
     var body: some View {
         // 📱 2026-10-25：宽屏走平行视图（左列表 / 右详情），常规 iPhone 仍单栈。
         Group {
-            if PadLayout.usesSplit, horizontalSizeClass == .regular {
+            // 与待取页同口径：按实际宽度分栏（iPad mini 竖屏 744pt 不分栏）。
+            if PadLayout.usesSplit, paneWidth >= 900 {
                 splitLayout
             } else {
                 stackedLayout
             }
         }
+        .background {
+            GeometryReader { geo in
+                Color.clear.preference(key: AlludePaneWidthKey.self, value: geo.size.width)
+            }
+        }
+        .onPreferenceChange(AlludePaneWidthKey.self) { paneWidth = $0 }
         // 长按景深：整个界面轻微后退（模糊 + 缩放），被按的卡片由浮层里的「替身」接管。
         .blur(radius: cardMenu.openID == nil ? 0 : CardMenuMetrics.backgroundBlur)
         .scaleEffect(cardMenu.openID == nil ? 1 : CardMenuMetrics.backgroundScale)

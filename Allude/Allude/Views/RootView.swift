@@ -66,7 +66,16 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            tabLayout
+            Group {
+                if PadLayout.isPad {
+                    VStack(spacing: 0) {
+                        tabLayout
+                        PadBottomBar(selection: $model.selection, showsStats: showsStats)
+                    }
+                } else {
+                    tabLayout
+                }
+            }
 
             // ── 分享面板（全屏浮动，盖住标签栏） ──
             if let records = share.records {
@@ -130,20 +139,24 @@ struct RootView: View {
     private var tabLayout: some View {
         TabView(selection: $model.selection) {
             PickupListView()
+                .modifier(PadTabChrome(enabled: PadLayout.isPad))
                 .tabItem { Label("待取", systemImage: "tray.fill") }
                 .tag(RootTab.pending)
 
             PickedUpView()
+                .modifier(PadTabChrome(enabled: PadLayout.isPad))
                 .tabItem { Label("已取", systemImage: "checkmark.circle.fill") }
                 .tag(RootTab.picked)
 
             if showsStats {
                 StatsTabView()
+                .modifier(PadTabChrome(enabled: PadLayout.isPad))
                     .tabItem { Label("统计", systemImage: "chart.bar.xaxis") }
                     .tag(RootTab.stats)
             }
 
             SettingsTabRoot()
+                .modifier(PadTabChrome(enabled: PadLayout.isPad))
                 .tabItem { Label("设置", systemImage: "gearshape.fill") }
                 .tag(RootTab.settings)
         }
@@ -158,8 +171,12 @@ struct RootView: View {
         .tint(AppTheme.accent)
         // 装配后接管系统 tabBar 引用（见 `TabBarCloak`），供显隐动画驱动。
         .background(NativeTabBarBridge())
+        // 🔴 2026-11-14 主人定：iPad 要**底部标签栏**（像 Infuse / Scriptable 那样），
+        // 不要系统顶部栏、也不要侧边栏。iPad 上把系统标签栏藏掉，自己画一条；
+        // iPhone / Duo 外屏仍然用系统原生标签栏。
+
         // iPad 交给系统自适应（宽屏 = 侧边/顶部栏）；iPhone 保持原生底部栏。
-        .modifier(AdaptiveTabBarStyle(enabled: usesPadTabBar))
+        .modifier(AdaptiveTabBarStyle(enabled: false))
     }
 }
 
@@ -167,6 +184,106 @@ struct RootView: View {
 
 /// iPad（宽屏）用 iOS 18 起的 `sidebarAdaptable`：系统按宽度给侧边栏或顶部标签栏。
 /// iPhone / 紧凑宽度不加这个修饰，保持原生底部标签栏（含最小化行为）。
+/// iPad：藏掉系统标签栏（我们要底部自绘那条）。
+/// `.toolbar(.hidden, for: .tabBar)` 是 iOS 16 起的 API，低版本无副作用。
+private struct PadTabChrome: ViewModifier {
+    var enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled {
+            // 藏系统标签栏 + 给自绘那条留出高度（否则列表/详情滚到底会钻到栏下面）
+            content.toolbar(.hidden, for: .tabBar)
+        } else {
+            content
+        }
+    }
+}
+
+/// iPad：底部标签栏（自绘，玻璃交给 `appGlass`）。用 `safeAreaInset` 占位，
+/// 内容不会被压住；iPhone / Duo 外屏不加（走系统原生标签栏）。
+private struct PadBottomBarInset: ViewModifier {
+    var enabled: Bool
+    @Binding var selection: RootTab
+    var showsStats: Bool
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.safeAreaInset(edge: .bottom, spacing: 0) {
+                PadBottomBar(selection: $selection, showsStats: showsStats)
+            }
+        } else {
+            content
+        }
+    }
+}
+
+/// iPad 底部标签栏：一枚胶囊 + 四项，选中态是浅色胶囊底。
+private struct PadBottomBar: View {
+    @Binding var selection: RootTab
+    var showsStats: Bool
+
+    private var items: [RootTab] {
+        showsStats ? [.pending, .picked, .stats, .settings] : [.pending, .picked, .settings]
+    }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(items, id: \.self) { tab in
+                Button {
+                    selection = tab
+                } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: icon(tab))
+                            .font(.system(size: 17, weight: .semibold))
+                        Text(title(tab))
+                            .font(AppTheme.TypeScale.badge)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 7)
+                    .background {
+                        if selection == tab {
+                            Capsule().fill(AppTheme.accent.opacity(0.14))
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(selection == tab ? AppTheme.accent : Color.secondary)
+                .accessibilityLabel(Text(title(tab)))
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 6)
+        .frame(maxWidth: 520)
+        .appGlass(.capsule)
+        .padding(.bottom, 8)
+        .padding(.top, 4)
+        .frame(maxWidth: .infinity)
+        .background(Color(.systemGroupedBackground).ignoresSafeArea(edges: .bottom))
+        .overlay(alignment: .top) {
+            Rectangle().fill(Color(.separator).opacity(0.35)).frame(height: 0.5)
+        }
+    }
+
+    private func title(_ tab: RootTab) -> String {
+        switch tab {
+        case .pending: return "待取"
+        case .picked: return "已取"
+        case .stats: return "统计"
+        case .settings: return "设置"
+        }
+    }
+
+    private func icon(_ tab: RootTab) -> String {
+        switch tab {
+        case .pending: return "tray.fill"
+        case .picked: return "checkmark.circle.fill"
+        case .stats: return "chart.bar.xaxis"
+        case .settings: return "gearshape.fill"
+        }
+    }
+}
+
 private struct AdaptiveTabBarStyle: ViewModifier {
     var enabled: Bool
 
@@ -750,6 +867,15 @@ private struct NativeTabBarBridge: UIViewControllerRepresentable {
                 }
             }
         }
+    }
+}
+
+/// 量「当前页面可用宽度」用：拿宽度但不能影响布局（GeometryReader 会吃掉安全区，
+/// 2026-11-14 把 iPad 分栏包进 GeometryReader 后，标签栏直接压到详情列标题上）。
+struct AlludePaneWidthKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
 

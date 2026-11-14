@@ -35,13 +35,18 @@ import UIKit
 // ============================================================================
 
 struct RecordDetailView: View {
+    /// iPad 分栏用：详情列**不要再自带一条导航栏** —— 否则顶部会出现两行
+    /// （标签栏一行、详情标题一行），左列标题却和标签栏同一行，看起来"错位"。
+    /// 传 true 时隐藏系统导航栏，分享 / 编辑 改用页内右上角的小胶囊。
+    var hidesNavigationBar: Bool = false
     /// 进门时的快照。**只做两个用途**：① 仓库里暂时找不到该记录时的兜底渲染；
     /// ② 提供稳定的 `id` 供实时查询。**永远不直接参与渲染** ——
     /// 否则就是 2026-09-23 主人抓到的那个 bug：点「标记为已取」后仓库已经翻状态，
     /// 详情页却拿着值拷贝纹丝不动，像点了没反应一样。
     private let snapshot: PickupRecord
 
-    init(record: PickupRecord) {
+    init(record: PickupRecord, hidesNavigationBar: Bool = false) {
+        self.hidesNavigationBar = hidesNavigationBar
         self.snapshot = record
         // 草稿用进门快照打底，进编辑态时会按仓库最新值重载（见 enterEdit）
         _draft = StateObject(wrappedValue: EditRecordModel(record: record))
@@ -159,6 +164,10 @@ struct RecordDetailView: View {
         // （圆通快递）自相矛盾；短信平台名在卡内已单独标注，标题不再重复。
         .navigationTitle("详情")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(hidesNavigationBar ? .hidden : .visible, for: .navigationBar)
+        .overlay(alignment: .topTrailing) {
+            if hidesNavigationBar { inPageActions }
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 // #51 分享卡片：与列表长按菜单、多选分享**共用同一个面板**
@@ -190,6 +199,35 @@ struct RecordDetailView: View {
                 enterEdit()
             }
         }
+    }
+
+    /// 分栏详情列的页内动作（导航栏收起后仍要能分享 / 编辑）。
+    private var inPageActions: some View {
+        HStack(spacing: 8) {
+            Button {
+                SharePresenter.shared.present([record])
+            } label: {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 15, weight: .medium))
+                    .frame(width: 34, height: 34)
+            }
+            .accessibilityLabel("分享卡片")
+
+            Button {
+                edit.isEditing ? commitEdit() : enterEdit()
+            } label: {
+                Text(edit.isEditing ? "完成" : "编辑")
+                    .font(.system(size: 15, weight: edit.isEditing ? .semibold : .regular))
+                    .padding(.horizontal, 12)
+                    .frame(height: 34)
+            }
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.tint)
+        .padding(.top, 6)
+        .padding(.trailing, 16)
+        .appGlass(.capsule)
+        .padding(.trailing, 16)
     }
 
     // MARK: 原地编辑（2026-10-14 主人定稿）
