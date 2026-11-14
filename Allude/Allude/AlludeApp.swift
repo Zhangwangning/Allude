@@ -728,6 +728,8 @@ struct AlludeApp: App {
                     NavigationStack { ActivityPreviewGallery() }
                 case "appearance":
                     NavigationStack { AppearanceSettingsView() }
+                case "personalization":
+                    NavigationStack { AppearancePersonalizationView() }
                 case "aiHub":
                     NavigationStack { AIExtensionsHomeView() }
                 case "aiExtensions":

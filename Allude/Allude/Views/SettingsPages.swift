@@ -27,6 +27,10 @@ struct AppearancePersonalizationView: View {
                 store: UserDefaults(suiteName: PickupStorage.appGroupID))
     private var showsStats = true
 
+    /// 液态玻璃开关（2026-11-14 从「外观」页移过来）：仅 iOS 26+ 展示；
+    /// 关闭后走系统毛玻璃材质，与 iOS 18 的观感一致。
+    @State private var usesLiquidGlass = GlassSettings.isEnabled
+
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
@@ -38,6 +42,34 @@ struct AppearancePersonalizationView: View {
                     }
                 }
                 .settingsCard()
+
+                if GlassSettings.isSupported {
+                    VStack(spacing: 0) {
+                        HStack(spacing: 12) {
+                            Toggle(isOn: Binding(
+                                get: { usesLiquidGlass },
+                                set: { newValue in
+                                    usesLiquidGlass = newValue
+                                    GlassSettings.setEnabled(newValue)
+                                    DiagnosticsLog.record("appearance", "liquidGlass=\(newValue)")
+                                }
+                            )) {
+                                Text("液态玻璃")
+                                    .font(AppTheme.TypeScale.rowTitle)
+                            }
+                            .tint(AppTheme.accent)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                    }
+                    .settingsCard()
+
+                    Text("关闭后改用系统毛玻璃材质，与 iOS 18 的观感一致。需重启 App 生效。")
+                        .font(AppTheme.TypeScale.note)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
 
                 // 底部菜单栏：统计页可以关掉（2026-11-13 主人要求）。
                 // 关掉后底栏只剩 待取 / 已取 / 设置，统计页也就没有入口。
