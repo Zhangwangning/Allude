@@ -17,24 +17,14 @@ import SwiftUI
 struct AIExtensionsHomeView: View {
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("两种识别增强，互相独立")
-                        .font(AppTheme.TypeScale.rowTitleMedium)
-                    Text("端侧「Apple 智能」在本机处理，数据不出设备；「扩展」用你自己的 API Key 接入第三方模型，请求由这台设备直连服务商。两条都可以单独开、单独关。")
-                        .font(AppTheme.TypeScale.note)
-                        .foregroundStyle(.secondary)
-                        .lineSpacing(3)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
+            VStack(alignment: .leading, spacing: 16) {
+                // 主人 2026-11-14：功能入口在上、标题不带解释，说明统一挪到下面。
                 VStack(spacing: 0) {
                     NavigationLink {
                         appleIntelligenceDestination
                     } label: {
                         SettingsRow(symbol: "brain.head.profile",
                                     title: "Apple 智能",
-                                    subtitle: "本机端侧模型，数据不离开设备",
                                     showsChevron: true,
                                     tint: AppTheme.violet)
                     }
@@ -47,7 +37,6 @@ struct AIExtensionsHomeView: View {
                     } label: {
                         SettingsRow(symbol: "puzzlepiece.extension.fill",
                                     title: "扩展",
-                                    subtitle: "接入 DeepSeek / 豆包 / 千问（自备 API Key）",
                                     showsChevron: true,
                                     tint: AppTheme.accent)
                     }
@@ -55,9 +44,10 @@ struct AIExtensionsHomeView: View {
                 }
                 .settingsCard()
 
-                Text("扩展是可选的：不开也能正常收码，只影响「智能补全地址」这类增强。")
+                Text("「Apple 智能」用系统端侧模型，数据不出设备；「扩展」用你自己的 API Key 直连 DeepSeek / 豆包 / 千问。两条可以单独开关，扩展是可选的——不开也能正常收码。")
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.secondary)
+                    .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, AppTheme.hInset)
