@@ -212,7 +212,7 @@ struct AIProviderDetailView: View {
 
     private var enableCard: some View {
         Toggle(isOn: $enabled) {
-            Text("启用这家模型")
+            Text("启用")
                 .font(AppTheme.TypeScale.rowTitle)
         }
         .padding(16)
