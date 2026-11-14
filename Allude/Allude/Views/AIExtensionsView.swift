@@ -135,8 +135,6 @@ struct AIProviderDetailView: View {
     @State private var model = ""
     @State private var isKeyVisible = false
     @State private var savedHint = false
-    @State private var usesCustomEndpoint = false
-    @State private var customEndpoint = ""
     @State private var testState: TestState = .idle
 
     private enum TestState: Equatable {
@@ -148,7 +146,6 @@ struct AIProviderDetailView: View {
             VStack(alignment: .leading, spacing: 16) {
                 enableCard
                 credentialCard
-                customEndpointCard
                 actionCard
                 explainCard
             }
@@ -254,44 +251,6 @@ struct AIProviderDetailView: View {
         .settingsCard()
     }
 
-    // MARK: 自定义端点
-
-    private var customEndpointCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Toggle(isOn: $usesCustomEndpoint) {
-                Text("自定义接口地址")
-                    .font(AppTheme.TypeScale.rowTitle)
-            }
-            .onChange(of: usesCustomEndpoint) { _, on in
-                if !on { customEndpoint = ""; AIProviderSettings.setCustomEndpoint("", for: provider) }
-            }
-
-            if usesCustomEndpoint {
-                TextField("https://…/v1/chat/completions", text: $customEndpoint)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.URL)
-                    .font(.system(size: 15, design: .monospaced))
-                    .padding(12)
-                    .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: 10, style: .continuous))
-
-                Text("默认用官方地址：\(provider.endpoint)")
-                    .font(AppTheme.TypeScale.note)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Text("适合自建网关或 OpenAI 兼容的聚合服务；地址来源由你自己确认，填错或失效都会导致增强失败。")
-                    .font(AppTheme.TypeScale.note)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .settingsCard()
-    }
-
     // MARK: 操作
 
     private var actionCard: some View {
@@ -360,7 +319,7 @@ struct AIProviderDetailView: View {
                 .font(AppTheme.TypeScale.rowTitleMedium)
             Text("""
             · Key 只存这台设备的 Keychain，不随 iCloud 同步、不写进诊断日志；
-            · 请求由本机直连上面那个地址，不经过开发者服务器；
+            · 只用官方接口，地址内置不可改；请求由本机直连，不经过开发者服务器；
             · 额度与扣费在服务商那边，和 App 内订阅无关；
             · 端侧「Apple 智能」与这里是两条独立通道，可以只开一条。
             """)
@@ -380,14 +339,11 @@ struct AIProviderDetailView: View {
         enabled = AIProviderSettings.isEnabled(provider)
         apiKey = AIProviderKeychain.key(for: provider) ?? ""
         model = AIProviderSettings.model(provider)
-        customEndpoint = AIProviderSettings.customEndpoint(provider)
-        usesCustomEndpoint = !customEndpoint.isEmpty
     }
 
     private func save() {
         AIProviderKeychain.save(apiKey, for: provider)
         AIProviderSettings.setModel(model.trimmingCharacters(in: .whitespacesAndNewlines), for: provider)
-        AIProviderSettings.setCustomEndpoint(usesCustomEndpoint ? customEndpoint : "", for: provider)
         testState = .idle
         savedHint = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { savedHint = false }
@@ -400,7 +356,7 @@ struct AIProviderDetailView: View {
             return
         }
         testState = .running
-        let target = AIProviderSettings.endpoint(provider)
+        let target = provider.endpoint
         let modelName = model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? provider.defaultModel : model
         Task {
             let result = await Self.probe(endpoint: target, model: modelName, key: key)

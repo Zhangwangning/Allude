@@ -78,7 +78,7 @@ enum AIExtensionEnhancer {
                                 provider: AIProvider,
                                 key: String,
                                 model: String) async -> AIExtensionFields? {
-        guard let url = URL(string: AIProviderSettings.endpoint(provider)) else { return nil }
+        guard let url = URL(string: provider.endpoint) else { return nil }
 
         let instruction = """
         你是快递短信解析助手。从用户给的一条短信里抽取取件信息，只输出一个 JSON 对象，不要解释、不要 markdown。
