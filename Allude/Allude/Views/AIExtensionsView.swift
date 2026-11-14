@@ -6,7 +6,7 @@ import SwiftUI
 // 这一页把「智能识别」拆成两条独立通道，用户自己决定用不用：
 //
 //   1) **Apple 智能**：系统端侧模型，数据不出设备（原「AI 能力检测」页）；
-//   2) **扩展**：用户自己的 API Key 接入 DeepSeek / 豆包 / 千问，
+//   2) **扩展**：用户自己的 API Key 接入 DeepSeek / 豆包 / 千问 / Kimi，
 //      由**本机直连**服务商官方接口，用作短信解析的功能增强。
 //
 // 🔴 权限归用户：默认全部关闭；关着时不发起任何请求；
@@ -44,7 +44,7 @@ struct AIExtensionsHomeView: View {
                 }
                 .settingsCard()
 
-                Text("「Apple 智能」用系统端侧模型，数据不出设备；「扩展」用你自己的 API Key 直连 DeepSeek / 豆包 / 千问。两条可以单独开关，扩展是可选的——不开也能正常收码。")
+                Text("「Apple 智能」用系统端侧模型，数据不出设备；「扩展」用你自己的 API Key 直连第三方模型，把短信和本机解析结果一起复核。两条可以单独开关，扩展是可选的——不开也能正常收码。")
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.secondary)
                     .lineSpacing(3)
@@ -114,7 +114,7 @@ struct AIExtensionsListView: View {
             Text("关于数据")
                 .font(AppTheme.TypeScale.rowTitleMedium)
 
-            Text("Allude 本身不联网：取件记录只存在这台设备上。只有你主动开启并触发了增强，那条短信原文才会由这台设备直接发给你选的服务商，用来把地址、柜位这些字段解析得更准——内容不经过我们，我们也看不到、存不到。API Key 只放本机 Keychain，不上传、不同步、不写日志；关掉开关后，App 不会向任何模型发起请求。")
+            Text("Allude 本身不联网：取件记录只存在这台设备上。只有你主动开启并触发了增强，那条短信原文才会由这台设备直接发给你选的服务商，连同本机正则解析出的字段一起交给模型复核，用来把取件码、地址、柜位这些信息认得更准——内容不经过我们，我们也看不到、存不到。API Key 只放本机 Keychain，不上传、不同步、不写日志；关掉开关后，App 不会向任何模型发起请求。")
             .font(AppTheme.TypeScale.note)
             .foregroundStyle(.secondary)
             .lineSpacing(3)

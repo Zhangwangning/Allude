@@ -1,7 +1,7 @@
 import Foundation
 
 // MARK: ============================================================================
-// 第三方模型扩展（BYOK）—— 只用来**补空**的解析增强（2026-11-13）
+// 第三方模型扩展（BYOK）—— 与正则**合并出最终结果**的解析增强（2026-11-14 改口径）
 //
 // 主人原话：「…这3个用户可以通过API去接入，接入完了之后，用来对短信内容解析，
 // 相当于是一个功能性增强。这个接入的时候，这个权限要给用户，我们的APP不进行
@@ -9,8 +9,11 @@ import Foundation
 //
 // 因此这一层的边界写死：
 //   1. **默认关闭**：`AIProviderSettings.anyReadyProvider == nil` 时，一行代码都不会发请求；
-//   2. **只补空、不改已有值**：正则解析出来的码/公司/地址一旦非空，模型结果一律丢掉
-//      （取件码永远用正则值 —— 模型改一次码就是把别人的件标成已取）；
+//   2. **模型参与判定、但字段有护栏**（2026-11-14 主人要求：AI 的作用是"结合正则结果
+//      去优化解析"，不是"只补空"——有些字段本来就该是空的）：
+//      · 地址 / 驿站 / 柜位 / 货架：模型给的值与正则不同时**可以采用**（这正是优化的价值）；
+//      · 快递公司：只在能归一化到已知品牌时采用，避免模型自造公司名；
+//      · 取件码：**必须原样出现在短信原文里**才允许改动（防幻觉），否则一律保留正则值；
 //   3. **本机直连**：URLSession 直接请求服务商官方接口，不经过开发者服务器，
 //      也不写诊断日志（日志只记「发生了增强」这种事实，不记短信原文）。
 //
@@ -47,15 +50,14 @@ enum AIExtensionEnhancer {
     /// 只在这几种「正则明显缺东西」的情况下发起请求，避免每条短信都调用一次：
     ///   · 取件地址空 —— 卡片与导航都要用，最值得补；
     ///   · 柜位/货架都空、但原文提到「柜 / 架」—— 说明位置信息漏了。
+    /// 这条记录要不要请第三方模型参与判定。
+    ///
+    /// 2026-11-14 改口径：**不再只在缺字段时调用**，而是每条新入库的记录都请模型
+    /// 结合「短信原文 + 正则结果」复核一遍（主人：AI 的作用是优化解析，不是补空）。
+    /// 只排除明显不是取件短信/过短的文本，避免白发请求。
     static func needsHelp(_ record: PickupRecord) -> Bool {
-        if record.address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
-        let locker = record.locker?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let shelf = record.shelf?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if locker.isEmpty && shelf.isEmpty,
-           record.rawMessage.contains("柜") || record.rawMessage.contains("架") {
-            return true
-        }
-        return false
+        let text = record.rawMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.count >= 8
     }
 
     /// 新入库的记录排一轮后台补全（由 `commitAll` 调用）。
@@ -91,10 +93,9 @@ enum AIExtensionEnhancer {
             func addNext() {
                 guard let record = iterator.next() else { return }
                 let id = record.id
-                let text = record.rawMessage
                 group.addTask {
                     for attempt in 1...2 {
-                        if let fields = await request(text: text, provider: provider, key: key, model: model) {
+                        if let fields = await request(record, provider: provider, key: key, model: model) {
                             await MainActor.run { apply(fields, to: id) }
                             return
                         }
@@ -111,30 +112,48 @@ enum AIExtensionEnhancer {
 
     // MARK: 请求
 
-    private static func request(text: String,
+    private static func request(_ record: PickupRecord,
                                 provider: AIProvider,
                                 key: String,
                                 model: String) async -> AIExtensionFields? {
         guard let url = URL(string: provider.endpoint) else { return nil }
 
         let instruction = """
-        你是快递短信解析助手。从用户给的一条短信里抽取取件信息，只输出一个 JSON 对象，不要解释、不要 markdown。
+        你是快递取件短信解析助手。用户会给你「短信原文」和「正则解析结果」。
+        请以原文为准，逐字段复核正则结果：能确认的保留，能修正的改正，原文确实没有的留空。
 
-        JSON 字段（没有就给空字符串）：
-        - code：取件码（顾客报给店员或柜机上输入的那串字符，原样抄，不要加空格；没有就空）
-        - courier：快递公司，如「圆通快递」「顺丰速运」（没有就空）
-        - station：取件地点品牌，如「菜鸟驿站」「丰巢」「兔喜生活」「妈妈驿站」（没有就空）
-        - address：取件地址（站点/柜机的完整地点描述，不要重复公司名；没有就空）
-        - locker：快递柜格口，如「2号柜」「12-34格口」（没有就空）
-        - shelf：货架号，如「A-12」（没有就空）
+        只输出一个 JSON 对象，不要解释、不要 markdown。字段：
+        - code：取件码（顾客报给店员或柜机上输入的字符，**必须原样出现在原文里**；原文没有就空）
+        - courier：快递公司，如「圆通快递」「顺丰速运」
+        - station：取件地点品牌，如「菜鸟驿站」「丰巢」「兔喜生活」「妈妈驿站」
+        - address：取件地址（站点/柜机的完整地点描述，不含公司名与取件码）
+        - locker：快递柜格口，如「2号柜」「12-34格口」
+        - shelf：货架号，如「A-12」
+        - changed：你改动或补充了哪些字段名（数组，没改就给空数组）
+
+        注意：原文真的没有的字段就留空字符串，不要猜、不要编造地址或公司。
         """
+
+        let regex = """
+        短信原文：
+        \(record.rawMessage)
+
+        正则解析结果（供复核，可能为空或有误）：
+        code: \(record.code)
+        courier: \(record.courier ?? "")
+        station: \(record.station ?? "")
+        address: \(record.address)
+        locker: \(record.locker ?? "")
+        shelf: \(record.shelf ?? "")
+        """
+        let payload = regex
 
         let body: [String: Any] = [
             "model": model,
             "temperature": 0,
             "messages": [
                 ["role": "system", "content": instruction],
-                ["role": "user", "content": text]
+                ["role": "user", "content": payload]
             ],
             "response_format": ["type": "json_object"]
         ]
@@ -175,50 +194,72 @@ enum AIExtensionEnhancer {
 
     // MARK: 合并
 
-    /// 合并字段：**只填空，不覆盖**（与端侧 `PickupAIEnhancer.apply` 同一口径）。
+    /// 合并字段：**模型结果与正则结果一起决定最终值**（2026-11-14 改口径）。
+    ///
+    /// 与应用内端侧 `PickupAIEnhancer.apply` 的差别要说清：端侧仍只填空，
+    /// 这里的第三方模型**可以修正**地址/柜位/货架/公司，因为用户明确要求
+    /// 「AI 的作用是结合正则结果优化解析，不是只补空」。
+    /// 护栏见上方注释：取件码必须出现在原文、公司必须能归一到已知品牌。
     @MainActor
     static func apply(_ fields: AIExtensionFields, to id: UUID) {
         let store = PickupStore.shared
         guard let index = store.records.firstIndex(where: { $0.id == id }) else { return }
         var record = store.records[index]
-        var changed = false
+        var changed: [String] = []
 
         func clean(_ raw: String?) -> String {
             (raw ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         }
+        /// 只在「新值非空且与现值不同」时写入。
+        func take(_ newValue: String?, into keyPath: WritableKeyPath<PickupRecord, String?>, name: String, maxLength: Int = 40) {
+            let value = clean(newValue)
+            guard !value.isEmpty, value.count <= maxLength else { return }
+            if (record[keyPath: keyPath] ?? "") == value { return }
+            record[keyPath: keyPath] = value
+            changed.append(name)
+        }
 
+        // 地址：模型可修正（这是优化的主要价值）。
         let aiAddress = clean(fields.address)
-        if record.address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !aiAddress.isEmpty {
+        if !aiAddress.isEmpty, aiAddress.count <= 80, aiAddress != record.address {
             record.address = aiAddress
-            changed = true
+            changed.append("address")
         }
 
+        // 驿站：`station` 是**派生值**（由 `CourierBrand.stationMatch` 按品牌词表从原文算出），
+        // 不落盘、也不接受外部改写 —— 所以这里不处理模型给的 station，避免与词表打架。
+        // 柜位 / 货架：是存储字段，可直接改，长度设上限防模型啰嗦。
+        take(fields.locker, into: \PickupRecord.locker, name: "locker", maxLength: 24)
+        take(fields.shelf, into: \PickupRecord.shelf, name: "shelf", maxLength: 24)
+
+        // 快递公司：只认能归一到已知品牌的名字，避免模型自造。
         let aiCourier = clean(fields.courier)
-        if (record.courier ?? "").isEmpty, !aiCourier.isEmpty {
-            record.courier = CourierBrand.canonicalName(for: aiCourier)
-            changed = true
+        if !aiCourier.isEmpty, aiCourier.count <= 20 {
+            let canonical = CourierBrand.canonicalName(for: aiCourier)
+            if canonical != aiCourier.trimmingCharacters(in: .whitespaces),
+               canonical != "未知快递",
+               canonical != record.courier {
+                record.courier = canonical
+                changed.append("courier")
+            }
         }
 
-        let aiLocker = clean(fields.locker)
-        if (record.locker ?? "").isEmpty, !aiLocker.isEmpty {
-            record.locker = aiLocker
-            changed = true
-        }
-
-        let aiShelf = clean(fields.shelf)
-        if (record.shelf ?? "").isEmpty, !aiShelf.isEmpty {
-            record.shelf = aiShelf
-            changed = true
-        }
-
-        // 仅供比对：模型与正则对取件码判断不一致时留痕，不改数据。
+        // 取件码：**必须原样出现在原文里**才允许改（防幻觉）。改动会写一条留痕。
         let aiCode = clean(fields.code)
         if !aiCode.isEmpty, aiCode != record.code {
-            DiagnosticsLog.record("ai-extension", "code_mismatch kept=regex")
+            let compactText = record.rawMessage.replacingOccurrences(of: " ", with: "")
+            let compactCode = aiCode.replacingOccurrences(of: " ", with: "")
+            if compactText.contains(compactCode), aiCode.count <= 24 {
+                record.code = aiCode
+                changed.append("code")
+                DiagnosticsLog.record("ai-extension", "code_replaced from=regex to=verified")
+            } else {
+                DiagnosticsLog.record("ai-extension", "code_rejected not_in_text")
+            }
         }
 
-        guard changed else { return }
-        DiagnosticsLog.record("ai-extension", "filled code=\(record.code)")
+        guard !changed.isEmpty else { return }
+        DiagnosticsLog.record("ai-extension", "optimized fields=\(changed.joined(separator: ","))")
         store.update(record)
     }
 }
