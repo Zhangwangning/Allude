@@ -15,11 +15,10 @@ enum PadLayout {
         }()
     }
 
-    static var usesSplit: Bool {
-        guard UIDevice.current.userInterfaceIdiom == .pad else { return false }
-        if #available(iOS 26.0, *) { return true }
-        return false
-    }
+    /// 🔴 2026-11-15 主人明确：iPad 不要侧边栏。
+    /// 所以 iPad 与 iPhone 走同一套单列结构，标签栏用**系统原生**的
+    /// （iOS 26+ 自带 Liquid Glass 与收起/回弹行为；自绘永远拿不到那些行为）。
+    static var usesSplit: Bool { false }
 }
 
 /// 应用根视图：**系统原生 `TabView` + 原生 Liquid Glass 标签栏**。
@@ -66,17 +65,7 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            ZStack(alignment: .bottom) {
-                tabLayout
-
-                // iPad 底部标签栏：浮在内容之上，材质交给系统玻璃（下面有内容才看得出折射）
-                if PadLayout.isPad {
-                    // 真液态玻璃：放进 GlassEffectContainer，让系统参与取样与合成
-                    PadBottomBarGlassHost(selection: $model.selection, showsStats: showsStats)
-                        .padding(.bottom, 18)
-                        .ignoresSafeArea(edges: .bottom)
-                }
-            }
+            tabLayout
 
             // ── 分享面板（全屏浮动，盖住标签栏） ──
             if let records = share.records {
@@ -152,24 +141,24 @@ struct RootView: View {
     private var tabLayout: some View {
         TabView(selection: $model.selection) {
             PickupListView()
-                .modifier(PadTabChrome(enabled: PadLayout.isPad))
+                
                 .tabItem { Label("待取", systemImage: "tray.fill") }
                 .tag(RootTab.pending)
 
             PickedUpView()
-                .modifier(PadTabChrome(enabled: PadLayout.isPad))
+                
                 .tabItem { Label("已取", systemImage: "checkmark.circle.fill") }
                 .tag(RootTab.picked)
 
             if showsStats {
                 StatsTabView()
-                .modifier(PadTabChrome(enabled: PadLayout.isPad))
+                
                     .tabItem { Label("统计", systemImage: "chart.bar.xaxis") }
                     .tag(RootTab.stats)
             }
 
             SettingsTabRoot()
-                .modifier(PadTabChrome(enabled: PadLayout.isPad))
+                
                 .tabItem { Label("设置", systemImage: "gearshape.fill") }
                 .tag(RootTab.settings)
         }
