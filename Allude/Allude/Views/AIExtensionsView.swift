@@ -218,15 +218,34 @@ struct AIProviderDetailView: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("模型 / 接入点")
+                Text("模型")
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.secondary)
-                TextField(provider.modelFieldHint, text: $model)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .font(.system(size: 15, design: .monospaced))
+                Menu {
+                    ForEach(modelChoices, id: \.self) { name in
+                        Button {
+                            model = name
+                        } label: {
+                            if name == model {
+                                Label(name, systemImage: "checkmark")
+                            } else {
+                                Text(name)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Text(model)
+                            .font(.system(size: 15, design: .monospaced))
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
                     .padding(12)
                     .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: 10, style: .continuous))
+                }
             }
 
             if let url = provider.consoleURL {
@@ -249,6 +268,14 @@ struct AIProviderDetailView: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .settingsCard()
+    }
+
+    /// 预设模型 + 当前已存值（豆包可能是 ep-xxx 这类接入点 ID，不能从列表里丢）。
+    private var modelChoices: [String] {
+        var names = provider.models
+        let saved = model.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !saved.isEmpty && !names.contains(saved) { names.insert(saved, at: 0) }
+        return names
     }
 
     // MARK: 操作

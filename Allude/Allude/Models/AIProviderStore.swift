@@ -90,6 +90,20 @@ enum AIProvider: String, CaseIterable, Identifiable {
         }
     }
 
+    /// 可选模型（详情页做成列表，不让用户手打；豆包的推理接入点 ID 仍可沿用已存值）。
+    var models: [String] {
+        switch self {
+        case .deepseek:
+            return ["deepseek-chat", "deepseek-reasoner"]
+        case .doubao:
+            return ["doubao-seed-1.6", "doubao-seed-1.6-flash", "doubao-1.5-pro-32k", "doubao-1.5-lite-32k"]
+        case .qwen:
+            return ["qwen-plus", "qwen-max", "qwen-turbo", "qwen-long"]
+        case .kimi:
+            return ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k", "kimi-k2-0905-preview", "kimi-latest"]
+        }
+    }
+
     /// 各家开放平台「创建 API Key」页面（详情页给一个直达入口）。
     var consoleURL: URL? {
         switch self {
