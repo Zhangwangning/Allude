@@ -43,7 +43,7 @@ struct AppIconSettingsView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("App 图标")
+        .navigationTitle("自定义 App 图标")
         .navigationBarTitleDisplayMode(.inline)
         // 截图/验收脚手架：命令行点不了格子，`APP_ICON=icon05` 强制切换。
         .onAppear {

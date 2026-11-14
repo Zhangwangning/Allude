@@ -86,7 +86,7 @@ struct AppearancePersonalizationView: View {
                 }
                 .settingsCard()
 
-                Text("这是底部菜单栏的「统计」入口；关掉后底栏只剩 待取 / 已取 / 设置，统计页也进不去。")
+                Text("关掉后底部菜单栏只剩 待取 / 已取 / 设置。")
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)
@@ -116,11 +116,21 @@ struct AppearancePersonalizationView: View {
         }
     }
 
+    @ViewBuilder
     private func label(_ item: SettingsPane) -> some View {
-        SettingsRow(symbol: item.symbol,
-                    title: item.title,
-                    detail: detail(item),
-                    tint: item.tint)
+        if item == .appIcon {
+            // 🔴 2026-11-14 主人：这一行叫「自定义 App 图标」，**右侧不显示当前图标名**
+            //    （名字对选图标没有意义，还容易让人以为要点那个名字）。
+            SettingsRow(symbol: item.symbol,
+                        title: "自定义 App 图标",
+                        detail: nil,
+                        tint: item.tint)
+        } else {
+            SettingsRow(symbol: item.symbol,
+                        title: item.title,
+                        detail: detail(item),
+                        tint: item.tint)
+        }
     }
 
     private func detail(_ item: SettingsPane) -> String? {
