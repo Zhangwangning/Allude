@@ -21,6 +21,7 @@ enum AIProvider: String, CaseIterable, Identifiable {
     case deepseek
     case doubao
     case qwen
+    case kimi
 
     var id: String { rawValue }
 
@@ -29,6 +30,7 @@ enum AIProvider: String, CaseIterable, Identifiable {
         case .deepseek: return "DeepSeek"
         case .doubao:   return "豆包"
         case .qwen:     return "千问"
+        case .kimi:     return "Kimi"
         }
     }
 
@@ -37,6 +39,7 @@ enum AIProvider: String, CaseIterable, Identifiable {
         case .deepseek: return "深度求索"
         case .doubao:   return "字节跳动 · 火山方舟"
         case .qwen:     return "阿里云 · 百炼"
+        case .kimi:     return "月之暗面"
         }
     }
 
@@ -46,6 +49,7 @@ enum AIProvider: String, CaseIterable, Identifiable {
         case .deepseek: return "https://api.deepseek.com/chat/completions"
         case .doubao:   return "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
         case .qwen:     return "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+        case .kimi:     return "https://api.moonshot.cn/v1/chat/completions"
         }
     }
 
@@ -55,6 +59,7 @@ enum AIProvider: String, CaseIterable, Identifiable {
         case .deepseek: return "deepseek-chat"
         case .doubao:   return "doubao-seed-1.6"
         case .qwen:     return "qwen-plus"
+        case .kimi:     return "moonshot-v1-8k"
         }
     }
 
@@ -63,6 +68,7 @@ enum AIProvider: String, CaseIterable, Identifiable {
         case .deepseek: return "模型名，例如 deepseek-chat"
         case .doubao:   return "模型 ID 或推理接入点 ID（ep-…）"
         case .qwen:     return "模型名，例如 qwen-plus"
+        case .kimi:     return "模型名，例如 kimi-k2-0905-preview"
         }
     }
 
@@ -71,6 +77,7 @@ enum AIProvider: String, CaseIterable, Identifiable {
         case .deepseek: return "在 DeepSeek 开放平台创建的 API Key（sk-…）"
         case .doubao:   return "火山方舟控制台创建的 API Key"
         case .qwen:     return "阿里云百炼控制台创建的 API Key（sk-…）"
+        case .kimi:     return "月之暗面开放平台创建的 API Key（sk-…）"
         }
     }
 
@@ -79,6 +86,17 @@ enum AIProvider: String, CaseIterable, Identifiable {
         case .deepseek: return "sparkles"
         case .doubao:   return "bubble.left.and.text.bubble.right.fill"
         case .qwen:     return "cloud.fill"
+        case .kimi:     return "moon.stars.fill"
+        }
+    }
+
+    /// 品牌图标（Assets 里的 AIProviderXxx；2026-11-14 主人提供官方图标）
+    var iconAsset: String {
+        switch self {
+        case .deepseek: return "AIProviderDeepSeek"
+        case .doubao:   return "AIProviderDoubao"
+        case .qwen:     return "AIProviderQwen"
+        case .kimi:     return "AIProviderKimi"
         }
     }
 

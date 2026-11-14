@@ -73,13 +73,7 @@ struct AIExtensionsHomeView: View {
 struct AIExtensionsListView: View {
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                Text("只内置这三家服务商，接口地址固定，避免填到来路不明的端点。每家都需要你自己的 API Key。")
-                    .font(AppTheme.TypeScale.note)
-                    .foregroundStyle(.secondary)
-                    .lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
-
+            VStack(alignment: .leading, spacing: 16) {
                 VStack(spacing: 0) {
                     ForEach(Array(AIProvider.allCases.enumerated()), id: \.element.id) { index, provider in
                         if index > 0 { SettingsDivider() }
@@ -87,8 +81,8 @@ struct AIExtensionsListView: View {
                             AIProviderDetailView(provider: provider)
                         } label: {
                             SettingsRow(symbol: provider.symbol,
+                                        imageAsset: provider.iconAsset,
                                         title: provider.title,
-                                        subtitle: provider.company,
                                         detail: AIProviderSettings.isReady(provider) ? "已接入" : "未接入",
                                         showsChevron: true,
                                         tint: provider.tint)
@@ -99,6 +93,12 @@ struct AIExtensionsListView: View {
                 .settingsCard()
 
                 privacyCard
+
+                Text("接口地址固定为各家官方端点，只填你自己的 API Key；四家可以只开一家。")
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.secondary)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 18)

@@ -1,0 +1,8 @@
+{
+  "images" : [
+    { "filename" : "AIProviderDoubao@1x.png", "idiom" : "universal", "scale" : "1x" },
+    { "filename" : "AIProviderDoubao@2x.png", "idiom" : "universal", "scale" : "2x" },
+    { "filename" : "AIProviderDoubao@3x.png", "idiom" : "universal", "scale" : "3x" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}
