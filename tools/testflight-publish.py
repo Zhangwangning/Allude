@@ -121,7 +121,9 @@ def find_build(app_id: str, build_number: str | None) -> dict:
         "GET",
         f"/v1/apps/{app_id}/builds",
         query={
-            "limit": "20",
+            # 🔴 ASC 这个接口按**上传时间正序**返回，且不支持 sort —— limit 给 20 时
+            #    拿到的是最老的 20 个，新构建永远"找不到"（2026-11-14 踩，287/289 都中招）。
+            "limit": "200",
             "fields[builds]": "version,uploadedDate,processingState,expired",
         },
     )
