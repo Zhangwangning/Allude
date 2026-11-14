@@ -1,5 +1,6 @@
 import SwiftUI
 import Security
+import CryptoKit
 
 // MARK: ============================================================================
 // 三方模型扩展（BYOK，2026-11-13 主人要求）
@@ -153,6 +154,29 @@ enum AIProviderSettings {
 
     static func setModel(_ value: String, for p: AIProvider) {
         defaults.set(value, forKey: modelKey(p))
+    }
+
+    // MARK: 连通性验证（2026-11-14：没测通不许启用）
+
+    private static func verifiedKey(_ p: AIProvider) -> String { "allude.ai.\(p.rawValue).verifiedHash" }
+
+    private static func fingerprint(_ key: String) -> String {
+        let digest = SHA256.hash(data: Data(key.utf8))
+        return digest.map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// 当前的 Key 是否已通过「测试连接」。
+    static func isVerified(_ p: AIProvider) -> Bool {
+        guard let key = AIProviderKeychain.key(for: p), !key.isEmpty else { return false }
+        return defaults.string(forKey: verifiedKey(p)) == fingerprint(key)
+    }
+
+    static func setVerified(_ ok: Bool, for p: AIProvider) {
+        if ok, let key = AIProviderKeychain.key(for: p), !key.isEmpty {
+            defaults.set(fingerprint(key), forKey: verifiedKey(p))
+        } else {
+            defaults.removeObject(forKey: verifiedKey(p))
+        }
     }
 
     /// 用户显式开启、且真的填过 Key，才算「已接入」。

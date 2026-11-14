@@ -172,6 +172,7 @@ enum AIExtensionEnhancer {
                 DiagnosticsLog.record("ai-extension", "http_error provider=\(provider.rawValue)")
                 return nil
             }
+            AIUsageStore.record(provider: provider, model: model, responseData: responseData)
             return decode(responseData)
         } catch {
             // 不记 error 详情（可能含 URL 查询），只记「失败了」。

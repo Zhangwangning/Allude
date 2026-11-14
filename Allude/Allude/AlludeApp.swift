@@ -734,6 +734,8 @@ struct AlludeApp: App {
                     NavigationStack { AIExtensionsHomeView() }
                 case "aiExtensions":
                     NavigationStack { AIExtensionsListView() }
+                case "aiUsage":
+                    NavigationStack { AIUsageView() }
                 case "aiProvider":
                     NavigationStack { AIProviderDetailView(provider: .deepseek) }
                 case "aiCapability":

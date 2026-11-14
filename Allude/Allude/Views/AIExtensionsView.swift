@@ -102,6 +102,20 @@ struct AIExtensionsListView: View {
                 }
                 .settingsCard()
 
+                VStack(spacing: 0) {
+                    NavigationLink {
+                        AIUsageView()
+                    } label: {
+                        SettingsRow(symbol: "chart.bar.xaxis",
+                                    title: "用量统计",
+                                    detail: AIUsageStore.costText(AIUsageStore.allTotals.costCNY),
+                                    showsChevron: true,
+                                    tint: AppTheme.accent)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .settingsCard()
+
                 privacyCard
 
                 Text("接口地址固定为各家官方端点，只填你自己的 API Key；四家可以只开一家。")
@@ -211,15 +225,32 @@ struct AIProviderDetailView: View {
     }
 
     private var enableCard: some View {
-        Toggle(isOn: $enabled) {
-            Text("启用")
-                .font(AppTheme.TypeScale.rowTitle)
+        VStack(alignment: .leading, spacing: 0) {
+            Toggle(isOn: $enabled) {
+                Text("启用")
+                    .font(AppTheme.TypeScale.rowTitle)
+            }
+            .disabled(!canEnable)
+            .padding(16)
+
+            if !canEnable {
+                Text("先点「测试连接」通过，才能启用。")
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
-        .padding(16)
         .settingsCard()
         .onChange(of: enabled) { _, on in
             AIProviderSettings.setEnabled(on, for: provider)
         }
+    }
+
+    /// 已开启的保持可关；没验证过的，不许打开（2026-11-14 主人：没测通就启用等于没用）。
+    private var canEnable: Bool {
+        enabled || AIProviderSettings.isVerified(provider)
     }
 
     // MARK: 凭证
@@ -361,6 +392,7 @@ struct AIProviderDetailView: View {
                     apiKey = ""
                     enabled = false
                     AIProviderSettings.setEnabled(false, for: provider)
+                    AIProviderSettings.setVerified(false, for: provider)
                     savedHint = true
                 } label: {
                     actionRow(title: "清除此配置", tint: .red)
@@ -394,96 +426,6 @@ struct AIProviderDetailView: View {
     }
 
     // MARK: 操作
-
-    private var actionCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button(action: save) {
-                Text(savedHint ? "已保存" : "保存")
-                    .font(AppTheme.TypeScale.rowTitle)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 13)
-                    .background(AppTheme.accent, in: Capsule())
-                    .foregroundStyle(.white)
-            }
-            .buttonStyle(.plain)
-
-            VStack(spacing: 0) {
-                Button(action: runTest) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "bolt.horizontal.circle")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(AppTheme.accent)
-                        Text("测试连接")
-                            .font(AppTheme.TypeScale.rowTitle)
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        HStack(spacing: 6) {
-                            if testState == .running { ProgressView().controlSize(.small) }
-                            Text(testStatusText)
-                                .font(AppTheme.TypeScale.note)
-                                .foregroundStyle(testState == .ok ? .green : .secondary)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 14)
-                }
-                .buttonStyle(.plain)
-                .disabled(testState == .running)
-
-                if case .failed(let message) = testState {
-                    Text(message)
-                        .font(AppTheme.TypeScale.note)
-                        .foregroundStyle(.red)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 12)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                if AIProviderKeychain.key(for: provider) != nil {
-                    SettingsDivider()
-                    Button(role: .destructive) {
-                        AIProviderKeychain.delete(for: provider)
-                        apiKey = ""
-                        enabled = false
-                        AIProviderSettings.setEnabled(false, for: provider)
-                        savedHint = true
-                    } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: "trash")
-                                .font(.system(size: 14, weight: .medium))
-                            Text("清除这台设备上的 Key")
-                                .font(AppTheme.TypeScale.rowTitle)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(.tertiary)
-                        }
-                        .foregroundStyle(.red)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 14)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .settingsCard()
-        }
-    }
-
-    /// 行内动作行（照系统设置的蓝色文字动作，不用大按钮）。
-    private func actionRow(icon: String, title: String, tint: Color) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(tint)
-            Text(title)
-                .font(AppTheme.TypeScale.rowTitle)
-                .foregroundStyle(tint)
-            Spacer()
-        }
-        .padding(.vertical, 13)
-        .contentShape(Rectangle())
-    }
 
     private var testStatusText: String {
         switch testState {
@@ -554,7 +496,9 @@ struct AIProviderDetailView: View {
             let result = await Self.probe(endpoint: target, model: modelName, key: key)
             await MainActor.run {
                 switch result {
-                case .success: testState = .ok
+                case .success:
+                    testState = .ok
+                    AIProviderSettings.setVerified(true, for: provider)
                 case .failure(let error): testState = .failed(error.localizedDescription)
                 }
             }
