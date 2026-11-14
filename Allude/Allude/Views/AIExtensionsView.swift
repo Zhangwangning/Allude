@@ -136,6 +136,7 @@ struct AIProviderDetailView: View {
     @State private var isKeyVisible = false
     @State private var savedHint = false
     @State private var testState: TestState = .idle
+    @State private var showModelSheet = false
 
     private enum TestState: Equatable {
         case idle, running, ok, failed(String)
@@ -157,6 +158,42 @@ struct AIProviderDetailView: View {
         .navigationTitle(provider.title)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: load)
+        .sheet(isPresented: $showModelSheet) { modelSheet }
+    }
+
+    /// 模型选择：勾选标记放行尾（系统 Menu 的 inline picker 会把勾放左侧，主人要求右对齐）。
+    private var modelSheet: some View {
+        NavigationStack {
+            List {
+                ForEach(modelChoices, id: \.self) { name in
+                    Button {
+                        model = name
+                        showModelSheet = false
+                    } label: {
+                        HStack {
+                            Text(name)
+                                .font(.system(size: 16, design: .monospaced))
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            if name == model {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(AppTheme.accent)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .navigationTitle("模型")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { showModelSheet = false }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 
     // MARK: 开关
@@ -221,13 +258,8 @@ struct AIProviderDetailView: View {
                 Text("模型")
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.secondary)
-                Menu {
-                    Picker("模型", selection: $model) {
-                        ForEach(modelChoices, id: \.self) { name in
-                            Text(name).tag(name)
-                        }
-                    }
-                    .pickerStyle(.inline)
+                Button {
+                    showModelSheet = true
                 } label: {
                     HStack {
                         Text(model)
@@ -241,6 +273,7 @@ struct AIProviderDetailView: View {
                     .padding(12)
                     .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: 10, style: .continuous))
                 }
+                .buttonStyle(.plain)
             }
 
             if let url = provider.consoleURL {
@@ -352,6 +385,9 @@ struct AIProviderDetailView: View {
     // MARK: 读写
 
     private func load() {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["MODEL_SHEET"] == "1" { showModelSheet = true }
+        #endif
         enabled = AIProviderSettings.isEnabled(provider)
         apiKey = AIProviderKeychain.key(for: provider) ?? ""
         model = AIProviderSettings.model(provider)
