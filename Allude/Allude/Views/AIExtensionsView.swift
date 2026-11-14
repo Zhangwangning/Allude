@@ -22,12 +22,17 @@ enum AIHubRoute: Hashable {
 
 /// 二级页：Apple 智能 + 扩展 两个入口。
 struct AIExtensionsHomeView: View {
+    /// 由设置详情栈注入：分栏里 destination 型 push 会被吞，统一走显式 path。
+    var onOpen: (AIHubRoute) -> Void = { _ in }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 // 主人 2026-11-14：功能入口在上、标题不带解释，说明统一挪到下面。
                 VStack(spacing: 0) {
-                    NavigationLink(value: AIHubRoute.appleIntelligence) {
+                    Button {
+                        onOpen(.appleIntelligence)
+                    } label: {
 
                         SettingsRow(symbol: "brain.head.profile",
                                     title: "Apple 智能",
@@ -38,7 +43,9 @@ struct AIExtensionsHomeView: View {
 
                     SettingsDivider()
 
-                    NavigationLink(value: AIHubRoute.extensions) {
+                    Button {
+                        onOpen(.extensions)
+                    } label: {
 
                         SettingsRow(symbol: "puzzlepiece.extension.fill",
                                     title: "扩展",
@@ -48,12 +55,6 @@ struct AIExtensionsHomeView: View {
                     .buttonStyle(.plain)
                 }
                 .settingsCard()
-                .navigationDestination(for: AIHubRoute.self) { route in
-                    switch route {
-                    case .appleIntelligence: appleIntelligenceDestination
-                    case .extensions:        AIExtensionsListView()
-                    }
-                }
 
                 Text("「Apple 智能」用系统端侧模型，数据不出设备；「扩展」用你自己的 API Key 直连第三方模型，把短信和本机解析结果一起复核。两条可以单独开关，扩展是可选的——不开也能正常收码。")
                     .font(AppTheme.TypeScale.note)

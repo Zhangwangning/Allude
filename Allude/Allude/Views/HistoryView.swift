@@ -233,14 +233,19 @@ struct PickedUpView: View {
     private var splitPane: Bool { PadLayout.usesSplit && paneWidth >= 900 }
 
     private var listPane: some View {
-        VStack(spacing: 0) {
-            if splitPane { PadSidebarHeader(title: "已取") }
-            listBody
-        }
+        listBody
     }
 
     private var listBody: some View {
         List {
+            if splitPane {
+                Section {
+                    PadSidebarHeader(title: "已取", onToggleSidebar: { columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly })
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
+            }
                 if list.isEmpty {
                     Section {
                         EmptyStateView(symbol: "archivebox",
@@ -324,6 +329,7 @@ struct PickedUpView: View {
             .frame(maxWidth: splitPane ? .infinity : AppTheme.contentMaxWidth)
             .frame(maxWidth: .infinity)
             .background(Color(.systemGroupedBackground))
+            .toolbar(splitPane ? .hidden : .visible, for: .navigationBar)
             .navigationTitle(splitPane ? "" : "已取")
             .toolbarTitleDisplayMode(splitPane ? .inline : .large)
             .toolbar {

@@ -977,14 +977,30 @@ private struct TabBarMinimizeNever: ViewModifier {
 /// 系统在 `NavigationSplitView` 的侧栏里只画 inline 标题，这里自己排一行。
 struct PadSidebarHeader: View {
     var title: String
+    /// 分栏侧栏的收放按钮（导航栏藏掉后要自己提供）
+    var onToggleSidebar: (() -> Void)? = nil
 
     var body: some View {
-        Text(title)
-            .font(.system(size: 34, weight: .bold))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 18)
-            .padding(.top, 6)
-            .padding(.bottom, 4)
+        HStack(alignment: .center, spacing: 8) {
+            Text(title)
+                .font(.system(size: 34, weight: .bold))
+            Spacer(minLength: 0)
+            if let onToggleSidebar {
+                Button(action: onToggleSidebar) {
+                    Image(systemName: "sidebar.leading")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 32, height: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("切换侧栏")
+            }
+        }
+        .padding(.leading, 18)
+        .padding(.trailing, 12)
+        .padding(.top, 8)
+        .padding(.bottom, 6)
     }
 }
 

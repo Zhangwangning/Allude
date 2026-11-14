@@ -238,6 +238,9 @@ struct SettingsView: View {
         }
     }
 
+    /// 设置详情列的显式导航路径（分栏里 destination 型 push 会被吞，见 2026-11-14 记录）
+    @State private var detailPath = NavigationPath()
+
     var body: some View {
         Group {
             // 🔴 2026-11-07 主人：宽屏（Duo 展开态 / iPad）就该用分栏，窄屏用单列。
@@ -386,13 +389,20 @@ struct SettingsView: View {
         NavigationSplitView {
             VStack(spacing: 0) {
                 // 大标题（与「统计」页同字号），Apple 设置也是标题在搜索之上
-                PadSidebarHeader(title: "设置")
+
 
                 // 侧栏顶部搜索框（照 iPad 设置：胶囊输入框 + 放大镜）
                 settingsSearchField
 
 
                 List {
+                    Section {
+                        PadSidebarHeader(title: "设置")
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                    }
+
                     // Pro 入口回到列表第一条
                     proBanner
                         .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 10, trailing: 10))
@@ -411,9 +421,7 @@ struct SettingsView: View {
                 .toolbarBackground(.hidden, for: .navigationBar)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("")
-            .toolbarTitleDisplayMode(.inline)
-            .padding(.top, -8)
+            .toolbar(.hidden, for: .navigationBar)
             // 侧栏宽度**按屏幕宽比例**（2026-10-25 主人：Duo 展开竖屏也要照 iPad 竖屏布局）：
             // 横屏 951pt → ~380pt；竖屏 669pt → ~280pt（下限）。
             // 写死 434 会让竖屏侧栏占到 65%，右侧内容被挤扁。
@@ -429,9 +437,15 @@ struct SettingsView: View {
                 Color(.systemGroupedBackground)
                     .ignoresSafeArea()
 
-                NavigationStack {
+                NavigationStack(path: $detailPath) {
                     // 照 iPad 设置的内容列：左右留白更大、内容限宽居中
-                    paneContent(pane ?? .notification)
+                    paneContent(pane ?? .notification, openAIHub: { route in detailPath.append(route) })
+                        .navigationDestination(for: AIHubRoute.self) { route in
+                            switch route {
+                            case .appleIntelligence: appleIntelligencePane
+                            case .extensions:        AIExtensionsListView()
+                            }
+                        }
                         // 每个 pane 一份独立栈：切面板后旧栈的路径会残留，
                         // 表现为「点了二级页没反应」（2026-11-14 修）。
                         .id(pane)
@@ -557,7 +571,13 @@ struct SettingsView: View {
 
     /// 右侧内容：选中项展开的页面 / 卡片
     @ViewBuilder
-    private func paneContent(_ item: SettingsPane) -> some View {
+    private var appleIntelligencePane: some View {
+        if #available(iOS 26.0, *) { AICapabilityView() } else { AICapabilityUnsupportedView() }
+    }
+
+    @ViewBuilder
+    private func paneContent(_ item: SettingsPane,
+                             openAIHub: @escaping (AIHubRoute) -> Void = { _ in }) -> some View {
         switch item {
         case .appearance: AppearanceSettingsView()
         case .fontSize:   FontSizeView()
@@ -579,7 +599,7 @@ struct SettingsView: View {
         case .aiCapability:
             // 2026-11-14 主人：这一行原本直达「Apple 智能」检测页，把「扩展」（第三方模型）
             // 那一半整个挡住了 —— 改成先进总览，两条通道各一个入口。
-            AIExtensionsHomeView()
+            AIExtensionsHomeView(onOpen: openAIHub)
         case .appIcon:      AppIconSettingsView()
         case .privacyDoc:   LegalDocumentView(document: .privacy)
         // 2026-11-12 主人：服务条款与「声明与免责」合并成一页

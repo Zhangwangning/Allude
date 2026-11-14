@@ -530,8 +530,8 @@ struct PickupListView: View {
     private var listPane: some View {
         VStack(spacing: 0) {
             if splitPane {
-                PadSidebarHeader(title: "待取")
                 PadSidebarSearchField(text: $model.query, prompt: "取件码 / 快递公司 / 地址")
+                    .padding(.top, 6)
             }
             listBody
         }
@@ -539,6 +539,14 @@ struct PickupListView: View {
 
     private var listBody: some View {
         List {
+            if splitPane {
+                Section {
+                    PadSidebarHeader(title: "待取", onToggleSidebar: { columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly })
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
+            }
                 // 顶部统计卡：待取 / 今日新增 / 今日已取 三格一组，只报数不切页。
                 Section {
                     PendingStatsCard(pending: scopedPending.count,
@@ -592,6 +600,7 @@ struct PickupListView: View {
             // 🔴 2026-10-08 结构重构：浏览（已取件）独立成 Tab 后，取件页不再需要
             //    分段切换器 —— 回归系统导航栏（大标题「取件」+ drawer 搜索 + 系统
             //    toolbar）。此前为「分段居中于标题位」做的自绘顶栏随分段一起退役。
+            .toolbar(splitPane ? .hidden : .visible, for: .navigationBar)
             .navigationTitle(splitPane ? "" : "待取")
             .toolbarTitleDisplayMode(splitPane ? .inline : .large)
             .toolbar { toolbarContent }
