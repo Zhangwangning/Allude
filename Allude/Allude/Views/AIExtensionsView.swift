@@ -158,45 +158,47 @@ struct AIProviderDetailView: View {
         .navigationTitle(provider.title)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: load)
-        .sheet(isPresented: $showModelSheet) { modelSheet }
+        
     }
 
     /// 模型选择：勾选标记放行尾（系统 Menu 的 inline picker 会把勾放左侧，主人要求右对齐）。
     private var modelSheet: some View {
-        NavigationStack {
-            List {
-                ForEach(modelChoices, id: \.self) { name in
+        ScrollView {
+            VStack(spacing: 0) {
+                ForEach(Array(modelChoices.enumerated()), id: \.element) { index, name in
+                    if index > 0 {
+                        Rectangle()
+                            .fill(Color.primary.opacity(0.06))
+                            .frame(height: 0.5)
+                            .padding(.leading, 14)
+                    }
                     Button {
                         model = name
                         showModelSheet = false
                     } label: {
-                        HStack {
+                        HStack(spacing: 10) {
                             Text(name)
-                                .font(.system(size: 16, design: .monospaced))
+                                .font(.system(size: 15, design: .monospaced))
                                 .foregroundStyle(.primary)
-                            Spacer()
+                            Spacer(minLength: 8)
                             if name == model {
                                 Image(systemName: "checkmark")
-                                    .font(.system(size: 14, weight: .semibold))
+                                    .font(.system(size: 13, weight: .semibold))
                                     .foregroundStyle(AppTheme.accent)
                             }
                         }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 11)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .navigationTitle("模型")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { showModelSheet = false }
-                }
-            }
+            .padding(.vertical, 4)
         }
-        .presentationDetents([.medium, .large])
+        .frame(maxHeight: 280)
+        .background(.regularMaterial)
     }
-
-    // MARK: 开关
 
     private var enableCard: some View {
         Toggle(isOn: $enabled) {
@@ -274,6 +276,11 @@ struct AIProviderDetailView: View {
                     .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: 10, style: .continuous))
                 }
                 .buttonStyle(.plain)
+                .popover(isPresented: $showModelSheet, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
+                    modelSheet
+                        .presentationCompactAdaptation(.popover)
+                        .frame(width: 252)
+                }
             }
 
             if let url = provider.consoleURL {
