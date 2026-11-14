@@ -102,6 +102,15 @@ final class PickupListModel: ObservableObject {
         }
     }
 
+    /// 全选当前可见（排序 / 检索之后）的记录。
+    func selectAll(_ records: [PickupRecord]) {
+        selectedIDs.formUnion(records.map(\.id))
+    }
+
+    func clearSelection() {
+        selectedIDs = []
+    }
+
     func exitSelection() {
         selectionMode = false
         selectedIDs = []
@@ -516,6 +525,17 @@ struct PickupListView: View {
         case "newest": model.sort = .newest
         default: break
         }
+
+        // `SIMCTL_CHILD_SELECT=1|all`：进入多选态（`all` 顺带全选），截图验收「全选」按钮
+        switch ProcessInfo.processInfo.environment["SELECT"] {
+        case "1":
+            model.selectionMode = true
+        case "all":
+            model.selectionMode = true
+            model.selectAll(displayed)
+        default:
+            break
+        }
     }
 
     /// 单栈布局（常规 iPhone）：与历史版本完全一致。
@@ -815,6 +835,17 @@ struct PickupListView: View {
             ToolbarItem(placement: .topBarLeading) {
                 Button("取消") { model.exitSelection() }
             }
+            // 全选 / 取消全选：作用于当前可见集合（排序、检索之后），与「已取 N」「分享 N」同源
+            ToolbarItem(placement: .topBarLeading) {
+                Button(allVisibleSelected ? "取消全选" : "全选") {
+                    if allVisibleSelected {
+                        model.clearSelection()
+                    } else {
+                        model.selectAll(displayed)
+                    }
+                }
+                .disabled(displayed.isEmpty)
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     model.complete(selectedRecords, in: store)
@@ -869,6 +900,11 @@ struct PickupListView: View {
             // 🔴 2026-10-14：顶栏头像入口退役 —— 设置已升格为底部第 4 个标签页
             // （原「我的」面板整体重构进设置页，见 RootView / ProfileView）。
         }
+    }
+
+    /// 当前可见的记录是否已全部选中（用来切「全选 / 取消全选」文案）
+    private var allVisibleSelected: Bool {
+        !displayed.isEmpty && displayed.allSatisfy { model.selectedIDs.contains($0.id) }
     }
 
     /// 多选分享的记录集：按当前显示顺序（排序 / 检索后的顺序）取
