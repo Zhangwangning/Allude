@@ -386,7 +386,7 @@ struct PickupListView: View {
             //    两栏硬塞进 744pt 会把详情挤到屏幕外。改判**实际可用宽度**（≥ 900pt 才分栏）。
             //    宽度用 preference 量，不能用 GeometryReader 包一层：那会让 NavigationSplitView
             //    丢掉顶部安全区，标签栏直接压在详情列标题上。
-            if PadLayout.usesSplit, paneWidth >= 900 {
+            if PadLayout.isPad, paneWidth >= 900 {
                 splitLayout
             } else {
                 stackedLayout
@@ -494,10 +494,15 @@ struct PickupListView: View {
     /// ⚠️ 主人当天先要求「按铰链中轴分列」，实测系统会把列宽夹到 ~415pt、
     ///    左栏几乎被压扁，随即改回等分 —— 不要再试中轴方案。
     private var splitLayout: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            listPane
-                .navigationSplitViewColumnWidth(min: 340, ideal: 440, max: 600)
-        } detail: {
+        GoldenSplit {
+            NavigationStack { listPane }
+        } right: {
+            NavigationStack { detailColumn }
+        }
+    }
+
+    private var detailColumn: some View {
+        ZStack {
             ZStack {
                 // 右栏整列铺浅灰：详情限宽 760 居中，两侧不能露出系统白
                 Color(.systemGroupedBackground).ignoresSafeArea()
@@ -519,29 +524,28 @@ struct PickupListView: View {
             }
             }
         }
-        .navigationSplitViewStyle(.balanced)
     }
 
     /// 列表本体（两种布局共用）：List + 内边距 / 背景 / 搜索 / 工具栏 / 弹层。
     /// ⚠️ `navigationDestination` 不在这里 —— 它由各布局自己挂在对应的栈上，
     ///    否则分栏模式下会被注册到没有栈的 sidebar 列（无效且会告警）。
-    private var splitPane: Bool { PadLayout.usesSplit && paneWidth >= 900 }
+    private var splitPane: Bool { PadLayout.isPad && paneWidth >= 900 }
 
     private var listPane: some View {
-        VStack(spacing: 0) {
-            if splitPane {
-                PadSidebarSearchField(text: $model.query, prompt: "取件码 / 快递公司 / 地址")
-                    .padding(.top, 6)
-            }
-            listBody
-        }
+        listBody
     }
 
     private var listBody: some View {
         List {
             if splitPane {
                 Section {
-                    PadSidebarHeader(title: "待取", onToggleSidebar: { columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly })
+                    PadSidebarHeader(title: "待取")
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
+                Section {
+                    PadSidebarSearchField(text: $model.query, prompt: "取件码 / 快递公司 / 地址")
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)

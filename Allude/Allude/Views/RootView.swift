@@ -1061,3 +1061,30 @@ private struct PadBottomBarGlassHost: View {
         }
     }
 }
+
+// MARK: - iPad 黄金分割两列（2026-11-15 主人定调）
+
+/// 左窄右宽，左 : 右 = 0.382 : 0.618（黄金分割）。
+/// 不用 `NavigationSplitView` —— 那是侧边栏语义；这里就是两列内容。
+struct GoldenSplit<Left: View, Right: View>: View {
+    var minLeft: CGFloat = 320
+    @ViewBuilder var left: () -> Left
+    @ViewBuilder var right: () -> Right
+
+    private static var ratio: CGFloat { 0.382 }
+
+    var body: some View {
+        GeometryReader { geo in
+            let lw = max(minLeft, geo.size.width * Self.ratio)
+            HStack(spacing: 0) {
+                left()
+                    .frame(width: lw)
+                Rectangle()
+                    .fill(Color(.separator).opacity(0.5))
+                    .frame(width: 0.5)
+                right()
+                    .frame(maxWidth: .infinity)
+            }
+        }
+    }
+}

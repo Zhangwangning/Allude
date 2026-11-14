@@ -248,7 +248,7 @@ struct SettingsView: View {
             //    所以功能完全一致，只是排列不同。
             // 截图脚手架：`SETTINGS_COMPACT=1` 强制走单列，用来在宽屏模拟器上
             // 验证窄屏样式（尤其 iOS 26 的玻璃行），平时不影响任何布局。
-            if PadLayout.usesSplit, horizontalSizeClass == .regular,
+            if PadLayout.isPad, horizontalSizeClass == .regular,
                ProcessInfo.processInfo.environment["SETTINGS_COMPACT"] != "1" {
                 splitSettings
             } else {
@@ -386,23 +386,18 @@ struct SettingsView: View {
     /// 所以这里不用 `List(selection:)` 的系统高亮（iOS 会给灰色/蓝色选中块），
     /// 改成 plain List + 自绘行背景：底色浅灰、选中行白色圆角块。
     private var splitSettings: some View {
-        NavigationSplitView {
+        GoldenSplit {
             VStack(spacing: 0) {
                 // 大标题（与「统计」页同字号），Apple 设置也是标题在搜索之上
 
+
+                PadSidebarHeader(title: "设置")
 
                 // 侧栏顶部搜索框（照 iPad 设置：胶囊输入框 + 放大镜）
                 settingsSearchField
 
 
                 List {
-                    Section {
-                        PadSidebarHeader(title: "设置")
-                            .listRowInsets(EdgeInsets())
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                    }
-
                     // Pro 入口回到列表第一条
                     proBanner
                         .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 10, trailing: 10))
@@ -425,8 +420,7 @@ struct SettingsView: View {
             // 侧栏宽度**按屏幕宽比例**（2026-10-25 主人：Duo 展开竖屏也要照 iPad 竖屏布局）：
             // 横屏 951pt → ~380pt；竖屏 669pt → ~280pt（下限）。
             // 写死 434 会让竖屏侧栏占到 65%，右侧内容被挤扁。
-            .navigationSplitViewColumnWidth(min: 340, ideal: 440, max: 600)
-        } detail: {
+        } right: {
             // 右栏与左栏**同一底色**（2026-10-25 主人两次强调：Duo 展开时左侧浅灰、
             // 右侧白色，「先全部是一个底色」）。
             // 三层兜底，任何一层漏掉都不会露出白：
@@ -440,6 +434,8 @@ struct SettingsView: View {
                 NavigationStack(path: $detailPath) {
                     // 照 iPad 设置的内容列：左右留白更大、内容限宽居中
                     paneContent(pane ?? .notification, openAIHub: { route in detailPath.append(route) })
+                        .navigationTitle((pane ?? .notification).title)
+                        .navigationBarTitleDisplayMode(.inline)
                         .navigationDestination(for: AIHubRoute.self) { route in
                             switch route {
                             case .appleIntelligence: appleIntelligencePane
