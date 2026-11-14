@@ -71,7 +71,8 @@ struct RootView: View {
 
                 // iPad 底部标签栏：浮在内容之上，材质交给系统玻璃（下面有内容才看得出折射）
                 if PadLayout.isPad {
-                    PadBottomBar(selection: $model.selection, showsStats: showsStats)
+                    // 真液态玻璃：放进 GlassEffectContainer，让系统参与取样与合成
+                    PadBottomBarGlassHost(selection: $model.selection, showsStats: showsStats)
                         .padding(.bottom, 18)
                         .ignoresSafeArea(edges: .bottom)
                 }
@@ -272,7 +273,7 @@ private struct PadBottomBar: View {
         .padding(.vertical, 6)
         .frame(maxWidth: 520, maxHeight: .infinity, alignment: .center)
         .fixedSize(horizontal: false, vertical: true)
-        .appGlass(.capsule)
+        .appGlass(.capsule, interactive: true)
         .frame(maxWidth: .infinity)
     }
 
@@ -969,3 +970,89 @@ private struct TabBarMinimizeNever: ViewModifier {
 /// iPadOS 18+ 的原生标签栏在顶部、且没有公开 API 挪到底部。这里用系统
 /// **Liquid Glass（iOS 26+ `glassEffect`，经 `appGlass`）**/ 系统毛玻璃（18 及以下）
 /// 当背景，只负责排版四个按钮 —— 玻璃本身由系统绘制，不是自绘材质。
+
+// MARK: - iPad 分栏侧栏的公共头（2026-11-14）
+
+/// 分栏侧栏的大标题：与「统计」页 large title 同字号（34pt bold）。
+/// 系统在 `NavigationSplitView` 的侧栏里只画 inline 标题，这里自己排一行。
+struct PadSidebarHeader: View {
+    var title: String
+
+    var body: some View {
+        Text(title)
+            .font(.system(size: 34, weight: .bold))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, 18)
+            .padding(.top, 6)
+            .padding(.bottom, 4)
+    }
+}
+
+/// 分栏侧栏的搜索框（胶囊，与系统设置同观感）。
+struct PadSidebarSearchField: View {
+    @Binding var text: String
+    var prompt: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(.secondary)
+            TextField(prompt, text: $text)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .font(.system(size: 16))
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 15))
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("清除搜索")
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(Color(.tertiarySystemFill), in: .capsule)
+        .padding(.horizontal, 18)
+        .padding(.bottom, 8)
+    }
+}
+
+/// `.searchable` 只在窄屏（单栈）启用；分栏侧栏改用 `PadSidebarSearchField`。
+struct SidebarSearchable: ViewModifier {
+    @Binding var text: String
+    var enabled: Bool
+    var prompt: String
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.searchable(text: $text,
+                               placement: .navigationBarDrawer(displayMode: .automatic),
+                               prompt: prompt)
+        } else {
+            content
+        }
+    }
+}
+
+
+/// iOS 26+ 把底栏放进 `GlassEffectContainer`（液态玻璃需要容器参与合成）；
+/// 低版本只是普通容器，观感由 `appGlass` 的毛玻璃兜底。
+private struct PadBottomBarGlassHost: View {
+    @Binding var selection: RootTab
+    var showsStats: Bool
+
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: 0) {
+                PadBottomBar(selection: $selection, showsStats: showsStats)
+            }
+        } else {
+            PadBottomBar(selection: $selection, showsStats: showsStats)
+        }
+    }
+}

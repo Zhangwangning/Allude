@@ -13,6 +13,13 @@ import SwiftUI
 //    Key 只存本机 Keychain，不上传、不同步、不进日志。
 // ============================================================================
 
+/// 二级页内部的路由（2026-11-14：分栏里 `NavigationLink(destination:)` 偶发不落地，
+/// 改成 value-based push，目标注册在同一个栈上，稳定得多）。
+enum AIHubRoute: Hashable {
+    case appleIntelligence
+    case extensions
+}
+
 /// 二级页：Apple 智能 + 扩展 两个入口。
 struct AIExtensionsHomeView: View {
     var body: some View {
@@ -20,9 +27,8 @@ struct AIExtensionsHomeView: View {
             VStack(alignment: .leading, spacing: 16) {
                 // 主人 2026-11-14：功能入口在上、标题不带解释，说明统一挪到下面。
                 VStack(spacing: 0) {
-                    NavigationLink {
-                        appleIntelligenceDestination
-                    } label: {
+                    NavigationLink(value: AIHubRoute.appleIntelligence) {
+
                         SettingsRow(symbol: "brain.head.profile",
                                     title: "Apple 智能",
                                     showsChevron: true,
@@ -32,9 +38,8 @@ struct AIExtensionsHomeView: View {
 
                     SettingsDivider()
 
-                    NavigationLink {
-                        AIExtensionsListView()
-                    } label: {
+                    NavigationLink(value: AIHubRoute.extensions) {
+
                         SettingsRow(symbol: "puzzlepiece.extension.fill",
                                     title: "扩展",
                                     showsChevron: true,
@@ -43,6 +48,12 @@ struct AIExtensionsHomeView: View {
                     .buttonStyle(.plain)
                 }
                 .settingsCard()
+                .navigationDestination(for: AIHubRoute.self) { route in
+                    switch route {
+                    case .appleIntelligence: appleIntelligenceDestination
+                    case .extensions:        AIExtensionsListView()
+                    }
+                }
 
                 Text("「Apple 智能」用系统端侧模型，数据不出设备；「扩展」用你自己的 API Key 直连第三方模型，把短信和本机解析结果一起复核。两条可以单独开关，扩展是可选的——不开也能正常收码。")
                     .font(AppTheme.TypeScale.note)

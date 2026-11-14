@@ -386,11 +386,7 @@ struct SettingsView: View {
         NavigationSplitView {
             VStack(spacing: 0) {
                 // 大标题（与「统计」页同字号），Apple 设置也是标题在搜索之上
-                Text("设置")
-                    .font(.system(size: 34, weight: .bold))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.leading, 18)
-                    .padding(.top, 4)
+                PadSidebarHeader(title: "设置")
 
                 // 侧栏顶部搜索框（照 iPad 设置：胶囊输入框 + 放大镜）
                 settingsSearchField
@@ -417,12 +413,11 @@ struct SettingsView: View {
             .background(Color(.systemGroupedBackground))
             .navigationTitle("")
             .toolbarTitleDisplayMode(.inline)
+            .padding(.top, -8)
             // 侧栏宽度**按屏幕宽比例**（2026-10-25 主人：Duo 展开竖屏也要照 iPad 竖屏布局）：
             // 横屏 951pt → ~380pt；竖屏 669pt → ~280pt（下限）。
             // 写死 434 会让竖屏侧栏占到 65%，右侧内容被挤扁。
-            .navigationSplitViewColumnWidth(min: 320,
-                                            ideal: max(settingsSidebarWidth, 400),
-                                            max: 560)
+            .navigationSplitViewColumnWidth(min: 340, ideal: 440, max: 600)
         } detail: {
             // 右栏与左栏**同一底色**（2026-10-25 主人两次强调：Duo 展开时左侧浅灰、
             // 右侧白色，「先全部是一个底色」）。

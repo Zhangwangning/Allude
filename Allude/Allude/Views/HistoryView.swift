@@ -230,18 +230,17 @@ struct PickedUpView: View {
     }
 
     /// 列表本体（两种布局共用）。`navigationDestination` 由各布局挂到自己的栈上。
+    private var splitPane: Bool { PadLayout.usesSplit && paneWidth >= 900 }
+
     private var listPane: some View {
+        VStack(spacing: 0) {
+            if splitPane { PadSidebarHeader(title: "已取") }
+            listBody
+        }
+    }
+
+    private var listBody: some View {
         List {
-                if PadLayout.usesSplit, paneWidth >= 900 {
-                    Section {
-                        Text("已取")
-                            .font(.system(size: 34, weight: .bold))
-                            .listRowInsets(EdgeInsets(top: 8, leading: AppTheme.hInset,
-                                                      bottom: 0, trailing: AppTheme.hInset))
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                    }
-                }
                 if list.isEmpty {
                     Section {
                         EmptyStateView(symbol: "archivebox",
@@ -322,11 +321,11 @@ struct PickedUpView: View {
                 }
             }
             // 📱 宽屏（iPhone Duo 展开态）内容限宽居中，与待取页同一口径
-            .frame(maxWidth: AppTheme.contentMaxWidth)
+            .frame(maxWidth: splitPane ? .infinity : AppTheme.contentMaxWidth)
             .frame(maxWidth: .infinity)
             .background(Color(.systemGroupedBackground))
-            .navigationTitle(paneWidth >= 900 ? "" : "已取")
-            .toolbarTitleDisplayMode(paneWidth >= 900 ? .inline : .large)
+            .navigationTitle(splitPane ? "" : "已取")
+            .toolbarTitleDisplayMode(splitPane ? .inline : .large)
             .toolbar {
                 if model.isEditing {
                     ToolbarItem(placement: .topBarLeading) {

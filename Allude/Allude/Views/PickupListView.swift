@@ -525,21 +525,20 @@ struct PickupListView: View {
     /// 列表本体（两种布局共用）：List + 内边距 / 背景 / 搜索 / 工具栏 / 弹层。
     /// ⚠️ `navigationDestination` 不在这里 —— 它由各布局自己挂在对应的栈上，
     ///    否则分栏模式下会被注册到没有栈的 sidebar 列（无效且会告警）。
-    private var listPane: some View {
-        List {
-                if PadLayout.usesSplit, paneWidth >= 900 {
-                    // 分栏的侧栏里系统只画 inline 标题；为了和「统计」页一样用大标题，
-                    // 这里自己排一行（34pt 粗体，与 large title 同字号），并把导航标题藏掉。
-                    Section {
-                        Text("待取")
-                            .font(.system(size: 34, weight: .bold))
-                            .listRowInsets(EdgeInsets(top: 8, leading: AppTheme.hInset,
-                                                      bottom: 0, trailing: AppTheme.hInset))
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                    }
-                }
+    private var splitPane: Bool { PadLayout.usesSplit && paneWidth >= 900 }
 
+    private var listPane: some View {
+        VStack(spacing: 0) {
+            if splitPane {
+                PadSidebarHeader(title: "待取")
+                PadSidebarSearchField(text: $model.query, prompt: "取件码 / 快递公司 / 地址")
+            }
+            listBody
+        }
+    }
+
+    private var listBody: some View {
+        List {
                 // 顶部统计卡：待取 / 今日新增 / 今日已取 三格一组，只报数不切页。
                 Section {
                     PendingStatsCard(pending: scopedPending.count,
@@ -583,18 +582,18 @@ struct PickupListView: View {
             //    卡片铺满 911pt 会让取件码与右端勾选相距过远、信息行过长。
             //    两段 frame = 「最多 700pt」+「撑满父级并居中」，
             //    常规 iPhone（402/440pt）触不到上限，行为与旧版完全一致。
-            .frame(maxWidth: AppTheme.contentMaxWidth)
+            .frame(maxWidth: splitPane ? .infinity : AppTheme.contentMaxWidth)
             .frame(maxWidth: .infinity)
             // 限宽后两侧露出父级背景，需补同色，避免中间浅灰、两边纯白
             .background(Color(.systemGroupedBackground))
-            .searchable(text: $model.query,
-                        placement: .navigationBarDrawer(displayMode: .automatic),
-                        prompt: "取件码 / 快递公司 / 地址")
+            .modifier(SidebarSearchable(text: $model.query,
+                                        enabled: !splitPane,
+                                        prompt: "取件码 / 快递公司 / 地址"))
             // 🔴 2026-10-08 结构重构：浏览（已取件）独立成 Tab 后，取件页不再需要
             //    分段切换器 —— 回归系统导航栏（大标题「取件」+ drawer 搜索 + 系统
             //    toolbar）。此前为「分段居中于标题位」做的自绘顶栏随分段一起退役。
-            .navigationTitle(PadLayout.usesSplit && paneWidth >= 900 ? "" : "待取")
-            .toolbarTitleDisplayMode(PadLayout.usesSplit && paneWidth >= 900 ? .inline : .large)
+            .navigationTitle(splitPane ? "" : "待取")
+            .toolbarTitleDisplayMode(splitPane ? .inline : .large)
             .toolbar { toolbarContent }
             .overlay(alignment: .bottom) { bottomOverlay }
             // 🔴 不用 alert 也不用新页面：随机四位数就在**弹窗里**输入，
