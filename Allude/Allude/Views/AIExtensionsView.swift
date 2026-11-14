@@ -225,15 +225,18 @@ struct AIProviderDetailView: View {
     // MARK: 凭证
 
     private var credentialCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 8) {
+        VStack(spacing: 0) {
+            // ① API Key
+            VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text("API Key")
                         .font(AppTheme.TypeScale.note)
                         .foregroundStyle(.secondary)
                     Spacer()
                     Button("从剪贴板粘贴") {
-                        if let text = UIPasteboard.general.string { apiKey = text.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        if let text = UIPasteboard.general.string {
+                            apiKey = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        }
                     }
                     .font(AppTheme.TypeScale.note)
                     .buttonStyle(.plain)
@@ -241,17 +244,17 @@ struct AIProviderDetailView: View {
                 }
 
                 HStack(spacing: 8) {
-                    if isKeyVisible {
-                        TextField(provider.keyHint, text: $apiKey)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .font(.system(size: 15, design: .monospaced))
-                    } else {
-                        SecureField(provider.keyHint, text: $apiKey)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .font(.system(size: 15, design: .monospaced))
+                    Group {
+                        if isKeyVisible {
+                            TextField(provider.keyHint, text: $apiKey)
+                        } else {
+                            SecureField(provider.keyHint, text: $apiKey)
+                        }
                     }
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .font(.system(size: 15, design: .monospaced))
+
                     Button {
                         isKeyVisible.toggle()
                     } label: {
@@ -262,91 +265,86 @@ struct AIProviderDetailView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel(isKeyVisible ? "隐藏 Key" : "显示 Key")
                 }
-                .padding(12)
-                .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: 10, style: .continuous))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Color(.tertiarySystemFill), in: .rect(cornerRadius: 10, style: .continuous))
 
-                if !apiKey.isEmpty {
-                    Text("已保存在本机 Keychain；默认打码，点右侧眼睛可查看。")
-                        .font(AppTheme.TypeScale.note)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("模型")
+                Text(apiKey.isEmpty
+                     ? "打码保存，只存在这台设备的 Keychain。"
+                     : "已保存在本机 Keychain；点右侧眼睛可查看。")
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.secondary)
-                Button {
-                    showModelSheet = true
-                } label: {
-                    HStack {
-                        Text(model)
-                            .font(.system(size: 15, design: .monospaced))
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(12)
-                    .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: 10, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .popover(isPresented: $showModelSheet, arrowEdge: .top) {
-                    modelPanel
-                        .presentationCompactAdaptation(.popover)
-                }
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
 
+            SettingsDivider()
 
+            // ② 模型
+            Button {
+                showModelSheet = true
+            } label: {
+                HStack(spacing: 10) {
+                    Text("模型")
+                        .font(AppTheme.TypeScale.rowTitle)
+                    Spacer()
+                    Text(model)
+                        .font(.system(size: 15, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 16)
+                .frame(height: 48)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .popover(isPresented: $showModelSheet, arrowEdge: .top) {
+                modelPanel.presentationCompactAdaptation(.popover)
             }
 
             if let url = provider.consoleURL {
+                SettingsDivider()
                 Link(destination: url) {
                     HStack(spacing: 6) {
-                        Image(systemName: "arrow.up.right.square")
-                            .font(.system(size: 12, weight: .semibold))
                         Text("去 \(provider.company) 开放平台创建 Key")
                             .font(AppTheme.TypeScale.note)
-                        Spacer(minLength: 0)
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 11, weight: .semibold))
+                        Spacer()
                     }
                     .foregroundStyle(AppTheme.accent)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(AppTheme.accent.opacity(0.10), in: Capsule())
+                    .padding(.horizontal, 16)
+                    .frame(height: 44)
+                    .contentShape(Rectangle())
                 }
             }
 
             SettingsDivider()
 
-            // 操作区与凭证放在同一张卡里（2026-11-14 主人要求：保存/测试/清除和 Key 填写放一起）。
-            // 版式照系统设置：**行内动作**（蓝色文字动作行），不用大胶囊按钮。
-            SettingsDivider()
-
+            // ③ 动作（系统设置式行内动作，不做大按钮）
             Button(action: save) {
-                actionRow(icon: "checkmark.circle", title: savedHint ? "已保存" : "保存", tint: AppTheme.accent)
+                actionRow(title: savedHint ? "已保存" : "保存", tint: AppTheme.accent)
             }
             .buttonStyle(.plain)
 
             SettingsDivider()
 
             Button(action: runTest) {
-                HStack(spacing: 10) {
-                    Image(systemName: "bolt.horizontal.circle")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(AppTheme.accent)
+                HStack(spacing: 8) {
                     Text("测试连接")
                         .font(AppTheme.TypeScale.rowTitle)
                         .foregroundStyle(AppTheme.accent)
                     Spacer()
-                    HStack(spacing: 6) {
-                        if testState == .running { ProgressView().controlSize(.small) }
-                        Text(testStatusText)
-                            .font(AppTheme.TypeScale.note)
-                            .foregroundStyle(testState == .ok ? .green : .secondary)
-                    }
+                    if testState == .running { ProgressView().controlSize(.small) }
+                    Text(testStatusText)
+                        .font(AppTheme.TypeScale.note)
+                        .foregroundStyle(testState == .ok ? .green : .secondary)
                 }
-                .padding(.vertical, 13)
+                .padding(.horizontal, 16)
+                .frame(height: 48)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -357,6 +355,7 @@ struct AIProviderDetailView: View {
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
                     .padding(.bottom, 12)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -370,14 +369,26 @@ struct AIProviderDetailView: View {
                     AIProviderSettings.setEnabled(false, for: provider)
                     savedHint = true
                 } label: {
-                    actionRow(icon: "trash", title: "清除这台设备上的 Key", tint: .red)
+                    actionRow(title: "清除这台设备上的 Key", tint: .red)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .settingsCard()
+    }
+
+    /// 行内动作行：左标题、右侧留给状态；高度与系统设置一致。
+    private func actionRow(title: String, tint: Color) -> some View {
+        HStack(spacing: 10) {
+            Text(title)
+                .font(AppTheme.TypeScale.rowTitle)
+                .foregroundStyle(tint)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 48)
+        .contentShape(Rectangle())
     }
 
     /// 预设模型 + 当前已存值（豆包可能是 ep-xxx 这类接入点 ID，不能从列表里丢）。
