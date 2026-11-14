@@ -162,44 +162,6 @@ struct AIProviderDetailView: View {
     }
 
     /// 模型选择：勾选标记放行尾（系统 Menu 的 inline picker 会把勾放左侧，主人要求右对齐）。
-    private var modelSheet: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                ForEach(Array(modelChoices.enumerated()), id: \.element) { index, name in
-                    if index > 0 {
-                        Rectangle()
-                            .fill(Color.primary.opacity(0.06))
-                            .frame(height: 0.5)
-                            .padding(.leading, 14)
-                    }
-                    Button {
-                        model = name
-                        showModelSheet = false
-                    } label: {
-                        HStack(spacing: 10) {
-                            Text(name)
-                                .font(.system(size: 15, design: .monospaced))
-                                .foregroundStyle(.primary)
-                            Spacer(minLength: 8)
-                            if name == model {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(AppTheme.accent)
-                            }
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 11)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.vertical, 4)
-        }
-        .frame(maxHeight: 280)
-        .background(.regularMaterial)
-    }
-
     private var enableCard: some View {
         Toggle(isOn: $enabled) {
             Text("启用这家模型")
@@ -261,7 +223,7 @@ struct AIProviderDetailView: View {
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.secondary)
                 Button {
-                    showModelSheet = true
+                    withAnimation(.easeOut(duration: 0.15)) { showModelSheet.toggle() }
                 } label: {
                     HStack {
                         Text(model)
@@ -276,10 +238,40 @@ struct AIProviderDetailView: View {
                     .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: 10, style: .continuous))
                 }
                 .buttonStyle(.plain)
-                .popover(isPresented: $showModelSheet, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
-                    modelSheet
-                        .presentationCompactAdaptation(.popover)
-                        .frame(width: 252)
+
+                if showModelSheet {
+                    VStack(spacing: 0) {
+                        ForEach(Array(modelChoices.enumerated()), id: \.element) { index, name in
+                            if index > 0 {
+                                Rectangle()
+                                    .fill(Color.primary.opacity(0.06))
+                                    .frame(height: 0.5)
+                                    .padding(.leading, 12)
+                            }
+                            Button {
+                                model = name
+                                withAnimation(.easeOut(duration: 0.15)) { showModelSheet = false }
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Text(name)
+                                        .font(.system(size: 15, design: .monospaced))
+                                        .foregroundStyle(.primary)
+                                    Spacer(minLength: 8)
+                                    if name == model {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundStyle(AppTheme.accent)
+                                    }
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: 10, style: .continuous))
+                    .transition(.opacity)
                 }
             }
 
