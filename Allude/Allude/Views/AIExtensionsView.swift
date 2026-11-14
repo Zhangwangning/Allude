@@ -259,11 +259,6 @@ struct AIProviderDetailView: View {
                     .foregroundStyle(AppTheme.accent)
                 }
             }
-
-            Text("这一步用的是开放平台的 API Key，与 App 里的会员订阅不是同一套额度。")
-                .font(AppTheme.TypeScale.note)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -347,7 +342,6 @@ struct AIProviderDetailView: View {
             Text("""
             · Key 只存这台设备的 Keychain，不随 iCloud 同步、不写进诊断日志；
             · 只用官方接口，地址内置不可改；请求由本机直连，不经过开发者服务器；
-            · 额度与扣费在服务商那边，和 App 内订阅无关；
             · 端侧「Apple 智能」与这里是两条独立通道，可以只开一条。
             """)
             .font(AppTheme.TypeScale.note)
