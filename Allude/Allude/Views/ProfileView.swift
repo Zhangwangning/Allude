@@ -252,6 +252,7 @@ struct SettingsView: View {
                 stackedSettings
             }
         }
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .overlay { feedbackToast }
         // 订阅暂未开放：点了只弹提示，不进入二级页
         .sheet(isPresented: $feedback.showComposer) {

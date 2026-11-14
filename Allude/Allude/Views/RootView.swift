@@ -72,7 +72,7 @@ struct RootView: View {
                 // iPad 底部标签栏：浮在内容之上，材质交给系统玻璃（下面有内容才看得出折射）
                 if PadLayout.isPad {
                     PadBottomBar(selection: $model.selection, showsStats: showsStats)
-                        .padding(.bottom, 6)
+                        .padding(.bottom, 18)
                         .ignoresSafeArea(edges: .bottom)
                 }
             }

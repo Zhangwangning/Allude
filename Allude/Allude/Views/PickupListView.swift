@@ -397,6 +397,7 @@ struct PickupListView: View {
                 Color.clear.preference(key: AlludePaneWidthKey.self, value: geo.size.width)
             }
         }
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .onPreferenceChange(AlludePaneWidthKey.self) { paneWidth = $0 }
         // 长按景深：整个界面轻微后退（模糊 + 缩放），被按的卡片由浮层里的「替身」
         // 接管 —— 替身与菜单都在下面这个 overlay 里，因此始终清晰。

@@ -152,6 +152,7 @@ struct PickedUpView: View {
                 stackedLayout
             }
         }
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .background {
             GeometryReader { geo in
                 Color.clear.preference(key: AlludePaneWidthKey.self, value: geo.size.width)
