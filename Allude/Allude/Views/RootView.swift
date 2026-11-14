@@ -7,6 +7,14 @@ import UIKit
 enum PadLayout {
     /// iPad（仅 iOS 26+）用系统分栏：HIG 明确 iPadOS 的标签栏在顶部、
     /// 可与侧栏共存；分栏是 iPad 上的原生信息结构，单列只是退路。
+    /// iPad + iOS 26 起才算「iPad 原生形态」；iPhone / Duo 外屏不受影响。
+    static var isPad: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad && {
+            if #available(iOS 26.0, *) { return true }
+            return false
+        }()
+    }
+
     static var usesSplit: Bool {
         guard UIDevice.current.userInterfaceIdiom == .pad else { return false }
         if #available(iOS 26.0, *) { return true }
@@ -68,6 +76,7 @@ struct RootView: View {
                     .zIndex(1)
             }
         }
+        .environment(\.suppressTabBarCloak, PadLayout.isPad)
         .animation(AppMotion.panel, value: share.records?.first?.id)
         // 通知点击 → 切到这条记录所在的标签（待取 / 已取），
         // 具体打开详情由列表页消费同一个 `pendingRecordID`（2026-10-25）

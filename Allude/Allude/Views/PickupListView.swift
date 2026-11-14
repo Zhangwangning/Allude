@@ -368,7 +368,7 @@ struct PickupListView: View {
     /// 打开详情：宽屏只切换右栏内容（不 push），窄屏照旧推进导航栈。
     /// 卡片点击 / 侧滑「详情」/ 长按菜单「详情」三处共用这一个入口。
     private func openDetail(_ record: PickupRecord) {
-        if PadLayout.usesSplit {
+        if PadLayout.usesSplit, horizontalSizeClass == .regular {
             splitSelection = record.id
         } else {
             model.path.append(record)
@@ -380,7 +380,7 @@ struct PickupListView: View {
         //    宽屏改为 **NavigationSplitView 左列表 / 右详情**；
         //    常规 iPhone 仍走原来的单栈，行为与历史版本逐像素一致。
         Group {
-            if PadLayout.usesSplit {
+            if PadLayout.usesSplit, horizontalSizeClass == .regular {
                 splitLayout
             } else {
                 stackedLayout
@@ -483,7 +483,7 @@ struct PickupListView: View {
     private var splitLayout: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             listPane
-                .navigationSplitViewColumnWidth(min: 370, ideal: 434, max: 520)
+                .navigationSplitViewColumnWidth(min: 300, ideal: 350, max: 430)
         } detail: {
             if let record = splitDetailRecord {
                 // 🔴 `.id(record.id)` 必须加（2026-10-25 审查修）：
