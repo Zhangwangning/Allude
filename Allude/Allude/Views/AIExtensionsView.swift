@@ -117,6 +117,8 @@ struct AIExtensionsListView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("扩展")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear { refreshReady() }
+        .onChange(of: scenePhase) { _, _ in refreshReady() }
     }
 
     private var privacyCard: some View {
@@ -263,6 +265,13 @@ struct AIProviderDetailView: View {
                 }
                 .padding(12)
                 .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: 10, style: .continuous))
+
+                if !apiKey.isEmpty {
+                    Text("已保存在本机 Keychain；默认打码，点右侧眼睛可查看。")
+                        .font(AppTheme.TypeScale.note)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             VStack(alignment: .leading, spacing: 8) {
@@ -321,55 +330,86 @@ struct AIProviderDetailView: View {
     // MARK: 操作
 
     private var actionCard: some View {
-        VStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             Button(action: save) {
                 Text(savedHint ? "已保存" : "保存")
                     .font(AppTheme.TypeScale.rowTitle)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(AppTheme.accent.opacity(0.16), in: Capsule())
-                    .foregroundStyle(AppTheme.accent)
+                    .padding(.vertical, 13)
+                    .background(AppTheme.accent, in: Capsule())
+                    .foregroundStyle(.white)
             }
             .buttonStyle(.plain)
 
-            Button(action: runTest) {
-                HStack(spacing: 8) {
-                    if testState == .running { ProgressView().controlSize(.small) }
-                    Text(testButtonTitle)
+            VStack(spacing: 0) {
+                Button(action: runTest) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "bolt.horizontal.circle")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(AppTheme.accent)
+                        Text("测试连接")
+                            .font(AppTheme.TypeScale.rowTitle)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        HStack(spacing: 6) {
+                            if testState == .running { ProgressView().controlSize(.small) }
+                            Text(testStatusText)
+                                .font(AppTheme.TypeScale.note)
+                                .foregroundStyle(testState == .ok ? .green : .secondary)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
                 }
-                .font(AppTheme.TypeScale.rowTitle)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(Color(.secondarySystemGroupedBackground), in: Capsule())
-                .foregroundStyle(.primary)
-            }
-            .buttonStyle(.plain)
-            .disabled(testState == .running)
+                .buttonStyle(.plain)
+                .disabled(testState == .running)
 
-            if case .failed(let message) = testState {
-                Text(message)
-                    .font(AppTheme.TypeScale.note)
-                    .foregroundStyle(.red)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            if AIProviderKeychain.key(for: provider) != nil {
-                Button(role: .destructive) {
-                    AIProviderKeychain.delete(for: provider)
-                    apiKey = ""
-                    enabled = false
-                    AIProviderSettings.setEnabled(false, for: provider)
-                    savedHint = true
-                } label: {
-                    Text("清除这个 Key")
-                        .font(AppTheme.TypeScale.rowTitle)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                if case .failed(let message) = testState {
+                    Text(message)
+                        .font(AppTheme.TypeScale.note)
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 12)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .buttonStyle(.bordered)
-                .tint(.red)
+
+                if AIProviderKeychain.key(for: provider) != nil {
+                    SettingsDivider()
+                    Button(role: .destructive) {
+                        AIProviderKeychain.delete(for: provider)
+                        apiKey = ""
+                        enabled = false
+                        AIProviderSettings.setEnabled(false, for: provider)
+                        savedHint = true
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 14, weight: .medium))
+                            Text("清除这台设备上的 Key")
+                                .font(AppTheme.TypeScale.rowTitle)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .foregroundStyle(.red)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
+            .settingsCard()
+        }
+    }
+
+    private var testStatusText: String {
+        switch testState {
+        case .idle: return ""
+        case .running: return "正在测试"
+        case .ok: return "正常"
+        case .failed: return "失败"
         }
     }
 
