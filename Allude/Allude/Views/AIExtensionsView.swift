@@ -172,6 +172,15 @@ struct AIProviderDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 enableCard
+
+                if !canEnable {
+                    Text("先点「测试连接」通过，才能启用。")
+                        .font(AppTheme.TypeScale.note)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 credentialCard
                 explainCard
             }
@@ -225,23 +234,12 @@ struct AIProviderDetailView: View {
     }
 
     private var enableCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Toggle(isOn: $enabled) {
-                Text("启用")
-                    .font(AppTheme.TypeScale.rowTitle)
-            }
-            .disabled(!canEnable)
-            .padding(16)
-
-            if !canEnable {
-                Text("先点「测试连接」通过，才能启用。")
-                    .font(AppTheme.TypeScale.note)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 12)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+        Toggle(isOn: $enabled) {
+            Text("启用")
+                .font(AppTheme.TypeScale.rowTitle)
         }
+        .disabled(!canEnable)
+        .padding(16)
         .settingsCard()
         .onChange(of: enabled) { _, on in
             AIProviderSettings.setEnabled(on, for: provider)
