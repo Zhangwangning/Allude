@@ -194,7 +194,6 @@ enum AIProviderSettings {
     /// 用户显式开启、且真的填过 Key，才算「已接入」。
     static func isReady(_ p: AIProvider) -> Bool {
         isEnabled(p)
-            && isConsentGranted(p)
             && !(AIProviderKeychain.key(for: p) ?? "").isEmpty
     }
 

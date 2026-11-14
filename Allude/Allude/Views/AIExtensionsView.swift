@@ -157,7 +157,6 @@ struct AIProviderDetailView: View {
     @State private var savedHint = false
     @State private var testState: TestState = .idle
     @State private var showModelSheet = false
-    @State private var consentGranted = true
 
     private enum TestState: Equatable {
         case idle, running, ok, failed(String)
@@ -171,15 +170,13 @@ struct AIProviderDetailView: View {
                 enableCard
 
                 Text("Allude 可以用 \(provider.title) 复核短信里的取件信息，把取件码、地址、柜位认得更准。")
-                    .font(AppTheme.TypeScale.note)
+                    .font(AppTheme.TypeScale.rowSubtitle)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)
                     .fixedSize(horizontal: false, vertical: true)
 
                 SectionHeader(title: "API Key")
                 credentialCard
-
-                consentCard
 
                 VStack(spacing: 0) {
                     NavigationLink {
@@ -261,28 +258,6 @@ struct AIProviderDetailView: View {
         }
     }
 
-    /// 「确认请求」：是否允许把短信原文发给第三方处理（照 Apple 扩展页的同类开关）。
-    private var consentCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Toggle(isOn: Binding(
-                get: { consentGranted },
-                set: { consentGranted = $0; AIProviderSettings.setConsent($0, for: provider) }
-            )) {
-                Text("允许发送原文")
-                    .font(AppTheme.TypeScale.rowTitle)
-            }
-            .padding(16)
-
-            Text("开启时才会把短信原文发给 \(provider.title) 处理；关掉则一律不发送，收码照常。")
-                .font(AppTheme.TypeScale.note)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 14)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .settingsCard()
-    }
-
     /// 已开启的保持可关；没验证过的，不许打开（2026-11-14 主人：没测通就启用等于没用）。
     private var canEnable: Bool {
         enabled || AIProviderSettings.isVerified(provider)
@@ -301,7 +276,7 @@ struct AIProviderDetailView: View {
                             apiKey = text.trimmingCharacters(in: .whitespacesAndNewlines)
                         }
                     }
-                    .font(AppTheme.TypeScale.note)
+                    .font(AppTheme.TypeScale.rowSubtitle)
                     .buttonStyle(.plain)
                     .foregroundStyle(AppTheme.accent)
                 }
@@ -347,7 +322,7 @@ struct AIProviderDetailView: View {
                         .font(AppTheme.TypeScale.rowTitle)
                     Spacer()
                     Text(model)
-                        .font(.system(size: 15, design: .monospaced))
+                        .font(.system(size: 17, design: .monospaced))
                         .foregroundStyle(.secondary)
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.system(size: 12, weight: .semibold))
@@ -485,7 +460,6 @@ struct AIProviderDetailView: View {
         if ProcessInfo.processInfo.environment["MODEL_SHEET"] == "1" { showModelSheet = true }
         #endif
         enabled = AIProviderSettings.isEnabled(provider)
-        consentGranted = AIProviderSettings.isConsentGranted(provider)
         apiKey = AIProviderKeychain.key(for: provider) ?? ""
         model = AIProviderSettings.model(provider)
     }
