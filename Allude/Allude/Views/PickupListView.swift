@@ -515,6 +515,7 @@ struct PickupListView: View {
                 // 绑定 id 后每条记录各自拥有一份状态。
                 RecordDetailView(record: record)
                     .id(record.id)
+                    .padding(.horizontal, AppTheme.hInset)
                     // iPad 宽屏：详情卡不要拉满整列（1300pt 宽时取件码会大得离谱），
                     // 限宽居中，读起来像 iPad 原生 App。
                     .frame(maxWidth: 760)

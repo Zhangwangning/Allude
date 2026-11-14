@@ -974,7 +974,6 @@ struct PageHeader: View {
         Text(title)
             .font(.system(size: 34, weight: .bold))
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 20)
             .padding(.top, topInset)
             .padding(.bottom, 4)
     }

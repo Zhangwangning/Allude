@@ -202,6 +202,7 @@ struct PickedUpView: View {
                 // 与待取页同口径：绑定 id，避免编辑草稿串到下一条（2026-10-25 审查修）
                 RecordDetailView(record: record)
                     .id(record.id)
+                    .padding(.horizontal, AppTheme.hInset)
             } else {
                 SplitDetailPlaceholder()
             }
@@ -540,7 +541,6 @@ struct StatsTabView: View {
                             //    下面五张分析卡两列并排。867pt 可用宽下每列约 400pt。
                             VStack(alignment: .leading, spacing: 16) {
                                 PageHeader(title: "统计")
-                                    .padding(.horizontal, -20)
                                 overviewCard.id("top")
 
                                 if !stats.isEmpty {
@@ -587,9 +587,9 @@ struct StatsTabView: View {
                         }
                     }
                     .padding(.horizontal, AppTheme.hInset)
-                    // 宽屏铺到 1200 上限（两列需要宽度）；窄屏仍是 700 居中列
-                    .frame(maxWidth: horizontalSizeClass == .regular
-                           ? 1200 : AppTheme.contentMaxWidth)
+                    // 与其它页同一边距：iPad 上铺满整列（不再居中缩进，否则左边距和
+                    // 待取 / 已取 / 设置 对不齐）；窄屏仍限 700 居中。
+                    .frame(maxWidth: PadLayout.isPad ? .infinity : AppTheme.contentMaxWidth)
                     .frame(maxWidth: .infinity)
                     .padding(.top, 0)
                     .padding(.bottom, 110)

@@ -392,9 +392,11 @@ struct SettingsView: View {
 
 
                 PageHeader(title: "设置")
+                    .padding(.horizontal, AppTheme.hInset)
 
                 // 搜索放在标题下面（2026-11-15 主人要求）
                 settingsSearchField
+                    .padding(.horizontal, AppTheme.hInset)
 
 
                 List {
