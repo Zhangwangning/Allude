@@ -319,72 +319,60 @@ struct AIProviderDetailView: View {
 
             SettingsDivider()
 
-            // 操作区与凭证放在同一张卡里（2026-11-14 主人要求：保存/测试/清除和 Key 填写放一起）
-            VStack(spacing: 0) {
-                Button(action: save) {
-                    Text(savedHint ? "已保存" : "保存")
+            // 操作区与凭证放在同一张卡里（2026-11-14 主人要求：保存/测试/清除和 Key 填写放一起）。
+            // 版式照系统设置：**行内动作**（蓝色文字动作行），不用大胶囊按钮。
+            SettingsDivider()
+
+            Button(action: save) {
+                actionRow(icon: "checkmark.circle", title: savedHint ? "已保存" : "保存", tint: AppTheme.accent)
+            }
+            .buttonStyle(.plain)
+
+            SettingsDivider()
+
+            Button(action: runTest) {
+                HStack(spacing: 10) {
+                    Image(systemName: "bolt.horizontal.circle")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(AppTheme.accent)
+                    Text("测试连接")
                         .font(AppTheme.TypeScale.rowTitle)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 13)
-                        .background(AppTheme.accent, in: Capsule())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(AppTheme.accent)
+                    Spacer()
+                    HStack(spacing: 6) {
+                        if testState == .running { ProgressView().controlSize(.small) }
+                        Text(testStatusText)
+                            .font(AppTheme.TypeScale.note)
+                            .foregroundStyle(testState == .ok ? .green : .secondary)
+                    }
                 }
-                .buttonStyle(.plain)
-                .padding(.vertical, 14)
+                .padding(.vertical, 13)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(testState == .running)
 
+            if case .failed(let message) = testState {
+                Text(message)
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.bottom, 12)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if AIProviderKeychain.key(for: provider) != nil {
                 SettingsDivider()
-
-                Button(action: runTest) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "bolt.horizontal.circle")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(AppTheme.accent)
-                        Text("测试连接")
-                            .font(AppTheme.TypeScale.rowTitle)
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        HStack(spacing: 6) {
-                            if testState == .running { ProgressView().controlSize(.small) }
-                            Text(testStatusText)
-                                .font(AppTheme.TypeScale.note)
-                                .foregroundStyle(testState == .ok ? .green : .secondary)
-                        }
-                    }
-                    .padding(.vertical, 14)
+                Button(role: .destructive) {
+                    AIProviderKeychain.delete(for: provider)
+                    apiKey = ""
+                    enabled = false
+                    AIProviderSettings.setEnabled(false, for: provider)
+                    savedHint = true
+                } label: {
+                    actionRow(icon: "trash", title: "清除这台设备上的 Key", tint: .red)
                 }
                 .buttonStyle(.plain)
-                .disabled(testState == .running)
-
-                if case .failed(let message) = testState {
-                    Text(message)
-                        .font(AppTheme.TypeScale.note)
-                        .foregroundStyle(.red)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.bottom, 12)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                if AIProviderKeychain.key(for: provider) != nil {
-                    SettingsDivider()
-                    Button(role: .destructive) {
-                        AIProviderKeychain.delete(for: provider)
-                        apiKey = ""
-                        enabled = false
-                        AIProviderSettings.setEnabled(false, for: provider)
-                        savedHint = true
-                    } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: "trash")
-                                .font(.system(size: 14, weight: .medium))
-                            Text("清除这台设备上的 Key")
-                                .font(AppTheme.TypeScale.rowTitle)
-                            Spacer()
-                        }
-                        .foregroundStyle(.red)
-                        .padding(.vertical, 14)
-                    }
-                    .buttonStyle(.plain)
-                }
             }
         }
         .padding(16)
@@ -475,6 +463,21 @@ struct AIProviderDetailView: View {
             }
             .settingsCard()
         }
+    }
+
+    /// 行内动作行（照系统设置的蓝色文字动作，不用大按钮）。
+    private func actionRow(icon: String, title: String, tint: Color) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(tint)
+            Text(title)
+                .font(AppTheme.TypeScale.rowTitle)
+                .foregroundStyle(tint)
+            Spacer()
+        }
+        .padding(.vertical, 13)
+        .contentShape(Rectangle())
     }
 
     private var testStatusText: String {
