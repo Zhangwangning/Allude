@@ -171,38 +171,32 @@ struct AIProviderDetailView: View {
     /// 模型选择：勾选标记放行尾（系统 Menu 的 inline picker 会把勾放左侧，主人要求右对齐）。
     private var modelPanel: some View {
         VStack(spacing: 0) {
-            ForEach(Array(modelChoices.enumerated()), id: \.element) { index, name in
-                if index > 0 {
-                    Rectangle()
-                        .fill(Color.primary.opacity(0.07))
-                        .frame(height: 0.5)
-                        .padding(.leading, 14)
-                }
+            ForEach(modelChoices, id: \.self) { name in
                 Button {
                     model = name
                     showModelSheet = false
                 } label: {
-                    HStack(spacing: 10) {
+                    HStack(spacing: 12) {
                         Text(name)
-                            .font(.system(size: 15, design: .monospaced))
+                            .font(.system(size: 16))
                             .foregroundStyle(.primary)
-                        Spacer(minLength: 10)
+
+                        Spacer(minLength: 20)
+
                         if name == model {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(AppTheme.accent)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Color(.systemBlue))
                         }
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 11)
-                    .contentShape(Rectangle())
+                    .padding(.horizontal, 16)
+                    .frame(width: 250, height: 42)
+                    .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.vertical, 5)
-        .frame(width: 252)
-        .appGlass(.rect(cornerRadius: 16, style: .continuous))
+        .padding(.vertical, 6)
     }
 
     private var enableCard: some View {
@@ -281,13 +275,11 @@ struct AIProviderDetailView: View {
                     .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: 10, style: .continuous))
                 }
                 .buttonStyle(.plain)
-                .overlay(alignment: .topTrailing) {
-                    if showModelSheet {
-                        modelPanel
-                            .offset(y: 46)
-                            .zIndex(20)
-                    }
+                .popover(isPresented: $showModelSheet, arrowEdge: .top) {
+                    modelPanel
+                        .presentationCompactAdaptation(.popover)
                 }
+
 
             }
 
