@@ -1,6 +1,13 @@
 import SwiftUI
 import UIKit
 
+/// 布局开关（2026-11-14 主人）：「iPad 全部页面用原生组件，别只在统计页用」。
+/// 结论：宽屏不再走 `NavigationSplitView`（顶部浮动标签栏下侧栏会被折叠、按钮丢失，
+/// 且分栏 detail 里的 push 不落地），三个标签页统一走「单栈 + 系统导航栏」。
+enum PadLayout {
+    static let usesSplit = false
+}
+
 /// 应用根视图：**系统原生 `TabView` + 原生 Liquid Glass 标签栏**。
 ///
 /// 🔴 **2026-10-14 信息架构定稿（主人）**：删除票夹功能，四个标签 =

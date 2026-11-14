@@ -245,7 +245,7 @@ struct SettingsView: View {
             //    所以功能完全一致，只是排列不同。
             // 截图脚手架：`SETTINGS_COMPACT=1` 强制走单列，用来在宽屏模拟器上
             // 验证窄屏样式（尤其 iOS 26 的玻璃行），平时不影响任何布局。
-            if horizontalSizeClass == .regular,
+            if PadLayout.usesSplit,
                ProcessInfo.processInfo.environment["SETTINGS_COMPACT"] != "1" {
                 splitSettings
             } else {
