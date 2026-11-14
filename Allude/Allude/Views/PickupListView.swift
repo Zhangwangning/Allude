@@ -494,15 +494,10 @@ struct PickupListView: View {
     /// ⚠️ 主人当天先要求「按铰链中轴分列」，实测系统会把列宽夹到 ~415pt、
     ///    左栏几乎被压扁，随即改回等分 —— 不要再试中轴方案。
     private var splitLayout: some View {
-        GoldenSplit {
-            NavigationStack { listPane }
-        } right: {
-            NavigationStack { detailColumn }
-        }
-    }
-
-    private var detailColumn: some View {
-        ZStack {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            listPane
+                .navigationSplitViewColumnWidth(min: 340, ideal: 440, max: 600)
+        } detail: {
             ZStack {
                 // 右栏整列铺浅灰：详情限宽 760 居中，两侧不能露出系统白
                 Color(.systemGroupedBackground).ignoresSafeArea()
@@ -515,7 +510,6 @@ struct PickupListView: View {
                 // 绑定 id 后每条记录各自拥有一份状态。
                 RecordDetailView(record: record)
                     .id(record.id)
-                    .padding(.horizontal, AppTheme.hInset)
                     // iPad 宽屏：详情卡不要拉满整列（1300pt 宽时取件码会大得离谱），
                     // 限宽居中，读起来像 iPad 原生 App。
                     .frame(maxWidth: 760)
@@ -525,6 +519,7 @@ struct PickupListView: View {
             }
             }
         }
+        .navigationSplitViewStyle(.balanced)
     }
 
     /// 列表本体（两种布局共用）：List + 内边距 / 背景 / 搜索 / 工具栏 / 弹层。
@@ -533,21 +528,20 @@ struct PickupListView: View {
     private var splitPane: Bool { PadLayout.usesSplit && paneWidth >= 900 }
 
     private var listPane: some View {
-        listBody
+        VStack(spacing: 0) {
+            if splitPane {
+                PadSidebarSearchField(text: $model.query, prompt: "取件码 / 快递公司 / 地址")
+                    .padding(.top, 6)
+            }
+            listBody
+        }
     }
 
     private var listBody: some View {
         List {
-            Section {
-                PageHeader(title: "待取")
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-            }
-
             if splitPane {
                 Section {
-                    PadSidebarSearchField(text: $model.query, prompt: "取件码 / 快递公司 / 地址")
+                    PadSidebarHeader(title: "待取", onToggleSidebar: { columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly })
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -606,7 +600,9 @@ struct PickupListView: View {
             // 🔴 2026-10-08 结构重构：浏览（已取件）独立成 Tab 后，取件页不再需要
             //    分段切换器 —— 回归系统导航栏（大标题「取件」+ drawer 搜索 + 系统
             //    toolbar）。此前为「分段居中于标题位」做的自绘顶栏随分段一起退役。
-            .toolbar(.hidden, for: .navigationBar)
+            .toolbar(splitPane ? .hidden : .visible, for: .navigationBar)
+            .navigationTitle(splitPane ? "" : "待取")
+            .toolbarTitleDisplayMode(splitPane ? .inline : .large)
             .toolbar { toolbarContent }
             .overlay(alignment: .bottom) { bottomOverlay }
             // 🔴 不用 alert 也不用新页面：随机四位数就在**弹窗里**输入，

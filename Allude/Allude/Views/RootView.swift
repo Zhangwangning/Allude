@@ -15,10 +15,11 @@ enum PadLayout {
         }()
     }
 
-    /// 🔴 2026-11-15 主人明确：iPad 不要侧边栏。
-    /// 所以 iPad 与 iPhone 走同一套单列结构，标签栏用**系统原生**的
-    /// （iOS 26+ 自带 Liquid Glass 与收起/回弹行为；自绘永远拿不到那些行为）。
-    static var usesSplit: Bool { false }
+    static var usesSplit: Bool {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return false }
+        if #available(iOS 26.0, *) { return true }
+        return false
+    }
 }
 
 /// 应用根视图：**系统原生 `TabView` + 原生 Liquid Glass 标签栏**。
@@ -65,7 +66,17 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            tabLayout
+            ZStack(alignment: .bottom) {
+                tabLayout
+
+                // iPad 底部标签栏：浮在内容之上，材质交给系统玻璃（下面有内容才看得出折射）
+                if PadLayout.isPad {
+                    // 真液态玻璃：放进 GlassEffectContainer，让系统参与取样与合成
+                    PadBottomBarGlassHost(selection: $model.selection, showsStats: showsStats)
+                        .padding(.bottom, 18)
+                        .ignoresSafeArea(edges: .bottom)
+                }
+            }
 
             // ── 分享面板（全屏浮动，盖住标签栏） ──
             if let records = share.records {
@@ -141,24 +152,24 @@ struct RootView: View {
     private var tabLayout: some View {
         TabView(selection: $model.selection) {
             PickupListView()
-                
+                .modifier(PadTabChrome(enabled: PadLayout.isPad))
                 .tabItem { Label("待取", systemImage: "tray.fill") }
                 .tag(RootTab.pending)
 
             PickedUpView()
-                
+                .modifier(PadTabChrome(enabled: PadLayout.isPad))
                 .tabItem { Label("已取", systemImage: "checkmark.circle.fill") }
                 .tag(RootTab.picked)
 
             if showsStats {
                 StatsTabView()
-                
+                .modifier(PadTabChrome(enabled: PadLayout.isPad))
                     .tabItem { Label("统计", systemImage: "chart.bar.xaxis") }
                     .tag(RootTab.stats)
             }
 
             SettingsTabRoot()
-                
+                .modifier(PadTabChrome(enabled: PadLayout.isPad))
                 .tabItem { Label("设置", systemImage: "gearshape.fill") }
                 .tag(RootTab.settings)
         }
@@ -964,21 +975,6 @@ private struct TabBarMinimizeNever: ViewModifier {
 
 /// 分栏侧栏的大标题：与「统计」页 large title 同字号（34pt bold）。
 /// 系统在 `NavigationSplitView` 的侧栏里只画 inline 标题，这里自己排一行。
-/// 四个标签页共用的页头：位置/字号完全一致（2026-11-15 主人要求）。
-/// 系统标签栏在 iPad 上是浮在内容上方的胶囊，所以顶部要自己让开一段。
-struct PageHeader: View {
-    var title: String
-    var topInset: CGFloat { PadLayout.isPad ? 56 : 0 }
-
-    var body: some View {
-        Text(title)
-            .font(.system(size: 34, weight: .bold))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, topInset)
-            .padding(.bottom, 4)
-    }
-}
-
 struct PadSidebarHeader: View {
     var title: String
     /// 分栏侧栏的收放按钮（导航栏藏掉后要自己提供）
@@ -1073,35 +1069,6 @@ private struct PadBottomBarGlassHost: View {
             }
         } else {
             PadBottomBar(selection: $selection, showsStats: showsStats)
-        }
-    }
-}
-
-// MARK: - iPad 黄金分割两列（2026-11-15 主人定调）
-
-/// 左窄右宽，左 : 右 = 0.382 : 0.618（黄金分割）。
-/// 不用 `NavigationSplitView` —— 那是侧边栏语义；这里就是两列内容。
-struct GoldenSplit<Left: View, Right: View>: View {
-    var minLeft: CGFloat = 320
-    @ViewBuilder var left: () -> Left
-    @ViewBuilder var right: () -> Right
-
-    private static var ratio: CGFloat { 0.382 }
-
-    var body: some View {
-        GeometryReader { geo in
-            let lw = max(minLeft, geo.size.width * Self.ratio)
-            HStack(spacing: 0) {
-                left()
-                    .frame(width: lw)
-                    .safeAreaPadding(.top, 6)
-                Rectangle()
-                    .fill(Color(.separator).opacity(0.5))
-                    .frame(width: 0.5)
-                right()
-                    .frame(maxWidth: .infinity)
-                    .safeAreaPadding(.top, 6)
-            }
         }
     }
 }

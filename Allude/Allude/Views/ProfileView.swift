@@ -386,20 +386,23 @@ struct SettingsView: View {
     /// 所以这里不用 `List(selection:)` 的系统高亮（iOS 会给灰色/蓝色选中块），
     /// 改成 plain List + 自绘行背景：底色浅灰、选中行白色圆角块。
     private var splitSettings: some View {
-        GoldenSplit {
+        NavigationSplitView {
             VStack(spacing: 0) {
                 // 大标题（与「统计」页同字号），Apple 设置也是标题在搜索之上
 
 
-                PageHeader(title: "设置")
-                    .padding(.horizontal, AppTheme.hInset)
-
-                // 搜索放在标题下面（2026-11-15 主人要求）
+                // 侧栏顶部搜索框（照 iPad 设置：胶囊输入框 + 放大镜）
                 settingsSearchField
-                    .padding(.horizontal, AppTheme.hInset)
 
 
                 List {
+                    Section {
+                        PadSidebarHeader(title: "设置")
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                    }
+
                     // Pro 入口回到列表第一条
                     proBanner
                         .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 10, trailing: 10))
@@ -413,7 +416,6 @@ struct SettingsView: View {
                     settingsGroup("", items: filtered(SettingsPane.aboutGroupAll))
                 }
                 .listStyle(.plain)
-                .contentMargins(.horizontal, AppTheme.hInset, for: .scrollContent)
                 .scrollContentBackground(.hidden)
                 .background(Color(.systemGroupedBackground))
                 .toolbarBackground(.hidden, for: .navigationBar)
@@ -423,7 +425,8 @@ struct SettingsView: View {
             // 侧栏宽度**按屏幕宽比例**（2026-10-25 主人：Duo 展开竖屏也要照 iPad 竖屏布局）：
             // 横屏 951pt → ~380pt；竖屏 669pt → ~280pt（下限）。
             // 写死 434 会让竖屏侧栏占到 65%，右侧内容被挤扁。
-        } right: {
+            .navigationSplitViewColumnWidth(min: 340, ideal: 440, max: 600)
+        } detail: {
             // 右栏与左栏**同一底色**（2026-10-25 主人两次强调：Duo 展开时左侧浅灰、
             // 右侧白色，「先全部是一个底色」）。
             // 三层兜底，任何一层漏掉都不会露出白：
@@ -437,8 +440,6 @@ struct SettingsView: View {
                 NavigationStack(path: $detailPath) {
                     // 照 iPad 设置的内容列：左右留白更大、内容限宽居中
                     paneContent(pane ?? .notification, openAIHub: { route in detailPath.append(route) })
-                        .navigationTitle((pane ?? .notification).title)
-                        .navigationBarTitleDisplayMode(.inline)
                         .navigationDestination(for: AIHubRoute.self) { route in
                             switch route {
                             case .appleIntelligence: appleIntelligencePane
