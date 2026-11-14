@@ -176,7 +176,7 @@ struct AIProviderDetailView: View {
                     .padding(.horizontal, 4)
                     .fixedSize(horizontal: false, vertical: true)
 
-                SectionHeader(title: "\(provider.title) 账户")
+                SectionHeader(title: "API Key")
                 credentialCard
 
                 consentCard
@@ -268,12 +268,12 @@ struct AIProviderDetailView: View {
                 get: { consentGranted },
                 set: { consentGranted = $0; AIProviderSettings.setConsent($0, for: provider) }
             )) {
-                Text("确认请求")
+                Text("允许发送原文")
                     .font(AppTheme.TypeScale.rowTitle)
             }
             .padding(16)
 
-            Text("开启时才会把那条短信原文与解析结果发送给 \(provider.title)；关掉后一律不发送，收码照常。")
+            Text("开启时才会把短信原文发给 \(provider.title) 处理；关掉则一律不发送，收码照常。")
                 .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 16)
@@ -295,9 +295,6 @@ struct AIProviderDetailView: View {
             // ① API Key
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text("API Key")
-                        .font(AppTheme.TypeScale.note)
-                        .foregroundStyle(.secondary)
                     Spacer()
                     Button("从剪贴板粘贴") {
                         if let text = UIPasteboard.general.string {
