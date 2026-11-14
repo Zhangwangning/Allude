@@ -585,7 +585,7 @@ struct ICloudSyncView: View {
         .disabled(!sync.isEnabled || sync.isSyncing)
         .opacity(sync.isEnabled ? 1 : 0.5)
         .settingsCard()
-        .animation(.easeInOut(duration: 0.2), value: sync.isSyncing)
+        .animation(AppMotion.standard, value: sync.isSyncing)
     }
 
 }

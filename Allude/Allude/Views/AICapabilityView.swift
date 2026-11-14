@@ -106,8 +106,8 @@ struct AICapabilityView: View {
             }
             .buttonStyle(.plain)
             .disabled(isChecking)
-            .animation(.easeInOut(duration: 0.18), value: isChecking)
-            .animation(.easeInOut(duration: 0.18), value: justChecked)
+            .animation(AppMotion.quick, value: isChecking)
+            .animation(AppMotion.quick, value: justChecked)
             .padding(.top, 4)
         }
         .padding(16)
@@ -118,8 +118,8 @@ struct AICapabilityView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(AppTheme.accent.opacity(justChecked ? 0.55 : 0), lineWidth: 1.5)
         }
-        .animation(.easeInOut(duration: 0.22), value: isChecking)
-        .animation(.easeOut(duration: 0.35), value: justChecked)
+        .animation(AppMotion.standard, value: isChecking)
+        .animation(AppMotion.standard, value: justChecked)
     }
 
     /// 真正"重新检测"：给一点可见的耗时，否则瞬间返回用户无法感知
@@ -130,9 +130,9 @@ struct AICapabilityView: View {
         try? await Task.sleep(for: .milliseconds(700))
         refreshToken &+= 1
         logOnce()
-        withAnimation(.easeOut(duration: 0.25)) { justChecked = true }
+        withAnimation(AppMotion.standard) { justChecked = true }
         try? await Task.sleep(for: .milliseconds(1200))
-        withAnimation(.easeOut(duration: 0.3)) { justChecked = false }
+        withAnimation(AppMotion.standard) { justChecked = false }
     }
 
     // MARK: 为什么有这个功能 / 千问扩展

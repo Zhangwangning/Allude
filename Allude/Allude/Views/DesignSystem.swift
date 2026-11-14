@@ -755,3 +755,51 @@ struct SplitDetailPlaceholder: View {
         .background(Color(.systemGroupedBackground))
     }
 }
+
+// MARK: - 动效（2026-11-14 主人：把 0.3s ease 换成苹果那种"有肉感"的弹簧）
+
+/// 全 App 动效统一出口。
+///
+/// 为什么不用 `.easeInOut(duration: 0.3)`：
+/// · 固定时长 + 固定贝塞尔**忽略手势松手瞬间的速度**——慢慢拖和甩一下，动画一模一样，
+///   这就是"AI 味"最明显的来源；
+/// · 到边界是硬停，没有回弹。
+///
+/// 苹果用的是**弹簧物理**（mass / stiffness / damping）。真正决定"肉不肉"的是
+/// **阻尼比** ζ = damping / (2·√(stiffness·mass))：
+///   ζ < 1  → 会来回晃（过冲）；
+///   ζ = 1  → 临界阻尼，平稳停住；
+///   ζ ≈ 0.8–0.9 → 一下到位、末端微微收住，就是系统控件的观感。
+///
+/// SwiftUI 的 `.spring(response:dampingFraction:)` 里，`response` ≈ 一次完整
+/// 响应的秒数（越小越"紧"），`dampingFraction` 就是 ζ。所以这里不写 duration，
+/// 只给"多快 + 多稳"两个物理量。
+enum AppMotion {
+    /// 常规界面变化（开关、行高亮、卡片显隐）。ζ=0.86：到位快、末端收得住。
+    static let standard = Animation.spring(response: 0.34, dampingFraction: 0.86)
+
+    /// 轻量反馈（复制提示、按钮状态）。比 standard 更快，仍然带一点回弹。
+    static let quick = Animation.spring(response: 0.26, dampingFraction: 0.84)
+
+    /// 面板 / 浮层进出（分享面板、长按菜单、弹窗）。ζ 稍低 → 有可见的一下"落地"。
+    static let panel = Animation.spring(response: 0.42, dampingFraction: 0.82)
+
+    /// 纯平滑、不要任何过冲（进度、旋转等连续量）。
+    static let smooth = Animation.spring(response: 0.5, dampingFraction: 1.0)
+
+    /// 跟手手势收尾：把手势速度带进弹簧，松手快就冲得快、慢慢拖就稳稳停。
+    /// - Parameters:
+    ///   - velocity: 手势结束时的速度（pt/s），直接来自 `DragGesture.Value.predictedEndTranslation`
+    ///   - base: 基准动画，默认 `panel`
+    static func interactive(velocity: CGFloat, base: Animation = panel) -> Animation {
+        // 速度越大，response 越短（更"冲"）；夹在 0.22…0.42 之间，避免甩一下飞出去。
+        let v = min(abs(velocity), 2_400)
+        let response = max(0.22, 0.42 - Double(v / 2_400) * 0.18)
+        return .spring(response: response, dampingFraction: 0.82)
+    }
+
+    /// 连续量（计数、进度、进度条）用这个：不晃、稳。
+    static func numeric(duration: Double = 0.32) -> Animation {
+        .spring(response: duration, dampingFraction: 1.0)
+    }
+}

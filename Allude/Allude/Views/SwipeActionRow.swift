@@ -355,7 +355,12 @@ struct SwipeActionRow<Content: View>: View {
                     && trailingStretch > stretchCommitThreshold
                 openHoldStart = nil
 
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) {
+                // 松手时的真实速度决定"冲"还是"收"：甩得快就快到位，
+                // 慢慢拖就稳稳停 —— 这是 0.3s 固定贝塞尔做不到的部分。
+                let releaseVelocity = value.predictedEndTranslation.width
+                    - value.translation.width
+
+                withAnimation(AppMotion.interactive(velocity: releaseVelocity)) {
                     if shrinkingTrailing || shrinkingLeading {
                         offset = 0
                         if openRowID == rowID { openRowID = nil }
@@ -392,7 +397,7 @@ struct SwipeActionRow<Content: View>: View {
 
     private func close(animated: Bool) {
         if animated {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) { offset = 0 }
+            withAnimation(AppMotion.quick) { offset = 0 }
         } else {
             offset = 0
         }

@@ -130,7 +130,7 @@ final class CardMenuState: ObservableObject {
 
     func close() {
         guard openID != nil else { return }
-        withAnimation(.easeOut(duration: 0.16)) { openID = nil }
+        withAnimation(AppMotion.quick) { openID = nil }
     }
 }
 

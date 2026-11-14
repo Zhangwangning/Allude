@@ -764,10 +764,10 @@ struct SettingsView: View {
     /// 复制本机 UUID：**复制完整值**（界面上是打码的）
     private func copyDeviceUUID() {
         UIPasteboard.general.string = LicenseDevice.current
-        withAnimation(.easeOut(duration: 0.15)) { copiedUUID = true }
+        withAnimation(AppMotion.quick) { copiedUUID = true }
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_600_000_000)
-            withAnimation(.easeOut(duration: 0.2)) { copiedUUID = false }
+            withAnimation(AppMotion.quick) { copiedUUID = false }
         }
     }
 
