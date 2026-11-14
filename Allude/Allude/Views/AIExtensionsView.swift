@@ -159,7 +159,6 @@ struct AIProviderDetailView: View {
             VStack(alignment: .leading, spacing: 16) {
                 enableCard
                 credentialCard
-                actionCard
                 explainCard
             }
             .padding(.horizontal, AppTheme.hInset)
@@ -306,11 +305,85 @@ struct AIProviderDetailView: View {
                 Link(destination: url) {
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.up.right.square")
+                            .font(.system(size: 12, weight: .semibold))
                         Text("去 \(provider.company) 开放平台创建 Key")
-                        Spacer()
+                            .font(AppTheme.TypeScale.note)
+                        Spacer(minLength: 0)
                     }
-                    .font(AppTheme.TypeScale.note)
                     .foregroundStyle(AppTheme.accent)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(AppTheme.accent.opacity(0.10), in: Capsule())
+                }
+            }
+
+            SettingsDivider()
+
+            // 操作区与凭证放在同一张卡里（2026-11-14 主人要求：保存/测试/清除和 Key 填写放一起）
+            VStack(spacing: 0) {
+                Button(action: save) {
+                    Text(savedHint ? "已保存" : "保存")
+                        .font(AppTheme.TypeScale.rowTitle)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(AppTheme.accent, in: Capsule())
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+                .padding(.vertical, 14)
+
+                SettingsDivider()
+
+                Button(action: runTest) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "bolt.horizontal.circle")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(AppTheme.accent)
+                        Text("测试连接")
+                            .font(AppTheme.TypeScale.rowTitle)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        HStack(spacing: 6) {
+                            if testState == .running { ProgressView().controlSize(.small) }
+                            Text(testStatusText)
+                                .font(AppTheme.TypeScale.note)
+                                .foregroundStyle(testState == .ok ? .green : .secondary)
+                        }
+                    }
+                    .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+                .disabled(testState == .running)
+
+                if case .failed(let message) = testState {
+                    Text(message)
+                        .font(AppTheme.TypeScale.note)
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.bottom, 12)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if AIProviderKeychain.key(for: provider) != nil {
+                    SettingsDivider()
+                    Button(role: .destructive) {
+                        AIProviderKeychain.delete(for: provider)
+                        apiKey = ""
+                        enabled = false
+                        AIProviderSettings.setEnabled(false, for: provider)
+                        savedHint = true
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 14, weight: .medium))
+                            Text("清除这台设备上的 Key")
+                                .font(AppTheme.TypeScale.rowTitle)
+                            Spacer()
+                        }
+                        .foregroundStyle(.red)
+                        .padding(.vertical, 14)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
