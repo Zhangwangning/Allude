@@ -114,12 +114,7 @@ struct AIExtensionsListView: View {
             Text("关于数据")
                 .font(AppTheme.TypeScale.rowTitleMedium)
 
-            Text("""
-            · 开启后，需要增强的那条短信原文会由这台设备**直接发送**给你选择的服务商处理；
-            · Allude 没有服务器，不经手、不中转、也不记录这些内容；
-            · API Key 只保存在本机 Keychain，不上传、不同步、不写日志；
-            · 关掉开关后，App 不会向任何模型发起请求。
-            """)
+            Text("Allude 本身不联网：取件记录只存在这台设备上。只有你主动开启并触发了增强，那条短信原文才会由这台设备直接发给你选的服务商，用来把地址、柜位这些字段解析得更准——内容不经过我们，我们也看不到、存不到。API Key 只放本机 Keychain，不上传、不同步、不写日志；关掉开关后，App 不会向任何模型发起请求。")
             .font(AppTheme.TypeScale.note)
             .foregroundStyle(.secondary)
             .lineSpacing(3)
@@ -127,7 +122,7 @@ struct AIExtensionsListView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppTheme.violet.opacity(0.08), in: .rect(cornerRadius: 14, style: .continuous))
+        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
     }
 }
 
