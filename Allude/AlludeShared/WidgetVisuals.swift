@@ -648,7 +648,7 @@ extension WidgetSnapshot {
     }
 
     /// 顶部「效果预览」专用：只给 2 条 —— 中尺寸一页 3 行，
-    /// 第 3 行正好是空位，用来演示「显示空白占位行」开关的效果（2026-11-14 主人）。
+    /// 第 3 行正好是空位，用来演示「显示占位符」开关的效果（2026-11-14 主人）。
     static func previewTwoRows() -> WidgetSnapshot {
         WidgetSnapshot(items: Array(samples.prefix(2)),
                        pendingTotal: 2,

@@ -188,7 +188,7 @@ struct WidgetSettingsView: View {
                         .foregroundStyle(AppTheme.sky)
                 }
 
-                Text("显示空白占位行")
+                Text("显示占位符")
                     .font(.system(size: 17))
 
                 Spacer(minLength: 8)
