@@ -135,12 +135,20 @@ struct AIProviderDetailView: View {
     @State private var model = ""
     @State private var isKeyVisible = false
     @State private var savedHint = false
+    @State private var usesCustomEndpoint = false
+    @State private var customEndpoint = ""
+    @State private var testState: TestState = .idle
+
+    private enum TestState: Equatable {
+        case idle, running, ok, failed(String)
+    }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 16) {
                 enableCard
                 credentialCard
+                customEndpointCard
                 actionCard
                 explainCard
             }
@@ -154,35 +162,38 @@ struct AIProviderDetailView: View {
         .onAppear(perform: load)
     }
 
+    // MARK: 开关
+
     private var enableCard: some View {
-        VStack(spacing: 0) {
-            Toggle(isOn: $enabled) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("启用这家模型")
-                        .font(AppTheme.TypeScale.rowTitle)
-                    Text(enabled ? "解析时会用 \(provider.title) 增强" : "关闭时不向 \(provider.title) 发任何请求")
-                        .font(AppTheme.TypeScale.note)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(16)
+        Toggle(isOn: $enabled) {
+            Text("启用这家模型")
+                .font(AppTheme.TypeScale.rowTitle)
         }
+        .padding(16)
         .settingsCard()
         .onChange(of: enabled) { _, on in
             AIProviderSettings.setEnabled(on, for: provider)
         }
     }
 
-    private var credentialCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("接入凭证")
-                .font(AppTheme.TypeScale.section)
-                .foregroundStyle(.secondary)
+    // MARK: 凭证
 
+    private var credentialCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("API Key")
+                HStack {
+                    Text("API Key")
+                        .font(AppTheme.TypeScale.note)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("从剪贴板粘贴") {
+                        if let text = UIPasteboard.general.string { apiKey = text.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    }
                     .font(AppTheme.TypeScale.note)
-                    .foregroundStyle(.secondary)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(AppTheme.accent)
+                }
+
                 HStack(spacing: 8) {
                     if isKeyVisible {
                         TextField(provider.keyHint, text: $apiKey)
@@ -221,15 +232,67 @@ struct AIProviderDetailView: View {
                     .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: 10, style: .continuous))
             }
 
-            Text("接口地址（内置，不可改）：\(provider.endpoint)")
+            if let url = provider.consoleURL {
+                Link(destination: url) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.up.right.square")
+                        Text("去 \(provider.company) 开放平台创建 Key")
+                        Spacer()
+                    }
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(AppTheme.accent)
+                }
+            }
+
+            Text("这一步用的是开放平台的 API Key，与 App 里的会员订阅不是同一套额度。")
                 .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.secondary)
-                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .settingsCard()
     }
+
+    // MARK: 自定义端点
+
+    private var customEndpointCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle(isOn: $usesCustomEndpoint) {
+                Text("自定义接口地址")
+                    .font(AppTheme.TypeScale.rowTitle)
+            }
+            .onChange(of: usesCustomEndpoint) { _, on in
+                if !on { customEndpoint = ""; AIProviderSettings.setCustomEndpoint("", for: provider) }
+            }
+
+            if usesCustomEndpoint {
+                TextField("https://…/v1/chat/completions", text: $customEndpoint)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    .font(.system(size: 15, design: .monospaced))
+                    .padding(12)
+                    .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: 10, style: .continuous))
+
+                Text("默认用官方地址：\(provider.endpoint)")
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("适合自建网关或 OpenAI 兼容的聚合服务；地址来源由你自己确认，填错或失效都会导致增强失败。")
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .settingsCard()
+    }
+
+    // MARK: 操作
 
     private var actionCard: some View {
         VStack(spacing: 10) {
@@ -242,6 +305,28 @@ struct AIProviderDetailView: View {
                     .foregroundStyle(AppTheme.accent)
             }
             .buttonStyle(.plain)
+
+            Button(action: runTest) {
+                HStack(spacing: 8) {
+                    if testState == .running { ProgressView().controlSize(.small) }
+                    Text(testButtonTitle)
+                }
+                .font(AppTheme.TypeScale.rowTitle)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color(.secondarySystemGroupedBackground), in: Capsule())
+                .foregroundStyle(.primary)
+            }
+            .buttonStyle(.plain)
+            .disabled(testState == .running)
+
+            if case .failed(let message) = testState {
+                Text(message)
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             if AIProviderKeychain.key(for: provider) != nil {
                 Button(role: .destructive) {
@@ -260,14 +345,23 @@ struct AIProviderDetailView: View {
         }
     }
 
+    private var testButtonTitle: String {
+        switch testState {
+        case .idle: return "测试连接"
+        case .running: return "正在测试…"
+        case .ok: return "连接正常"
+        case .failed: return "重试连接"
+        }
+    }
+
     private var explainCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("说明")
                 .font(AppTheme.TypeScale.rowTitleMedium)
             Text("""
-            · Key 只存这台设备的 Keychain，不随 iCloud 同步、不会写进诊断日志；
-            · 请求由本机直连 \(provider.company) 的官方接口，不经过开发者服务器；
-            · 用法与额度受你自己的账号限制，扣费也在服务商那边；
+            · Key 只存这台设备的 Keychain，不随 iCloud 同步、不写进诊断日志；
+            · 请求由本机直连上面那个地址，不经过开发者服务器；
+            · 额度与扣费在服务商那边，和 App 内订阅无关；
             · 端侧「Apple 智能」与这里是两条独立通道，可以只开一条。
             """)
             .font(AppTheme.TypeScale.note)
@@ -280,16 +374,81 @@ struct AIProviderDetailView: View {
         .settingsCard()
     }
 
+    // MARK: 读写
+
     private func load() {
         enabled = AIProviderSettings.isEnabled(provider)
         apiKey = AIProviderKeychain.key(for: provider) ?? ""
         model = AIProviderSettings.model(provider)
+        customEndpoint = AIProviderSettings.customEndpoint(provider)
+        usesCustomEndpoint = !customEndpoint.isEmpty
     }
 
     private func save() {
         AIProviderKeychain.save(apiKey, for: provider)
         AIProviderSettings.setModel(model.trimmingCharacters(in: .whitespacesAndNewlines), for: provider)
+        AIProviderSettings.setCustomEndpoint(usesCustomEndpoint ? customEndpoint : "", for: provider)
+        testState = .idle
         savedHint = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { savedHint = false }
+    }
+
+    private func runTest() {
+        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else {
+            testState = .failed("先填 API Key")
+            return
+        }
+        testState = .running
+        let target = AIProviderSettings.endpoint(provider)
+        let modelName = model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? provider.defaultModel : model
+        Task {
+            let result = await Self.probe(endpoint: target, model: modelName, key: key)
+            await MainActor.run {
+                switch result {
+                case .success: testState = .ok
+                case .failure(let error): testState = .failed(error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    /// 发一次最小请求，只为判断「地址通不通、Key 认不认、模型名对不对」。
+    private static func probe(endpoint: String, model: String, key: String) async -> Result<Void, Error> {
+        guard let url = URL(string: endpoint) else {
+            return .failure(ProbeError("接口地址不合法"))
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.timeoutInterval = 20
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        let body: [String: Any] = [
+            "model": model,
+            "max_tokens": 8,
+            "messages": [["role": "user", "content": "ping"]]
+        ]
+        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        do {
+            let (data, response) = try await URLSession.shared.data(for: req)
+            guard let http = response as? HTTPURLResponse else {
+                return .failure(ProbeError("没有收到 HTTP 响应"))
+            }
+            if (200..<300).contains(http.statusCode) { return .success(()) }
+            if http.statusCode == 401 || http.statusCode == 403 { return .failure(ProbeError("HTTP \(http.statusCode)：Key 无效或没有权限")) }
+            if http.statusCode == 404 { return .failure(ProbeError("HTTP 404：地址或模型名不对")) }
+            if http.statusCode == 429 { return .failure(ProbeError("HTTP 429：额度用尽或被限流")) }
+            let text = String(data: data, encoding: .utf8) ?? ""
+            let brief = text.count > 120 ? String(text.prefix(120)) + "…" : text
+            return .failure(ProbeError("HTTP \(http.statusCode)：\(brief)"))
+        } catch {
+            return .failure(ProbeError("连不上：\(error.localizedDescription)"))
+        }
+    }
+
+    private struct ProbeError: LocalizedError {
+        let message: String
+        init(_ message: String) { self.message = message }
+        var errorDescription: String? { message }
     }
 }

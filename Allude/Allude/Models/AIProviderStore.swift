@@ -90,6 +90,16 @@ enum AIProvider: String, CaseIterable, Identifiable {
         }
     }
 
+    /// 各家开放平台「创建 API Key」页面（详情页给一个直达入口）。
+    var consoleURL: URL? {
+        switch self {
+        case .deepseek: return URL(string: "https://platform.deepseek.com/api_keys")
+        case .doubao:   return URL(string: "https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey")
+        case .qwen:     return URL(string: "https://bailian.console.aliyun.com/?apiKey=1#/api-key")
+        case .kimi:     return URL(string: "https://platform.moonshot.cn/console/api-keys")
+        }
+    }
+
     /// 品牌图标（Assets 里的 AIProviderXxx；2026-11-14 主人提供官方图标）
     var iconAsset: String {
         switch self {
@@ -113,6 +123,7 @@ enum AIProviderSettings {
 
     private static func enabledKey(_ p: AIProvider) -> String { "allude.ai.\(p.rawValue).enabled" }
     private static func modelKey(_ p: AIProvider) -> String { "allude.ai.\(p.rawValue).model" }
+    private static func endpointKey(_ p: AIProvider) -> String { "allude.ai.\(p.rawValue).endpoint" }
 
     static func isEnabled(_ p: AIProvider) -> Bool {
         defaults.bool(forKey: enabledKey(p))
@@ -129,6 +140,34 @@ enum AIProviderSettings {
 
     static func setModel(_ value: String, for p: AIProvider) {
         defaults.set(value, forKey: modelKey(p))
+    }
+
+    // MARK: 自定义接口（可选，默认关闭）
+    //
+    // 主人 2026-11-14：有的人手上是订阅/自建网关/聚合服务（OpenAI 兼容），
+    // 只认官方的 Key 就堵死了这条路。所以允许**每家用一条自定义端点**，
+    // 但默认关闭、留空即用内置官方地址；不校验来源（那是用户自己的选择），
+    // 只把「请求发到哪」如实写在界面上。
+
+    static func customEndpoint(_ p: AIProvider) -> String {
+        (defaults.string(forKey: endpointKey(p)) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func setCustomEndpoint(_ value: String, for p: AIProvider) {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            defaults.removeObject(forKey: endpointKey(p))
+        } else {
+            defaults.set(trimmed, forKey: endpointKey(p))
+        }
+    }
+
+    /// 实际请求地址：填了自定义且能解析成 URL 就用它，否则回落官方内置端点。
+    static func endpoint(_ p: AIProvider) -> String {
+        let custom = customEndpoint(p)
+        if !custom.isEmpty, URL(string: custom) != nil { return custom }
+        return p.endpoint
     }
 
     /// 用户显式开启、且真的填过 Key，才算「已接入」。
