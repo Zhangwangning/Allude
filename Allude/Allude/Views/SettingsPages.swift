@@ -86,6 +86,13 @@ struct AppearancePersonalizationView: View {
                 }
                 .settingsCard()
 
+                Text("这是底部菜单栏的「统计」入口；关掉后底栏只剩 待取 / 已取 / 设置，统计页也进不去。")
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 12)
