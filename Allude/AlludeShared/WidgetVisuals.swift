@@ -238,11 +238,15 @@ struct WidgetPagedContent: View {
                             .clipped()
                     }
                     // 不足一页时补空槽：向用户传达「就这些了」，而不是「还没加载完」。
-                    ForEach(0 ..< snapshot.placeholderRows(page: current, pageSize: pageSize),
-                            id: \.self) { _ in
-                        WidgetPlaceholderRow()
-                            .frame(height: rowHeight, alignment: .top)
-                            .clipped()
+                    // 🔴 2026-11-14：空槽可以被用户在设置里关掉 —— 有人把它当成
+                    //    「还有快递没显示出来」。
+                    if WidgetPlaceholderSetting.isOn {
+                        ForEach(0 ..< snapshot.placeholderRows(page: current, pageSize: pageSize),
+                                id: \.self) { _ in
+                            WidgetPlaceholderRow()
+                                .frame(height: rowHeight, alignment: .top)
+                                .clipped()
+                        }
                     }
                     Spacer(minLength: 0)
                 }

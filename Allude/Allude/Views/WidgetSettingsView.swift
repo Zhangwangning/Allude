@@ -74,14 +74,13 @@ final class WidgetSettingsModel: ObservableObject {
 struct WidgetSettingsView: View {
     @StateObject private var model = WidgetSettingsModel()
 
+    /// 空槽（灰色骨架行）开关；默认开，与历史行为一致。
+    @State private var showsPlaceholders = WidgetPlaceholderSetting.isOn
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // 🔴 顺序 = 先看效果、再调设置：
-                //    进这一页的人首先想知道"我的小组件长什么样"。
-                previewSection
-                displaySection
-                gallerySection
+                sections
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 6)
@@ -91,6 +90,18 @@ struct WidgetSettingsView: View {
         .navigationTitle("桌面小组件")
         .cloaksTabBar()
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ViewBuilder
+    private var sections: some View {
+        Group {
+                // 🔴 顺序 = 先看效果、再调设置：
+                //    进这一页的人首先想知道"我的小组件长什么样"。
+            previewSection
+            displaySection
+            placeholderSection
+            gallerySection
+        }
     }
 
     // MARK: 效果预览
@@ -140,6 +151,48 @@ struct WidgetSettingsView: View {
 
             // 说明放卡外（iOS 二级设置页口径：标题在卡内、说明在卡外）
             Text("取件码永远显示。四项可同时开；「完整信息」等价于四项全开。")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+                .lineSpacing(2)
+                .padding(.horizontal, 16)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: 空位（占位骨架行）
+
+    private var placeholderSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "空位")
+
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(AppTheme.sky.opacity(0.14))
+                        .frame(width: 38, height: 38)
+
+                    Image(systemName: "rectangle.dashed")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(AppTheme.sky)
+                }
+
+                Text("显示空白占位行")
+                    .font(.system(size: 17))
+
+                Spacer(minLength: 8)
+
+                Toggle("", isOn: $showsPlaceholders)
+                    .labelsHidden()
+                    .onChange(of: showsPlaceholders) { _, on in
+                        WidgetPlaceholderSetting.set(on)
+                        WidgetCenter.shared.reloadAllTimelines()
+                    }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .settingsCard()
+
+            Text("关掉后，一页里没填满的位置留白，不再画灰色骨架——避免被误认为还有快递没显示出来。")
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
                 .lineSpacing(2)

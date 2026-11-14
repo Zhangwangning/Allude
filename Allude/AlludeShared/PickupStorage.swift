@@ -652,6 +652,26 @@ struct EntitlementSnapshot: Codable, Equatable {
 // ⚠️ 跨进程契约（与 `EntitlementSnapshot` 同一纪律）：字段只增不改，
 //    新增字段必须有解码兜底，否则老配置会让整份选项解不出来 → 静默回落到默认。
 
+/// 小组件空槽（灰色占位骨架行）是否显示。
+///
+/// 默认显示：不足一页时补空槽，本来是想表达「就这些了」，
+/// 但有用户反馈「以为是还有快递没显示出来」（2026-11-14），
+/// 所以给一个开关让用户自己决定。
+enum WidgetPlaceholderSetting {
+    static let key = "allude.widget.showPlaceholders"
+
+    /// 读 App Group。缺失时按 `true` —— 与历史行为一致。
+    static var isOn: Bool {
+        UserDefaults(suiteName: PickupStorage.appGroupID)?
+            .object(forKey: key) as? Bool ?? true
+    }
+
+    /// 只落盘，不 reload；调用方负责 `WidgetCenter.shared.reloadAllTimelines()`。
+    static func set(_ on: Bool) {
+        UserDefaults(suiteName: PickupStorage.appGroupID)?.set(on, forKey: key)
+    }
+}
+
 /// 小组件显示哪几项。
 struct WidgetDisplayOptions: Codable, Equatable {
     /// 快递公司（顺丰速运 / 圆通快递…；判别不出时退回短信平台）
