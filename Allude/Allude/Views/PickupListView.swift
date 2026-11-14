@@ -497,6 +497,9 @@ struct PickupListView: View {
             listPane
                 .navigationSplitViewColumnWidth(min: 300, ideal: 350, max: 430)
         } detail: {
+            ZStack {
+                // 右栏整列铺浅灰：详情限宽 760 居中，两侧不能露出系统白
+                Color(.systemGroupedBackground).ignoresSafeArea()
             if let record = splitDetailRecord {
                 // 🔴 `.id(record.id)` 必须加（2026-10-25 审查修）：
                 // 右栏是同一个视图标识，换记录只是换入参，而 `draft` / `edit`
@@ -512,6 +515,7 @@ struct PickupListView: View {
                     .frame(maxWidth: .infinity)
             } else {
                 SplitDetailPlaceholder()
+            }
             }
         }
         .navigationSplitViewStyle(.balanced)

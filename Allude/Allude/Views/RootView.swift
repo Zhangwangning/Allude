@@ -66,14 +66,14 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            Group {
+            ZStack(alignment: .bottom) {
+                tabLayout
+
+                // iPad 底部标签栏：浮在内容之上，材质交给系统玻璃（下面有内容才看得出折射）
                 if PadLayout.isPad {
-                    VStack(spacing: 0) {
-                        tabLayout
-                        PadBottomBar(selection: $model.selection, showsStats: showsStats)
-                    }
-                } else {
-                    tabLayout
+                    PadBottomBar(selection: $model.selection, showsStats: showsStats)
+                        .padding(.bottom, 6)
+                        .ignoresSafeArea(edges: .bottom)
                 }
             }
 
@@ -192,7 +192,11 @@ private struct PadTabChrome: ViewModifier {
     func body(content: Content) -> some View {
         if enabled {
             // 藏系统标签栏 + 给自绘那条留出高度（否则列表/详情滚到底会钻到栏下面）
-            content.toolbar(.hidden, for: .tabBar)
+            content
+                .toolbar(.hidden, for: .tabBar)
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    Color.clear.frame(height: 76)
+                }
         } else {
             content
         }
@@ -254,15 +258,10 @@ private struct PadBottomBar: View {
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 6)
-        .frame(maxWidth: 520)
+        .frame(maxWidth: 520, maxHeight: .infinity, alignment: .center)
+        .fixedSize(horizontal: false, vertical: true)
         .appGlass(.capsule)
-        .padding(.bottom, 8)
-        .padding(.top, 4)
         .frame(maxWidth: .infinity)
-        .background(Color(.systemGroupedBackground).ignoresSafeArea(edges: .bottom))
-        .overlay(alignment: .top) {
-            Rectangle().fill(Color(.separator).opacity(0.35)).frame(height: 0.5)
-        }
     }
 
     private func title(_ tab: RootTab) -> String {
