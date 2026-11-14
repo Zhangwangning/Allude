@@ -222,17 +222,12 @@ struct AIProviderDetailView: View {
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.secondary)
                 Menu {
-                    ForEach(modelChoices, id: \.self) { name in
-                        Button {
-                            model = name
-                        } label: {
-                            if name == model {
-                                Label(name, systemImage: "checkmark")
-                            } else {
-                                Text(name)
-                            }
+                    Picker("模型", selection: $model) {
+                        ForEach(modelChoices, id: \.self) { name in
+                            Text(name).tag(name)
                         }
                     }
+                    .pickerStyle(.inline)
                 } label: {
                     HStack {
                         Text(model)
