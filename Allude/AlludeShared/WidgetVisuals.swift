@@ -198,6 +198,9 @@ struct WidgetPagedContent: View {
     /// 二级信息行显示哪几项（"我的 › 桌面小组件 › 显示内容"）。
     /// 默认 `.full` = 改版前的版式，免费版就是这样。
     var options: WidgetDisplayOptions = .full
+    /// 一页没填满时是否画灰色占位行。默认读 App Group 的开关（设置页可关）。
+    /// 🔴 设置页会把实时值传进来 —— 用户当页切换要立刻生效，不能等重新进页面。
+    var showsPlaceholders: Bool = WidgetPlaceholderSetting.isOn
 
     private var pageCount: Int { snapshot.pageCount(pageSize: pageSize) }
     private var current: Int {
@@ -240,7 +243,7 @@ struct WidgetPagedContent: View {
                     // 不足一页时补空槽：向用户传达「就这些了」，而不是「还没加载完」。
                     // 🔴 2026-11-14：空槽可以被用户在设置里关掉 —— 有人把它当成
                     //    「还有快递没显示出来」。
-                    if WidgetPlaceholderSetting.isOn {
+                    if showsPlaceholders {
                         ForEach(0 ..< snapshot.placeholderRows(page: current, pageSize: pageSize),
                                 id: \.self) { _ in
                             WidgetPlaceholderRow()
@@ -642,6 +645,14 @@ extension WidgetSnapshot {
             record("天猫超市", "TM5540", .code, "馨月湖小区北门天猫驿站", 1180),
             record("极兔速递", "JT2088", .tail, "河西学院东门极兔驿站", 1360),
         ]
+    }
+
+    /// 顶部「效果预览」专用：只给 2 条 —— 中尺寸一页 3 行，
+    /// 第 3 行正好是空位，用来演示「显示空白占位行」开关的效果（2026-11-14 主人）。
+    static func previewTwoRows() -> WidgetSnapshot {
+        WidgetSnapshot(items: Array(samples.prefix(2)),
+                       pendingTotal: 2,
+                       pickedTodayCount: 0)
     }
 
     /// 预览快照（App 内「桌面小组件」页与 `SCREEN=widgets`）。

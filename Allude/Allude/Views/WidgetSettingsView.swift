@@ -36,15 +36,19 @@ final class WidgetSettingsModel: ObservableObject {
     @Published var options = WidgetDisplayOptions.load()
 
     init() {
-        // 🔴 升级归一（2026-10-27）：
-        //    旧版「完整信息」= 公司 + 地址（驿站关着），而新页面的「完整信息」判定是
-        //    四项全开 —— 老用户进页面会看到一个自己从没关过的开关是灭的，自相矛盾。
-        //    这里把旧组合补齐成 `.full`：视觉上没有任何变化（站名被地址盖住，见
-        //    `widgetSubtitle` 的互斥规则），但开关状态回到"我一直选的就是完整信息"。
+        // 🔴 升级归一（2026-10-27）只跑一次（2026-11-14 修）：
+        //    旧版「完整信息」= 公司 + 地址（驿站关着），新页面判定是四项全开。
+        //    但这套"补成 .full"的逻辑如果每次都跑，用户**主动关掉「显示驿站」**
+        //    后，下次进页面又会被当成老数据补回来 —— 表现为"关了不记住"。
+        //    因此加一次性标记：迁移完就不再干预用户的组合。
+        let store = UserDefaults(suiteName: PickupStorage.appGroupID)
+        let migratedKey = "allude.widget.migratedComplete"
+        guard store?.bool(forKey: migratedKey) != true else { return }
         let loaded = WidgetDisplayOptions.load()
         if loaded.showsCompany, loaded.showsAddress, !loaded.showsStation {
             apply(.full)
         }
+        store?.set(true, forKey: migratedKey)
     }
 
     /// 单项开关。`keyPath` 由视图层的字段枚举给出，模型不重复维护字段清单。
@@ -75,7 +79,11 @@ struct WidgetSettingsView: View {
     @StateObject private var model = WidgetSettingsModel()
 
     /// 空槽（灰色骨架行）开关；默认开，与历史行为一致。
-    @State private var showsPlaceholders = WidgetPlaceholderSetting.isOn
+    /// 🔴 用 `@AppStorage` 直接读写 App Group：`@State` 只在页面生命周期内记值，
+    ///    离开再进来会回到默认值（2026-11-14 主人反馈"关了不记住"）。
+    @AppStorage(WidgetPlaceholderSetting.key,
+                store: UserDefaults(suiteName: PickupStorage.appGroupID))
+    private var showsPlaceholders = true
 
     var body: some View {
         ScrollView {
@@ -119,10 +127,14 @@ struct WidgetSettingsView: View {
             // 🔴 2026-11-08 主人：顶部这张比真机宽 —— 原来用 `expandsToFill` 吃满页面宽度，
             //    而真机中尺寸是固定 338pt。改成与「桌面小组件」页里的中尺寸预览同宽、居中。
             WidgetCanvas(.medium) {
-                WidgetPagedContent(snapshot: .preview(),
+                // 🔴 2026-11-14 主人：顶部预览只放 **2 条**取件码 ——
+                //    中尺寸一页 3 行，留出来的第 3 行正好演示「空位」开关的效果
+                //    （开=灰色骨架，关=留白）。放满 3 条就看不到占位行。
+                WidgetPagedContent(snapshot: .previewTwoRows(),
                                    pageSize: WidgetPageSize.rowCount(family: "m"),
                                    familyKey: "m",
-                                   options: effectiveOptions)
+                                   options: effectiveOptions,
+                                   showsPlaceholders: showsPlaceholders)
             }
             .frame(maxWidth: .infinity, alignment: .center)
 
@@ -183,8 +195,7 @@ struct WidgetSettingsView: View {
 
                 Toggle("", isOn: $showsPlaceholders)
                     .labelsHidden()
-                    .onChange(of: showsPlaceholders) { _, on in
-                        WidgetPlaceholderSetting.set(on)
+                    .onChange(of: showsPlaceholders) { _, _ in
                         WidgetCenter.shared.reloadAllTimelines()
                     }
             }
@@ -260,7 +271,8 @@ struct WidgetSettingsView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "小组件效果")
 
-            WidgetGalleryContent(options: effectiveOptions)
+            WidgetGalleryContent(options: effectiveOptions,
+                                 showsPlaceholders: showsPlaceholders)
         }
     }
 }

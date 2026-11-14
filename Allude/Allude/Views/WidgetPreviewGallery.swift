@@ -185,6 +185,8 @@ struct WidgetGalleryContent: View {
     /// 显示内容配置。设置页传用户当前选择，使预览与桌面所见一致；
     /// 不传时按当前档位取生效配置（免费版恒为完整形态）。
     var options: WidgetDisplayOptions? = nil
+    /// 一页没填满时是否画灰色骨架行；设置页传当前开关值，让预览实时跟随。
+    var showsPlaceholders: Bool = WidgetPlaceholderSetting.isOn
 
     private var effectiveOptions: WidgetDisplayOptions {
         options ?? WidgetDisplayOptions.full
@@ -310,7 +312,8 @@ struct WidgetGalleryContent: View {
             WidgetPagedContent(snapshot: snapshot,
                                pageSize: WidgetPageSize.rowCount(family: style.pageKey),
                                familyKey: style.pageKey,
-                               options: effectiveOptions)
+                               options: effectiveOptions,
+                               showsPlaceholders: showsPlaceholders)
         }
     }
 
