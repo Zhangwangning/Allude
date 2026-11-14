@@ -269,12 +269,6 @@ struct AIProviderDetailView: View {
                 .padding(.vertical, 10)
                 .background(Color(.tertiarySystemFill), in: .rect(cornerRadius: 10, style: .continuous))
 
-                Text(apiKey.isEmpty
-                     ? "打码保存，只存在这台设备的 Keychain。"
-                     : "已保存在本机 Keychain；点右侧眼睛可查看。")
-                    .font(AppTheme.TypeScale.note)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -369,7 +363,7 @@ struct AIProviderDetailView: View {
                     AIProviderSettings.setEnabled(false, for: provider)
                     savedHint = true
                 } label: {
-                    actionRow(title: "清除这台设备上的 Key", tint: .red)
+                    actionRow(title: "清除此配置", tint: .red)
                 }
                 .buttonStyle(.plain)
             }
