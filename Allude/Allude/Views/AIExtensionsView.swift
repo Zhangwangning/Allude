@@ -117,12 +117,6 @@ struct AIExtensionsListView: View {
                 .settingsCard()
 
                 privacyCard
-
-                Text("接口地址固定为各家官方端点，只填你自己的 API Key；四家可以只开一家。")
-                    .font(AppTheme.TypeScale.note)
-                    .foregroundStyle(.secondary)
-                    .lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 18)
@@ -140,7 +134,7 @@ struct AIExtensionsListView: View {
             Text("关于数据")
                 .font(AppTheme.TypeScale.rowTitleMedium)
 
-            Text("Allude 本身不联网：取件记录只存在这台设备上。只有你主动开启并触发了增强，那条短信原文才会由这台设备直接发给你选的服务商，连同本机正则解析出的字段一起交给模型复核，用来把取件码、地址、柜位这些信息认得更准——内容不经过我们，我们也看不到、存不到。API Key 只放本机 Keychain，不上传、不同步、不写日志；关掉开关后，App 不会向任何模型发起请求。")
+            Text("Allude 本身不联网：取件记录只存在这台设备上。只有你主动开启并触发了增强，那条短信原文才会由这台设备直接发给你选的服务商，连同本机正则解析出的字段一起交给模型复核，用来把取件码、地址、柜位这些信息认得更准——内容不经过我们，我们也看不到、存不到。API Key 只放本机 Keychain，不上传、不同步、不写日志；关掉开关后，App 不会向任何模型发起请求。\n\n接口只用各家官方端点，地址内置、不可改；请求由这台设备直连，不经开发者服务器。端侧的「Apple 智能」和这里是两条独立通道，可以只开一条。")
             .font(AppTheme.TypeScale.note)
             .foregroundStyle(.secondary)
             .lineSpacing(3)
@@ -163,6 +157,7 @@ struct AIProviderDetailView: View {
     @State private var savedHint = false
     @State private var testState: TestState = .idle
     @State private var showModelSheet = false
+    @State private var consentGranted = true
 
     private enum TestState: Equatable {
         case idle, running, ok, failed(String)
@@ -171,18 +166,38 @@ struct AIProviderDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                // 版式照 Apple 的「Apple 智能与 Siri › 扩展」页（2026-11-14 主人指定）：
+                // 最上面是「使用 X」开关 → 一段说明 → 账户（这里的账户就是 API Key）→ 确认请求 → 隐私链接。
                 enableCard
 
-                if !canEnable {
-                    Text("先点「测试连接」通过，才能启用。")
-                        .font(AppTheme.TypeScale.note)
-                        .foregroundStyle(.secondary)
+                Text("Allude 可以用 \(provider.title) 复核短信里的取件信息，把取件码、地址、柜位认得更准。")
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 4)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                SectionHeader(title: "\(provider.title) 账户")
+                credentialCard
+
+                consentCard
+
+                VStack(spacing: 0) {
+                    NavigationLink {
+                        LegalDocumentView(document: .privacy)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Text("关于 \(provider.title) 扩展与隐私…")
+                                .font(AppTheme.TypeScale.note)
+                                .foregroundStyle(AppTheme.accent)
+                            Spacer()
+                        }
                         .padding(.horizontal, 4)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(height: 32)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
 
-                credentialCard
-                explainCard
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 18)
@@ -235,7 +250,7 @@ struct AIProviderDetailView: View {
 
     private var enableCard: some View {
         Toggle(isOn: $enabled) {
-            Text("启用")
+            Text("使用 \(provider.title)")
                 .font(AppTheme.TypeScale.rowTitle)
         }
         .disabled(!canEnable)
@@ -244,6 +259,28 @@ struct AIProviderDetailView: View {
         .onChange(of: enabled) { _, on in
             AIProviderSettings.setEnabled(on, for: provider)
         }
+    }
+
+    /// 「确认请求」：是否允许把短信原文发给第三方处理（照 Apple 扩展页的同类开关）。
+    private var consentCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Toggle(isOn: Binding(
+                get: { consentGranted },
+                set: { consentGranted = $0; AIProviderSettings.setConsent($0, for: provider) }
+            )) {
+                Text("确认请求")
+                    .font(AppTheme.TypeScale.rowTitle)
+            }
+            .padding(16)
+
+            Text("开启时才会把那条短信原文与解析结果发送给 \(provider.title)；关掉后一律不发送，收码照常。")
+                .font(AppTheme.TypeScale.note)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 14)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .settingsCard()
     }
 
     /// 已开启的保持可关；没验证过的，不许打开（2026-11-14 主人：没测通就启用等于没用）。
@@ -443,24 +480,6 @@ struct AIProviderDetailView: View {
         }
     }
 
-    private var explainCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("说明")
-                .font(AppTheme.TypeScale.rowTitleMedium)
-            Text("""
-            · Key 只存这台设备的 Keychain，不随 iCloud 同步、不写进诊断日志；
-            · 只用官方接口，地址内置不可改；请求由本机直连，不经过开发者服务器；
-            · 端侧「Apple 智能」与这里是两条独立通道，可以只开一条。
-            """)
-            .font(AppTheme.TypeScale.note)
-            .foregroundStyle(.secondary)
-            .lineSpacing(3)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .settingsCard()
-    }
 
     // MARK: 读写
 
@@ -469,6 +488,7 @@ struct AIProviderDetailView: View {
         if ProcessInfo.processInfo.environment["MODEL_SHEET"] == "1" { showModelSheet = true }
         #endif
         enabled = AIProviderSettings.isEnabled(provider)
+        consentGranted = AIProviderSettings.isConsentGranted(provider)
         apiKey = AIProviderKeychain.key(for: provider) ?? ""
         model = AIProviderSettings.model(provider)
     }

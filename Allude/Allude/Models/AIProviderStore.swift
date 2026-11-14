@@ -156,6 +156,18 @@ enum AIProviderSettings {
         defaults.set(value, forKey: modelKey(p))
     }
 
+    // MARK: 数据外发同意（照 Apple 智能扩展开关：默认开，关掉一律不发）
+
+    private static func consentKey(_ p: AIProvider) -> String { "allude.ai.\(p.rawValue).consent" }
+
+    static func isConsentGranted(_ p: AIProvider) -> Bool {
+        defaults.object(forKey: consentKey(p)) as? Bool ?? true
+    }
+
+    static func setConsent(_ on: Bool, for p: AIProvider) {
+        defaults.set(on, forKey: consentKey(p))
+    }
+
     // MARK: 连通性验证（2026-11-14：没测通不许启用）
 
     private static func verifiedKey(_ p: AIProvider) -> String { "allude.ai.\(p.rawValue).verifiedHash" }
@@ -181,7 +193,9 @@ enum AIProviderSettings {
 
     /// 用户显式开启、且真的填过 Key，才算「已接入」。
     static func isReady(_ p: AIProvider) -> Bool {
-        isEnabled(p) && !(AIProviderKeychain.key(for: p) ?? "").isEmpty
+        isEnabled(p)
+            && isConsentGranted(p)
+            && !(AIProviderKeychain.key(for: p) ?? "").isEmpty
     }
 
     /// 当前有没有任何一家可直接用（解析层用它决定要不要发起请求）。
