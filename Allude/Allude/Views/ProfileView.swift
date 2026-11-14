@@ -571,11 +571,9 @@ struct SettingsView: View {
         case .feedback:   feedbackPane
         case .privacy:    privacyPane
         case .aiCapability:
-            if #available(iOS 26.0, *) {
-                AICapabilityView()
-            } else {
-                AICapabilityUnsupportedView()
-            }
+            // 2026-11-14 主人：这一行原本直达「Apple 智能」检测页，把「扩展」（第三方模型）
+            // 那一半整个挡住了 —— 改成先进总览，两条通道各一个入口。
+            AIExtensionsHomeView()
         case .appIcon:      AppIconSettingsView()
         case .privacyDoc:   LegalDocumentView(document: .privacy)
         // 2026-11-12 主人：服务条款与「声明与免责」合并成一页
