@@ -30,6 +30,18 @@ struct AIExtensionFields: Decodable {
 
 enum AIExtensionEnhancer {
 
+    /// 专门给增强用的 session：**请求 8 秒、整条 12 秒**就断。
+    /// 默认 session 的 60 秒会让"网络一抖"变成"等一分钟"，这里必须短。
+    /// `waitsForConnectivity = false`：没网就别排队等，直接失败退回正则。
+    private static let session: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 8
+        config.timeoutIntervalForResource = 12
+        config.waitsForConnectivity = false
+        config.httpMaximumConnectionsPerHost = 2
+        return URLSession(configuration: config)
+    }()
+
     /// 一条记录要不要请第三方模型帮忙（与端侧保持同一套判断）。
     ///
     /// 只在这几种「正则明显缺东西」的情况下发起请求，避免每条短信都调用一次：
@@ -60,15 +72,40 @@ enum AIExtensionEnhancer {
 
         DiagnosticsLog.record("ai-extension", "provider=\(provider.rawValue) targets=\(targets.count)")
 
-        for record in targets {
-            let id = record.id
-            let text = record.rawMessage
-            Task.detached(priority: .utility) {
-                guard let fields = await request(text: text, provider: provider, key: key, model: model) else { return }
-                await MainActor.run {
-                    apply(fields, to: id)
+        Task.detached(priority: .utility) {
+            await run(targets, provider: provider, key: key, model: model)
+        }
+    }
+
+    /// 并发上限 2：网络抖动时不至于同时挂十几条请求互相拖慢。
+    /// 每条最多试 2 次（首次 + 一次重试），失败就放弃 —— 正则结果已经在界面上，
+    /// 增强只是"有空就补一句"，绝不阻塞入库。
+    private static func run(_ targets: [PickupRecord],
+                            provider: AIProvider,
+                            key: String,
+                            model: String) async {
+        await withTaskGroup(of: Void.self) { group in
+            var iterator = targets.makeIterator()
+            let limit = min(2, targets.count)
+
+            func addNext() {
+                guard let record = iterator.next() else { return }
+                let id = record.id
+                let text = record.rawMessage
+                group.addTask {
+                    for attempt in 1...2 {
+                        if let fields = await request(text: text, provider: provider, key: key, model: model) {
+                            await MainActor.run { apply(fields, to: id) }
+                            return
+                        }
+                        if attempt < 2 { try? await Task.sleep(nanoseconds: 600_000_000) }
+                    }
+                    DiagnosticsLog.record("ai-extension", "gave_up code_kept=regex")
                 }
             }
+
+            for _ in 0..<limit { addNext() }
+            while await group.next() != nil { addNext() }
         }
     }
 
@@ -105,13 +142,13 @@ enum AIExtensionEnhancer {
 
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
-        req.timeoutInterval = 15
+        req.timeoutInterval = 8
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         req.httpBody = data
 
         do {
-            let (responseData, response) = try await URLSession.shared.data(for: req)
+            let (responseData, response) = try await session.data(for: req)
             guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
                 DiagnosticsLog.record("ai-extension", "http_error provider=\(provider.rawValue)")
                 return nil
