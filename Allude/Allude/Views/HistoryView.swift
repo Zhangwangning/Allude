@@ -146,7 +146,7 @@ struct PickedUpView: View {
         // 📱 2026-10-25：宽屏走平行视图（左列表 / 右详情），常规 iPhone 仍单栈。
         Group {
             // 与待取页同口径：按实际宽度分栏（iPad mini 竖屏 744pt 不分栏）。
-            if PadLayout.isPad, paneWidth >= 900 {
+            if PadLayout.usesSplit, paneWidth >= 900 {
                 splitLayout
             } else {
                 stackedLayout
@@ -174,7 +174,7 @@ struct PickedUpView: View {
         guard let id = notificationRouter.pendingRecordID,
               let record = store.pickedUpRecords.first(where: { $0.id == id }) else { return }
         notificationRouter.pendingRecordID = nil
-        if PadLayout.isPad, horizontalSizeClass == .regular {
+        if PadLayout.usesSplit, horizontalSizeClass == .regular {
             splitSelection = record.id
         } else {
             model.path.append(record)
@@ -220,7 +220,7 @@ struct PickedUpView: View {
 
     /// 打开详情：宽屏只切右栏（不 push），窄屏照旧推栈。
     private func openDetail(_ record: PickupRecord) {
-        if PadLayout.isPad, horizontalSizeClass == .regular {
+        if PadLayout.usesSplit, horizontalSizeClass == .regular {
             splitSelection = record.id
         } else {
             model.path.append(record)
@@ -228,7 +228,7 @@ struct PickedUpView: View {
     }
 
     /// 列表本体（两种布局共用）。`navigationDestination` 由各布局挂到自己的栈上。
-    private var splitPane: Bool { PadLayout.isPad && paneWidth >= 900 }
+    private var splitPane: Bool { PadLayout.usesSplit && paneWidth >= 900 }
 
     private var listPane: some View {
         listBody

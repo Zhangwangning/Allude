@@ -386,7 +386,7 @@ struct PickupListView: View {
             //    两栏硬塞进 744pt 会把详情挤到屏幕外。改判**实际可用宽度**（≥ 900pt 才分栏）。
             //    宽度用 preference 量，不能用 GeometryReader 包一层：那会让 NavigationSplitView
             //    丢掉顶部安全区，标签栏直接压在详情列标题上。
-            if PadLayout.isPad, paneWidth >= 900 {
+            if PadLayout.usesSplit, paneWidth >= 900 {
                 splitLayout
             } else {
                 stackedLayout
@@ -530,7 +530,7 @@ struct PickupListView: View {
     /// 列表本体（两种布局共用）：List + 内边距 / 背景 / 搜索 / 工具栏 / 弹层。
     /// ⚠️ `navigationDestination` 不在这里 —— 它由各布局自己挂在对应的栈上，
     ///    否则分栏模式下会被注册到没有栈的 sidebar 列（无效且会告警）。
-    private var splitPane: Bool { PadLayout.isPad && paneWidth >= 900 }
+    private var splitPane: Bool { PadLayout.usesSplit && paneWidth >= 900 }
 
     private var listPane: some View {
         listBody
