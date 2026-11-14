@@ -31,6 +31,18 @@ struct VersionHistoryView: View {
     }
 
     private let entries: [Entry] = [
+        Entry(version: "1.0.0", date: "2026-11-14", theme: "第三方模型参与解析 · iCloud 同步 · iPad 与小组件细化", highlights: [
+            "设置页重新分组：快捷指令 / 通知 / 桌面小组件 / 实时活动 / iCloud 同步 / Apple 智能与扩展，其余收进二级页",
+            "新增 iCloud 同步（默认关闭）：记录只写入你自己的 iCloud 云盘，经同一 Apple ID 的设备自动合并，不经开发者服务器",
+            "Apple 智能与扩展：端侧模型与第三方模型两条独立通道；可选择 DeepSeek / 豆包 / 千问 / Kimi，自备 API Key，地址内置不可改",
+            "第三方模型改为「结合正则结果复核解析」：地址、柜位、货架、快递公司、驿站都可能被修正；取件码必须能在短信原文里原样找到才允许改",
+            "抗网络抖动：请求 8 秒、整条 12 秒超时，最多 2 条并发、每条最多重试一次；失败只影响补得更准，收码与界面完全不受影响",
+            "桌面小组件新增「显示占位符」开关：关掉后没填满的位置留白，不再画灰色骨架；「显示驿站」等开关的关闭状态现在会被记住",
+            "小组件设置里的效果预览改为实时反映各个开关，不再需要退出重进",
+            "iPad 原生两栏布局与侧栏设置；备用 App 图标补齐 iPad 尺寸，可正常通过审核",
+            "新增四套图标与「自定义 App 图标」入口；关于页把声明与免责并入服务条款，并新增隐私政策简明版",
+            "隐私政策与使用条款同步更新（三处副本一致）",
+        ]),
         Entry(version: "1.0.0", date: "2026-11-11", theme: "首个正式版 · 更名 Allude · 支持 iOS 17", highlights: [
             "产品更名：拾码 → Allude，订阅版叫 Allude Pro；图标、关于页与法务页同步换新",
             "最低系统从 iOS 18 下调到 iOS 17：iPhone 与 iPad 上 iOS 17 也能安装使用",
@@ -387,10 +399,11 @@ struct VersionHistoryView: View {
 
                 Spacer(minLength: 8)
 
-                Text(entry.date.L)
+                Text("更新于 \(entry.date)")
                     .font(.system(size: 12, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.tertiary)
+                    .accessibilityLabel("更新于 \(entry.date)")
             }
 
             Text(entry.theme.L)

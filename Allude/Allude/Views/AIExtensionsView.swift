@@ -71,6 +71,16 @@ struct AIExtensionsHomeView: View {
 
 /// 二级页：三家模型服务列表。
 struct AIExtensionsListView: View {
+    /// 列表里的「已接入 / 未接入」是**读 Keychain + App Group 开关**算出来的，
+    /// SwiftUI 观察不到这两个存储，所以从详情页返回时必须自己重算一次
+    /// （2026-11-14 主人反馈：开了 DeepSeek 回来仍显示未接入）。
+    @State private var ready: Set<AIProvider> = []
+    @Environment(\.scenePhase) private var scenePhase
+
+    private func refreshReady() {
+        ready = Set(AIProvider.allCases.filter { AIProviderSettings.isReady($0) })
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -83,7 +93,7 @@ struct AIExtensionsListView: View {
                             SettingsRow(symbol: provider.symbol,
                                         imageAsset: provider.iconAsset,
                                         title: provider.title,
-                                        detail: AIProviderSettings.isReady(provider) ? "已接入" : "未接入",
+                                        detail: ready.contains(provider) ? "已接入" : "未接入",
                                         showsChevron: true,
                                         tint: provider.tint)
                         }
@@ -353,10 +363,12 @@ struct AIProviderDetailView: View {
                     savedHint = true
                 } label: {
                     Text("清除这个 Key")
-                        .font(AppTheme.TypeScale.note)
-                        .foregroundStyle(.red)
+                        .font(AppTheme.TypeScale.rowTitle)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.bordered)
+                .tint(.red)
             }
         }
     }
