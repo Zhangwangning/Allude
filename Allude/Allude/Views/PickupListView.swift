@@ -537,13 +537,14 @@ struct PickupListView: View {
 
     private var listBody: some View {
         List {
+            Section {
+                PageHeader(title: "待取")
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            }
+
             if splitPane {
-                Section {
-                    PadSidebarHeader(title: "待取")
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                }
                 Section {
                     PadSidebarSearchField(text: $model.query, prompt: "取件码 / 快递公司 / 地址")
                         .listRowInsets(EdgeInsets())
@@ -604,9 +605,7 @@ struct PickupListView: View {
             // 🔴 2026-10-08 结构重构：浏览（已取件）独立成 Tab 后，取件页不再需要
             //    分段切换器 —— 回归系统导航栏（大标题「取件」+ drawer 搜索 + 系统
             //    toolbar）。此前为「分段居中于标题位」做的自绘顶栏随分段一起退役。
-            .toolbar(splitPane ? .hidden : .visible, for: .navigationBar)
-            .navigationTitle(splitPane ? "" : "待取")
-            .toolbarTitleDisplayMode(splitPane ? .inline : .large)
+            .toolbar(.hidden, for: .navigationBar)
             .toolbar { toolbarContent }
             .overlay(alignment: .bottom) { bottomOverlay }
             // 🔴 不用 alert 也不用新页面：随机四位数就在**弹窗里**输入，

@@ -964,6 +964,22 @@ private struct TabBarMinimizeNever: ViewModifier {
 
 /// 分栏侧栏的大标题：与「统计」页 large title 同字号（34pt bold）。
 /// 系统在 `NavigationSplitView` 的侧栏里只画 inline 标题，这里自己排一行。
+/// 四个标签页共用的页头：位置/字号完全一致（2026-11-15 主人要求）。
+/// 系统标签栏在 iPad 上是浮在内容上方的胶囊，所以顶部要自己让开一段。
+struct PageHeader: View {
+    var title: String
+    var topInset: CGFloat { PadLayout.isPad ? 56 : 0 }
+
+    var body: some View {
+        Text(title)
+            .font(.system(size: 34, weight: .bold))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, 20)
+            .padding(.top, topInset)
+            .padding(.bottom, 4)
+    }
+}
+
 struct PadSidebarHeader: View {
     var title: String
     /// 分栏侧栏的收放按钮（导航栏藏掉后要自己提供）
@@ -1079,11 +1095,13 @@ struct GoldenSplit<Left: View, Right: View>: View {
             HStack(spacing: 0) {
                 left()
                     .frame(width: lw)
+                    .safeAreaPadding(.top, 6)
                 Rectangle()
                     .fill(Color(.separator).opacity(0.5))
                     .frame(width: 0.5)
                 right()
                     .frame(maxWidth: .infinity)
+                    .safeAreaPadding(.top, 6)
             }
         }
     }

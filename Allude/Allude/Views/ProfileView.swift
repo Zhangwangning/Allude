@@ -391,9 +391,9 @@ struct SettingsView: View {
                 // 大标题（与「统计」页同字号），Apple 设置也是标题在搜索之上
 
 
-                PadSidebarHeader(title: "设置")
+                PageHeader(title: "设置")
 
-                // 侧栏顶部搜索框（照 iPad 设置：胶囊输入框 + 放大镜）
+                // 搜索放在标题下面（2026-11-15 主人要求）
                 settingsSearchField
 
 

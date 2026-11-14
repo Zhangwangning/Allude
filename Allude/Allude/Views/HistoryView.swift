@@ -146,7 +146,7 @@ struct PickedUpView: View {
         // 📱 2026-10-25：宽屏走平行视图（左列表 / 右详情），常规 iPhone 仍单栈。
         Group {
             // 与待取页同口径：按实际宽度分栏（iPad mini 竖屏 744pt 不分栏）。
-            if PadLayout.usesSplit, paneWidth >= 900 {
+            if PadLayout.isPad, paneWidth >= 900 {
                 splitLayout
             } else {
                 stackedLayout
@@ -174,7 +174,7 @@ struct PickedUpView: View {
         guard let id = notificationRouter.pendingRecordID,
               let record = store.pickedUpRecords.first(where: { $0.id == id }) else { return }
         notificationRouter.pendingRecordID = nil
-        if PadLayout.usesSplit, horizontalSizeClass == .regular {
+        if PadLayout.isPad, horizontalSizeClass == .regular {
             splitSelection = record.id
         } else {
             model.path.append(record)
@@ -195,11 +195,9 @@ struct PickedUpView: View {
     /// 右栏**常驻详情**、不 push（无返回箭头）；未选中时默认显示第一条；
     /// 列宽左右等分（主人 2026-10-25 已否掉「按铰链中轴分列」）。
     private var splitLayout: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            listPane
-                // 左右等分（与待取页同口径；主人已否掉中轴方案）
-                .navigationSplitViewColumnWidth(min: 340, ideal: 440, max: 600)
-        } detail: {
+        GoldenSplit {
+            NavigationStack { listPane }
+        } right: {
             if let record = splitDetailRecord {
                 // 与待取页同口径：绑定 id，避免编辑草稿串到下一条（2026-10-25 审查修）
                 RecordDetailView(record: record)
@@ -208,7 +206,6 @@ struct PickedUpView: View {
                 SplitDetailPlaceholder()
             }
         }
-        .navigationSplitViewStyle(.balanced)
     }
 
     /// 分栏右栏要显示的记录：选中的那条优先，没选中就显示第一条（同待取页口径）。
@@ -222,7 +219,7 @@ struct PickedUpView: View {
 
     /// 打开详情：宽屏只切右栏（不 push），窄屏照旧推栈。
     private func openDetail(_ record: PickupRecord) {
-        if PadLayout.usesSplit, horizontalSizeClass == .regular {
+        if PadLayout.isPad, horizontalSizeClass == .regular {
             splitSelection = record.id
         } else {
             model.path.append(record)
@@ -230,7 +227,7 @@ struct PickedUpView: View {
     }
 
     /// 列表本体（两种布局共用）。`navigationDestination` 由各布局挂到自己的栈上。
-    private var splitPane: Bool { PadLayout.usesSplit && paneWidth >= 900 }
+    private var splitPane: Bool { PadLayout.isPad && paneWidth >= 900 }
 
     private var listPane: some View {
         listBody
@@ -238,12 +235,16 @@ struct PickedUpView: View {
 
     private var listBody: some View {
         List {
+            Section {
+                PageHeader(title: "已取")
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            }
+
             if splitPane {
                 Section {
-                    PadSidebarHeader(title: "已取", onToggleSidebar: { columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly })
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
+
                 }
             }
                 if list.isEmpty {
@@ -329,9 +330,7 @@ struct PickedUpView: View {
             .frame(maxWidth: splitPane ? .infinity : AppTheme.contentMaxWidth)
             .frame(maxWidth: .infinity)
             .background(Color(.systemGroupedBackground))
-            .toolbar(splitPane ? .hidden : .visible, for: .navigationBar)
-            .navigationTitle(splitPane ? "" : "已取")
-            .toolbarTitleDisplayMode(splitPane ? .inline : .large)
+            .toolbar(.hidden, for: .navigationBar)
             .toolbar {
                 if model.isEditing {
                     ToolbarItem(placement: .topBarLeading) {
@@ -539,6 +538,8 @@ struct StatsTabView: View {
                             //    总览三格**独占一行全宽**（它是仪表盘主视觉，不该被挤成半宽），
                             //    下面五张分析卡两列并排。867pt 可用宽下每列约 400pt。
                             VStack(alignment: .leading, spacing: 16) {
+                                PageHeader(title: "统计")
+                                    .padding(.horizontal, -20)
                                 overviewCard.id("top")
 
                                 if !stats.isEmpty {
@@ -589,7 +590,7 @@ struct StatsTabView: View {
                     .frame(maxWidth: horizontalSizeClass == .regular
                            ? 1200 : AppTheme.contentMaxWidth)
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 8)
+                    .padding(.top, 0)
                     .padding(.bottom, 110)
                 }
                 .background(Color(.systemGroupedBackground))
@@ -598,8 +599,7 @@ struct StatsTabView: View {
                     TabBarCloak.shared.reveal()
                 }
             }
-            .navigationTitle("统计")
-            .navigationBarTitleDisplayMode(.large)
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 
