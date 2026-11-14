@@ -157,11 +157,54 @@ struct AIProviderDetailView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle(provider.title)
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear(perform: load)
+        .onAppear {
+            load()
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["MODEL_SHEET"] == "1" {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { showModelSheet = true }
+            }
+            #endif
+        }
         
     }
 
     /// 模型选择：勾选标记放行尾（系统 Menu 的 inline picker 会把勾放左侧，主人要求右对齐）。
+    private var modelPanel: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(modelChoices.enumerated()), id: \.element) { index, name in
+                if index > 0 {
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.07))
+                        .frame(height: 0.5)
+                        .padding(.leading, 14)
+                }
+                Button {
+                    model = name
+                    showModelSheet = false
+                } label: {
+                    HStack(spacing: 10) {
+                        Text(name)
+                            .font(.system(size: 15, design: .monospaced))
+                            .foregroundStyle(.primary)
+                        Spacer(minLength: 10)
+                        if name == model {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(AppTheme.accent)
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 11)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, 5)
+        .frame(width: 252)
+        .appGlass(.rect(cornerRadius: 16, style: .continuous))
+    }
+
     private var enableCard: some View {
         Toggle(isOn: $enabled) {
             Text("启用这家模型")
@@ -223,7 +266,7 @@ struct AIProviderDetailView: View {
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.secondary)
                 Button {
-                    withAnimation(.easeOut(duration: 0.15)) { showModelSheet.toggle() }
+                    showModelSheet = true
                 } label: {
                     HStack {
                         Text(model)
@@ -238,41 +281,14 @@ struct AIProviderDetailView: View {
                     .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: 10, style: .continuous))
                 }
                 .buttonStyle(.plain)
-
-                if showModelSheet {
-                    VStack(spacing: 0) {
-                        ForEach(Array(modelChoices.enumerated()), id: \.element) { index, name in
-                            if index > 0 {
-                                Rectangle()
-                                    .fill(Color.primary.opacity(0.06))
-                                    .frame(height: 0.5)
-                                    .padding(.leading, 12)
-                            }
-                            Button {
-                                model = name
-                                withAnimation(.easeOut(duration: 0.15)) { showModelSheet = false }
-                            } label: {
-                                HStack(spacing: 8) {
-                                    Text(name)
-                                        .font(.system(size: 15, design: .monospaced))
-                                        .foregroundStyle(.primary)
-                                    Spacer(minLength: 8)
-                                    if name == model {
-                                        Image(systemName: "checkmark")
-                                            .font(.system(size: 13, weight: .semibold))
-                                            .foregroundStyle(AppTheme.accent)
-                                    }
-                                }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 10)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                        }
+                .overlay(alignment: .topTrailing) {
+                    if showModelSheet {
+                        modelPanel
+                            .offset(y: 46)
+                            .zIndex(20)
                     }
-                    .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: 10, style: .continuous))
-                    .transition(.opacity)
                 }
+
             }
 
             if let url = provider.consoleURL {
