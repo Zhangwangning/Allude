@@ -94,6 +94,13 @@ struct PickupRecord: Identifiable, Hashable, Codable {
     /// 🔴 Optional + 默认 nil：旧数据没有这个 key，走 decodeIfPresent。
     var locker: String? = nil
 
+    /// **驿站名（模型复核后的覆盖值）**（2026-11-14 接入第三方模型时新增）。
+    ///
+    /// `station` 本身是**派生值**：由 `CourierBrand.stationMatch` 在品牌词表里从原文匹配，
+    /// 不落盘。第三方模型复核后如果给出更准确的驿站名，就存在这里；`station` 优先读它。
+    /// 🔴 Optional + 默认 nil：旧版本 JSON 没有这个 key，`decodeIfPresent` 自动给 nil。
+    var stationOverride: String? = nil
+
     /// **这条取件码被通知过的时间序列**（2026-10-30 主人定）。
     ///
     /// 同一个码第二次、第三次收到短信，不再新建一条重复记录，
@@ -255,7 +262,13 @@ struct PickupRecord: Identifiable, Hashable, Codable {
     /// 用 `CourierBrand.stationMatch` 在品牌词表里做包含匹配，命中即用规范名，
     /// 未命中返回空串。该匹配是纯函数、不依赖 UIKit，App 与 Widget 共用同一张词表。
     var station: String {
-        CourierBrand.stationMatch(in: [rawMessage])?.name ?? ""
+        // 模型复核过的值优先（用户可在「扩展」里开启 AI 参与解析）；
+        // 空串/纯空白一律视为没有，回落到品牌词表匹配。
+        if let override = stationOverride?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !override.isEmpty {
+            return override
+        }
+        return CourierBrand.stationMatch(in: [rawMessage])?.name ?? ""
     }
 
     // MARK: 小组件二级信息行

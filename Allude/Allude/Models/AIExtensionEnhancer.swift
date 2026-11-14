@@ -226,8 +226,10 @@ enum AIExtensionEnhancer {
             changed.append("address")
         }
 
-        // 驿站：`station` 是**派生值**（由 `CourierBrand.stationMatch` 按品牌词表从原文算出），
-        // 不落盘、也不接受外部改写 —— 所以这里不处理模型给的 station，避免与词表打架。
+        // 驿站：`station` 本身是派生值（品牌词表匹配原文），但模型若给出更准的名字，
+        // 就写进 `stationOverride`（这是 `station` 优先读取的覆盖位）。
+        take(fields.station, into: \PickupRecord.stationOverride, name: "station", maxLength: 24)
+
         // 柜位 / 货架：是存储字段，可直接改，长度设上限防模型啰嗦。
         take(fields.locker, into: \PickupRecord.locker, name: "locker", maxLength: 24)
         take(fields.shelf, into: \PickupRecord.shelf, name: "shelf", maxLength: 24)
