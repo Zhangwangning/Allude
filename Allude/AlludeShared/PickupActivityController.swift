@@ -110,7 +110,9 @@ enum PickupActivityController {
                         tint: CourierBrand.info(for: nameSource).resolvedFrom,
                         locker: record.widgetLockerLabel(WidgetDisplayOptions.load())),
             pendingCount: pendingCount,
-            items: items
+            items: items,
+            // App 图标的选择随状态一起过进程边界（详见 `ContentState.appIconRaw`）
+            appIconRaw: AppIconStore.current.rawValue
         )
     }
 
@@ -156,9 +158,29 @@ enum PickupActivityController {
         let records = page.map { mapToItem($0) }
         guard let head = records.first else { return }
         let newState = PickupActivityAttributes.ContentState(
-            item: head, pendingCount: sorted.count, items: records)
+            item: head, pendingCount: sorted.count, items: records,
+            // 翻页可能跑在扩展进程里，那里读不到 App 的偏好 ——
+            // 优先**沿用当前活动里已经带着的**那套图标，别在翻页时把它翻回默认值。
+            appIconRaw: current.content.state.appIconRaw ?? AppIconStore.current.rawValue)
         guard newState != current.content.state else { return }
         await current.update(ActivityContent(state: newState, staleDate: nil))
+    }
+
+    /// 用户换了 App 图标之后，让灵动岛 / 锁屏**立刻**跟着换（2026-11-15）。
+    ///
+    /// 图标本身是 App 调 `UIApplication.setAlternateIconName` 换掉的（桌面、多任务、
+    /// 通知一起变），但实时活动的画面由 **widget 扩展**独立绘制 —— 只有
+    /// `ContentState` 变了系统才会重绘。所以这里把新选择塞进现有活动再 update 一次。
+    ///
+    /// 只在 **App 进程**调用（`AppIconSettingsView.apply`）；扩展进程不需要这条路。
+    static func refreshForAppIconChange() async {
+        let raw = AppIconStore.current.rawValue
+        for activity in Activity<PickupActivityAttributes>.activities {
+            var state = activity.content.state
+            guard state.appIconRaw != raw else { continue }
+            state.appIconRaw = raw
+            await activity.update(ActivityContent(state: state, staleDate: nil))
+        }
     }
 
     static func sync(pending: [PickupRecord]) {
@@ -303,7 +325,10 @@ enum PickupActivityController {
             // 锁屏卡要一页三条、右侧翻页（2026-11-08 主人定）：
             // 一次性送最近 12 条（四页），翻页在扩展里本地完成，不必再唤醒 App。
             pendingCount: pending.count,
-            items: Array(sorted.prefix(12)).map { mapToItem($0) }
+            items: Array(sorted.prefix(12)).map { mapToItem($0) },
+            // App 图标的选择随状态一起过进程边界：扩展进程不再自己去读偏好域，
+            // 从根上杜绝「桌面换成了快递箱、灵动岛还是 C 标」（2026-11-15 修）。
+            appIconRaw: AppIconStore.current.rawValue
         )
 
         await apply(state)

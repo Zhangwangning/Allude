@@ -55,7 +55,10 @@ struct AppIconSettingsView: View {
                     Logger(subsystem: "com.jikezhang.allude", category: "appIcon")
                         .notice("scaffold=\(choice.rawValue, privacy: .public) error=\(error.map { "\($0)" } ?? "none", privacy: .public)")
                     DispatchQueue.main.async {
-                        if error == nil { selected = choice }
+                        if error == nil {
+                            selected = choice
+                            Task { await PickupActivityController.refreshForAppIconChange() }
+                        }
                     }
                 }
             }
@@ -134,6 +137,9 @@ struct AppIconSettingsView: View {
                     Logger(subsystem: "com.jikezhang.allude", category: "appIcon")
                         .notice("changed to \(choice.rawValue, privacy: .public)")
                     withAnimation(.snappy(duration: 0.2)) { selected = choice }
+                    // 灵动岛 / 锁屏是扩展进程画的，只有 ContentState 变了才会重绘 ——
+                    // 把新选择推进现有活动，岛内图标当场就跟着换（2026-11-15）。
+                    Task { await PickupActivityController.refreshForAppIconChange() }
                 }
             }
         }

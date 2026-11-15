@@ -212,6 +212,9 @@ struct AlludeApp: App {
                     print("[allude-verify] activity id=\(activity.id) "
                           + "code=\(activity.content.state.item.code) "
                           + "pending=\(activity.content.state.pendingCount) "
+                          // 岛内图标由 state 带过去（2026-11-15）：这一位就是扩展
+                          // 真正会画的资源名，nil 表示回落到了本进程读到的选择。
+                          + "icon=\(activity.content.state.appIconRaw ?? "nil")->\(activity.content.state.appIcon.assetName) "
                           + "state=\(activity.activityState)")
                 }
             }

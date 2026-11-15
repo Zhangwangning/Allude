@@ -20,7 +20,6 @@
 		AA0000000000000000000039 /* PickupWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000025 /* PickupWidget.swift */; };
 		AA000000000000000000003A /* PickupWidgetIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000026 /* PickupWidgetIntent.swift */; };
 		AA000000000000000000003B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000027 /* Assets.xcassets */; };
-		AA0000000000000000000071 /* ShortcutAutomation.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000070 /* ShortcutAutomation.mp4 */; };
 		AA000000000000000000003C /* WidgetVisuals.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000003D /* WidgetVisuals.swift */; };
 		AA000000000000000000003E /* WidgetVisuals.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000003D /* WidgetVisuals.swift */; };
 		AA0000000000000000000040 /* BrandPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000003F /* BrandPalette.swift */; };
@@ -306,7 +305,6 @@
 				AA000000000000000000003B /* Assets.xcassets in Resources */,
 				AA000000000000000000004C /* Assets.xcassets in Resources */,
 				AA0000000000000000000061 /* PrivacyInfo.xcprivacy in Resources */,
-				AA0000000000000000000071 /* ShortcutAutomation.mp4 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

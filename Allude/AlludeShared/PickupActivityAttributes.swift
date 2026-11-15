@@ -79,6 +79,25 @@ struct PickupActivityAttributes: ActivityAttributes {
         /// 可选：老的活动快照里没有这个字段，解码为 nil，卡面回落到单条。
         var items: [Item]? = nil
 
+        /// 当前自定义的 App 图标（`AppIconChoice` 的 rawValue），由 **App 侧**写进状态。
+        ///
+        /// 🔴 为什么不干脆在扩展里读 `AppIconStore.current`（2026-11-15 主人报障后改）：
+        ///    灵动岛/锁屏由**小组件进程**渲染，那一侧和 App 之间只有 **App Group**
+        ///    一条通路。App Group 一旦不可用（无签名调试包、容器重建、
+        ///    扩展读不到共享偏好域），扩展读到的就是 nil，`AppIconStore.current`
+        ///    回落到 `AppIconChoice.fallback`（第 7 套「C 标」）——
+        ///    于是「桌面图标已经换成快递箱，灵动岛里还是 C 标」，主人一眼看出对不上。
+        ///    把选择**随 ContentState 跨进程传**，渲染端就完全不再依赖任何共享存储，
+        ///    这条链路上再没有能"读到 nil"的地方。
+        /// Optional + 默认 nil ⇒ 旧 ContentState（本次升级前起的活动）缺键照样能解码，
+        /// 那种情况下才回落到 `AppIconStore`。
+        var appIconRaw: String? = nil
+
+        /// 渲染用：状态里带了就用它，没带才回退到本进程读到的选择。
+        var appIcon: AppIconChoice {
+            appIconRaw.flatMap { AppIconChoice(rawValue: $0) } ?? AppIconStore.current
+        }
+
         /// 锁屏卡真正要画的一页（最多 3 条）
         var lockPage: [Item] {
             guard let items, !items.isEmpty else { return [item] }
@@ -435,6 +454,16 @@ struct ActivityLockScreenCard: View {
 struct AppMarkIcon: View {
     var size: CGFloat = 22
 
+    /// 显式指定用哪一套图标；`nil` = 按本进程读到的 `AppIconStore.current`。
+    ///
+    /// 🔴 灵动岛/锁屏的调用点**必须**把 `state.appIcon` 传进来（2026-11-15）：
+    ///    扩展进程自己读偏好域可能读不到（详见 `ContentState.appIconRaw` 的注释），
+    ///    读不到就会画成默认的 C 标，和桌面图标对不上。
+    ///    App 内预览（分享卡等）跑在 App 进程，`nil` 就够了。
+    var choice: AppIconChoice? = nil
+
+    private var resolved: AppIconChoice { choice ?? AppIconStore.current }
+
     /// iOS App 图标的圆角比例 = 边长 × 0.2237（连续曲率的方圆形）——
     /// 用普通圆角会显得比桌面上的系统图标更「方」，两处放一起能看出不是同一种形状。
     private var corner: CGFloat { size * 0.2237 }
@@ -462,9 +491,11 @@ struct AppMarkIcon: View {
         //    resizable 之后、其余 View 修饰符之前**。顺序错了就是
         //    "value of type 'some View' has no member 'xxx'"（2026-09-23 实测）。
         // 2026-11-01 主人：灵动岛也要跟着 App 图标的选择走。
-        // 小组件进程读不到 App 的偏好，所以用 App Group 里的那份选择；
-        // 三套图在小组件的资源目录里也各有一份（App 与 Widget 是两套 bundle）。
-        Image(AppIconStore.current.assetName)
+        // 🔴 2026-11-15 改为**由调用方把选择传进来**（`choice: state.appIcon`）：
+        //    早先这里直接读 `AppIconStore.current`（App Group 偏好），扩展进程
+        //    在 App Group 不可用时读到 nil → 回落到默认 C 标 → 与桌面图标对不上。
+        //    现在选择跟着 ContentState 走，渲染端不再依赖任何跨进程存储。
+        Image(resolved.assetName)
             .renderingMode(.original)
             .resizable()
             .widgetAccentedFullColor()
@@ -492,7 +523,7 @@ struct IslandCompactLeading: View {
         //   ② 自带 2pt 前边距把图标整体推离前缘（不管系统的边距模型是
         //   "前缘对齐 + 固定边距" 还是 "可画区起点内缩"，这 2pt 都会原样生效）。
         //   宽度代价 22pt（20+2），远小于单侧可画 52.33pt，无截断风险。
-        AppMarkIcon(size: 20)
+        AppMarkIcon(size: 20, choice: state.appIcon)
             .padding(.leading, 2)
     }
 }
@@ -586,7 +617,7 @@ struct IslandMinimal: View {
     let state: PickupActivityAttributes.ContentState
 
     var body: some View {
-        AppMarkIcon(size: 20)
+        AppMarkIcon(size: 20, choice: state.appIcon)
     }
 }
 

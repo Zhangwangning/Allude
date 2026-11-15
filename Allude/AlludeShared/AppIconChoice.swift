@@ -92,17 +92,47 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
 enum AppIconStore {
     private static let key = "allude.appIcon"
 
-    /// 当前选中的图标。未选过 → 第 3 套。
-    static var current: AppIconChoice {
-        let defaults = UserDefaults(suiteName: PickupStorage.appGroupID) ?? .standard
-        guard let raw = defaults.string(forKey: key),
-              let choice = AppIconChoice(rawValue: raw) else { return .fallback }
-        return choice
+    /// 同一容器内的镜像文件。
+    ///
+    /// 🔴 为什么需要它（2026-11-15 实测）：App Group **不可用**时
+    ///    （典型是命令行 `CODE_SIGNING_ALLOWED=NO` 构建的无签名调试包），
+    ///    `UserDefaults(suiteName:)` 返回 nil，App 写进自己的 `.standard`、
+    ///    扩展写进扩展自己的 `.standard` —— 两个进程互相看不见。
+    ///    结果就是「桌面图标换了、灵动岛还是第 7 套 C 标」，主人一眼看出对不上。
+    ///    文件走 `PickupStorage.directory`：App Group 在就用共享目录，
+    ///    不在就回落到 App 容器（扩展与 App 共用同一个容器），两边都能读。
+    private static var mirrorURL: URL {
+        PickupStorage.directory.appendingPathComponent("appicon.txt")
     }
 
-    /// 只写共享状态（真正切换系统图标由 App 侧调用 UIApplication 完成）
+    /// 当前选中的图标。未选过 → `fallback`（第 7 套 C 标）。
+    ///
+    /// 读取顺序：App Group 偏好 → 同容器镜像文件 → 本进程 `.standard`。
+    static var current: AppIconChoice {
+        if let raw = UserDefaults(suiteName: PickupStorage.appGroupID)?.string(forKey: key),
+           let choice = AppIconChoice(rawValue: raw) {
+            return choice
+        }
+        if let raw = try? String(contentsOf: mirrorURL, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           let choice = AppIconChoice(rawValue: raw) {
+            return choice
+        }
+        if let raw = UserDefaults.standard.string(forKey: key),
+           let choice = AppIconChoice(rawValue: raw) {
+            return choice
+        }
+        return .fallback
+    }
+
+    /// 写选择：三处都写（App Group 偏好、镜像文件、本进程偏好），
+    /// 保证「有 App Group」与「没有 App Group」两种情况下扩展都读得到。
+    /// 真正切换系统图标由 App 侧调用 `UIApplication.setAlternateIconName` 完成。
     static func store(_ choice: AppIconChoice) {
-        let defaults = UserDefaults(suiteName: PickupStorage.appGroupID) ?? .standard
-        defaults.set(choice.rawValue, forKey: key)
+        UserDefaults(suiteName: PickupStorage.appGroupID)?.set(choice.rawValue, forKey: key)
+        UserDefaults.standard.set(choice.rawValue, forKey: key)
+        try? FileManager.default.createDirectory(at: PickupStorage.directory,
+                                                 withIntermediateDirectories: true)
+        try? choice.rawValue.write(to: mirrorURL, atomically: true, encoding: .utf8)
     }
 }
