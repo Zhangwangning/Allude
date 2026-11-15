@@ -53,6 +53,12 @@ enum AppTheme {
     /// 是这版配色里色相距离最远的一对，分组标题一眼可辨。
     static let todayTint   = Color.adaptive(light: 0xEA580C, dark: 0xFB923C)   // 今日新增
     static let doneTint    = Color.adaptive(light: 0x0E9E82, dark: 0x3FD9BA)   // 已取
+    /// 「已取」色的浅端 —— 只做渐变亮部（Hero 摘要卡主数字）。
+    ///
+    /// 与 `accentLight` 完全同构：主题色有一个亮端给渐变用，「已取」也需要一个，
+    /// 否则已取页那张摘要卡的主数字只能单色填充，和待取页的观感对不上。
+    /// ⚠️ 同样不能单独拿去当正文色（浅端在白底上对比度不够）。
+    static let doneTintLight = Color.adaptive(light: 0x3FD9BA, dark: 0x6FE8CE)
 
     // MARK: 功能色板（图标底 / 分区标记 / 提示条，提供色彩节奏）
 

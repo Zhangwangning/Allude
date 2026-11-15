@@ -46,8 +46,10 @@ struct StatCard<Content: View>: View {
 
 // MARK: - 三格总和卡
 
-/// 与首页 `PendingStatsCard` / 浏览页 `PickedStatsCard` 同一套版式：
-/// 等分三格、0.5pt 竖直分隔线、品牌色数字 —— 三张卡并排出现时才不会打架。
+/// 三格等分卡：等分三格、0.5pt 竖直分隔线、品牌色数字 —— 三张卡并排出现时才不会打架。
+///
+/// ⚠️ 它与 `HeroStatsCard`（待取页 / 已取页顶部那张 46pt 大数字卡）**不是同一张**：
+///    这里是统计页用的三格等分版式，尺寸按 22pt 数字收紧。
 struct StatTriple: View {
     struct Item {
         let title: String

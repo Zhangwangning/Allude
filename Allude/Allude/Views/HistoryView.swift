@@ -126,6 +126,40 @@ struct PickedUpView: View {
         store.grouped(visibleList)
     }
 
+    // MARK: 顶部统计摘要卡（2026-11-15 主人）
+
+    /// 底部菜单栏是否还显示「统计」。
+    ///
+    /// 🔴 关掉之后统计**没有入口**了（底栏只剩 待取 / 已取 / 设置），
+    ///    所以这里补一张简要卡 —— 统计信息不该因为少一个标签页就消失。
+    ///    与设置页读写同一个 App Group 键，开关一动立即生效（`@AppStorage` 跨页同步）。
+    @AppStorage(TabBarPrefs.showsStatsKey,
+                store: UserDefaults(suiteName: PickupStorage.appGroupID))
+    private var showsStats = true
+
+    /// 累计已取 —— 本页的**全部**已取记录（不受可见条数上限约束）。
+    private var pickedTotal: Int { list.count }
+
+    /// 本周已取。时间口径统一走 `pickupMoment`（`pickedUpAt ?? receivedAt`），
+    /// 与统计页同一套 —— 老数据没记 `pickedUpAt` 也不会漏掉。
+    private var pickedThisWeek: Int {
+        guard let week = Calendar.current.dateInterval(of: .weekOfYear, for: Date()) else { return 0 }
+        return list.filter { week.contains($0.pickupMoment) }.count
+    }
+
+    /// 本月已取（口径同上）
+    private var pickedThisMonth: Int {
+        guard let month = Calendar.current.dateInterval(of: .month, for: Date()) else { return 0 }
+        return list.filter { month.contains($0.pickupMoment) }.count
+    }
+
+    /// 截图脚手架覆盖值：`SHOW_STATS=0` 强制「已关统计」的样子，`1` 强制「还开着」。
+    /// simctl 点不了设置里的开关，验收两态只能靠它。仅调试构建存在。
+    @State private var statsOverride: Bool?
+
+    /// 顶部统计卡到底出不出：跟随设置，脚手架可临时覆盖。
+    private var showsStatsCard: Bool { statsOverride.map { !$0 } ?? !showsStats }
+
     /// 宽屏（iPhone Duo 展开态）判定 —— 与待取页同一口径。
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
@@ -165,7 +199,14 @@ struct PickedUpView: View {
         .animation(.spring(response: 0.36, dampingFraction: 0.84), value: cardMenu.openID)
         .overlay { cardMenuLayer }
         // 通知点击 → 打开对应记录的详情（2026-10-25）
-        .onAppear { consumeNotificationTarget() }
+        .onAppear {
+            // 截图脚手架（仅调试构建）：`SHOW_STATS=0` 拍"统计已关"那张，
+            // `SHOW_STATS=1` 拍"统计还开着"（顶部不该有卡）那张。
+            if let raw = ProcessInfo.processInfo.environment["SHOW_STATS"] {
+                statsOverride = (raw != "0")
+            }
+            consumeNotificationTarget()
+        }
         .onChange(of: notificationRouter.pendingRecordID) { _, _ in consumeNotificationTarget() }
     }
 
@@ -257,6 +298,29 @@ struct PickedUpView: View {
                             .listRowSeparator(.hidden)
                     }
                 } else {
+                    // 顶部统计摘要卡 —— **只在关掉「显示「统计」」时出现**。
+                    // 版式与待取页那张是同一份实现（`HeroStatsCard`），
+                    // 内边距也取待取页同一档（top 2 / bottom 12），两页卡片落位、高度一致。
+                    // 空态不显示：一条已取都没有时，「0 件已取」与上面的空态提示会互相打架。
+                    if showsStatsCard {
+                        Section {
+                            HeroStatsCard(primary: pickedTotal,
+                                          primaryUnit: "件已取",
+                                          primaryTint: AppTheme.doneTint,
+                                          primaryTintLight: AppTheme.doneTintLight,
+                                          stats: [
+                                              .init(title: "本周已取", value: pickedThisWeek,
+                                                    tint: AppTheme.sky, symbol: "calendar.badge.clock"),
+                                              .init(title: "本月已取", value: pickedThisMonth,
+                                                    tint: AppTheme.violet, symbol: "calendar"),
+                                          ])
+                            .listRowInsets(EdgeInsets(top: 2, leading: AppTheme.hInset,
+                                                      bottom: 12, trailing: AppTheme.hInset))
+                            .listRowBackground(Color(.systemGroupedBackground))
+                            .listRowSeparator(.hidden)
+                        }
+                    }
+
                     ForEach(groups, id: \.group) { section in
                         Section {
                             SectionHeader(title: section.group.rawValue,

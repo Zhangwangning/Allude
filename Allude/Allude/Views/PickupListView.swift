@@ -627,9 +627,16 @@ struct PickupListView: View {
             }
                 // 顶部统计卡：待取 / 今日新增 / 今日已取 三格一组，只报数不切页。
                 Section {
-                    PendingStatsCard(pending: scopedPending.count,
-                                     todayNew: scopedTodayNewCount,
-                                     todayPicked: scopedTodayPickedCount)
+                    HeroStatsCard(primary: scopedPending.count,
+                                  primaryUnit: "件待取",
+                                  primaryTint: AppTheme.accent,
+                                  primaryTintLight: AppTheme.accentLight,
+                                  stats: [
+                                      .init(title: "今日新增", value: scopedTodayNewCount,
+                                            tint: AppTheme.todayTint, symbol: "arrow.down.circle.fill"),
+                                      .init(title: "今日已取", value: scopedTodayPickedCount,
+                                            tint: AppTheme.doneTint, symbol: "checkmark.circle.fill"),
+                                  ])
                     .listRowInsets(EdgeInsets(top: 2, leading: AppTheme.hInset,
                                               bottom: 12, trailing: AppTheme.hInset))
                     .listRowBackground(Color(.systemGroupedBackground))
@@ -1301,66 +1308,87 @@ struct NoResultView: View {
 ///  · 右侧次级列：今日新增 / 今日已取 两行小格，各带语义色图标，退居辅助位。
 /// 与旧版「三格均分」的本质区别：主次有了层级 —— 旧版三个数字一样大，
 /// 用户分不清哪个才是「现在要做的事」。
-struct PendingStatsCard: View {
-    let pending: Int
-    let todayNew: Int
-    let todayPicked: Int
+/// 顶部摘要大卡：左侧一个大数字 + 右侧两格小统计。
+///
+/// 🔴 **一份实现、两页共用**（2026-11-15 主人）。
+///    设置 › 外观与个性化 里关掉「显示「统计」」之后，底栏就没有统计入口了，
+///    但统计信息不该就此消失 —— 改在**已取页顶部**放一张简要卡。
+///    主人的原话是「和待取页面的卡片保持同一高度、大小」，所以这里只有一份版式：
+///    待取页传待取的数据、已取页传已取的，几何完全同源。
+///    ⚠️ **不要**为某一页好看另写一张 —— 差一档字号、差 2pt 内边距就"不一样大"。
+struct HeroStatsCard: View {
+    /// 左侧大数字（待取件数 / 累计已取件数）
+    let primary: Int
+    /// 大数字后面的单位（「件待取」/「件已取」）
+    let primaryUnit: String
+    /// 主数字渐变的两个端点（待取 accent→accentLight，已取 doneTint→doneTintLight）
+    let primaryTint: Color
+    let primaryTintLight: Color
+    /// 右侧两格
+    let stats: [SideStat]
+
+    /// 右侧的一格小统计
+    struct SideStat {
+        let title: String
+        let value: Int
+        let tint: Color
+        let symbol: String
+    }
 
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
-            // —— 主数字区：待取件 ——
+            // —— 主数字区 ——
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("\(pending)")
+                    Text("\(primary)")
                         .font(.system(size: AppTheme.heroNumber, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
                         .foregroundStyle(
-                            LinearGradient(colors: [AppTheme.accent, AppTheme.accentLight],
+                            LinearGradient(colors: [primaryTint, primaryTintLight],
                                            startPoint: .topLeading,
                                            endPoint: .bottomTrailing)
                         )
-                    Text("件待取")
+                    Text(primaryUnit)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.secondary)
                 }
-
             }
 
             Spacer(minLength: 8)
 
-            // —— 次级列：今日新增 / 今日已取 ——
+            // —— 次级两格 ——
             // 🔴 2026-11-08 主人：0 也要显示 —— 只留一个大数字的卡片太空了。
-            //    （曾试过"0 不显示"，视觉上左边大数字孤零零，已撤回。）
             VStack(alignment: .leading, spacing: 10) {
-                miniStat("今日新增", value: todayNew,
-                         tint: AppTheme.todayTint, symbol: "arrow.down.circle.fill")
-                miniStat("今日已取", value: todayPicked,
-                         tint: AppTheme.doneTint, symbol: "checkmark.circle.fill")
+                // 用 offset 做 id：`SideStat` 是个值类型、每次求值都会重建，
+                // 挂 UUID 等于每次都换身份，会让这一列反复重算。
+                ForEach(Array(stats.enumerated()), id: \.offset) { _, stat in
+                    sideStat(stat)
+                }
             }
         }
         // 内边距与列表卡同一档（AppTheme.cardPadding / 12），保证内容左缘共线
         .padding(.horizontal, AppTheme.cardPadding)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity)
-        // Hero 卡用独立大圆角 + 稍强的主色氛围（主色即「待取」语义色，
+        // Hero 卡用独立大圆角 + 稍强的主色氛围（主色即语义色，
         // 氛围强度走统一约束，不会退化成整卡染色）
-        .cardSurface(radius: AppTheme.heroRadius, tint: AppTheme.accent)
+        .cardSurface(radius: AppTheme.heroRadius, tint: primaryTint)
     }
 
-    private func miniStat(_ title: String, value: Int, tint: Color, symbol: String) -> some View {
+    private func sideStat(_ stat: SideStat) -> some View {
         HStack(spacing: 6) {
-            Image(systemName: symbol)
+            Image(systemName: stat.symbol)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(tint)
-            Text(title.L)
+                .foregroundStyle(stat.tint)
+            Text(stat.title.L)
                 .font(.system(size: 11.5, weight: .medium))
                 .foregroundStyle(.secondary)
-            Text("\(value)")
+            Text("\(stat.value)")
                 .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(tint)
+                .foregroundStyle(stat.tint)
                 .frame(minWidth: 14, alignment: .trailing)
         }
     }

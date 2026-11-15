@@ -300,9 +300,12 @@ struct AboutAlludeView: View {
     }
 
     private func label(_ item: SettingsPane) -> some View {
+        // 🔴 2026-11-15 主人：行副标题一律不要。
+        //    「服务条款」原来带一行「使用条款与声明和免责」，标题已经把内容说清楚了，
+        //    再挂一行说明只是重复（主人原话：标题中不要有提示文字）。
         SettingsRow(symbol: item.symbol,
                     title: title(item),
-                    subtitle: subtitle(item),
+                    subtitle: nil,
                     detail: item == .version ? AppVersion.display : nil,
                     tint: item.tint)
     }
@@ -311,13 +314,6 @@ struct AboutAlludeView: View {
         switch item {
         case .privacyDoc: return "隐私政策（完整版）"
         default:          return item.title
-        }
-    }
-
-    private func subtitle(_ item: SettingsPane) -> String? {
-        switch item {
-        case .termsDoc: return "使用条款与声明和免责"
-        default:        return nil
         }
     }
 
