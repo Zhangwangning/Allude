@@ -52,6 +52,9 @@ struct AutoRecordSettingsView: View {
     /// 页内播放器（2026-11-15 主人：直接在页面里播，不要全屏弹出）
     @State private var player: AVPlayer?
     @State private var isPlaying = false
+    @State private var progress: Double = 0          // 0…1，拖动进度条用
+    @State private var isScrubbing = false
+    @State private var timeObserver: Any?
 
     var body: some View {
         ScrollView {
@@ -114,10 +117,10 @@ struct AutoRecordSettingsView: View {
     // MARK: 视频教程（页内播放）
 
     private var videoCard: some View {
-        ZStack {
+        VStack(spacing: 8) {
+            ZStack {
                 if let player {
-                    // 竖屏录屏（1350×2760）：按原始比例放，不要拉伸成两侧大黑边
-                    VideoPlayer(player: player)
+                    PlayerSurface(player: player)
                         .aspectRatio(1350.0 / 2760.0, contentMode: .fit)
                         .frame(height: 320)
                         .clipShape(.rect(cornerRadius: 12, style: .continuous))
@@ -134,8 +137,7 @@ struct AutoRecordSettingsView: View {
                         }
                 }
 
-                if let player, !isPlaying {
-                    // 暂停时盖一个大播放键，比去找系统控件直观
+                if !isPlaying {
                     Button { togglePlayback() } label: {
                         Image(systemName: "play.fill")
                             .font(.system(size: 26, weight: .bold))
@@ -144,20 +146,65 @@ struct AutoRecordSettingsView: View {
                             .background(Circle().fill(Color.black.opacity(0.45)))
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("播放视频教程")
+                    .accessibilityLabel("播放")
                 }
             }
-        .frame(maxWidth: .infinity, alignment: .center)
+            .frame(maxWidth: .infinity, alignment: .center)
+
+            if player != nil {
+                HStack(spacing: 10) {
+                    Button { togglePlayback() } label: {
+                        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: 17, weight: .semibold))
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(AppTheme.accent)
+                    .accessibilityLabel(isPlaying ? "暂停" : "播放")
+
+                    Slider(value: Binding(
+                        get: { progress },
+                        set: { newValue in
+                            progress = newValue
+                            guard let player, let duration = player.currentItem?.duration.seconds,
+                                  duration.isFinite, duration > 0 else { return }
+                            player.seek(to: CMTime(seconds: duration * newValue, preferredTimescale: 600))
+                        }
+                    ), in: 0...1) { editing in
+                        isScrubbing = editing
+                        if !editing { player?.play(); isPlaying = true }
+                    }
+                    .tint(AppTheme.accent)
+                }
+                .padding(.horizontal, 4)
+            }
+        }
         .settingsCard()
         .onAppear { preparePlayer() }
-        .onDisappear { player?.pause(); isPlaying = false }
+        .onDisappear {
+            player?.pause()
+            isPlaying = false
+            if let timeObserver, let player { player.removeTimeObserver(timeObserver) }
+            timeObserver = nil
+        }
     }
 
     private func preparePlayer() {
         guard player == nil,
               let url = Bundle.main.url(forResource: "ShortcutAutomation", withExtension: "mp4")
         else { return }
-        player = AVPlayer(url: url)
+        let p = AVPlayer(url: url)
+        player = p
+        timeObserver = p.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.2, preferredTimescale: 600),
+                                                queue: .main) { time in
+            guard !isScrubbing,
+                  let duration = p.currentItem?.duration.seconds,
+                  duration.isFinite, duration > 0 else { return }
+            progress = min(max(time.seconds / duration, 0), 1)
+            if time.seconds >= duration - 0.15 {
+                isPlaying = false          // 播完回到暂停态，播放键重新出现
+            }
+        }
     }
 
     private func togglePlayback() {
@@ -316,4 +363,28 @@ struct AutoRecordSettingsView: View {
 private struct WebLink: Identifiable {
     let url: URL
     var id: String { url.absoluteString }
+}
+
+
+/// 只做画面输出的播放层：`AVPlayerLayer`，不带任何系统控件。
+/// 需要播放/暂停/拖进度条各一个自绘控件（主人 2026-11-15：不要系统播放器 UI）。
+private struct PlayerSurface: UIViewRepresentable {
+    let player: AVPlayer
+
+    func makeUIView(context: Context) -> PlayerSurfaceView {
+        let view = PlayerSurfaceView()
+        view.backgroundColor = .clear
+        view.playerLayer.videoGravity = .resizeAspect
+        view.playerLayer.player = player
+        return view
+    }
+
+    func updateUIView(_ uiView: PlayerSurfaceView, context: Context) {
+        if uiView.playerLayer.player !== player { uiView.playerLayer.player = player }
+    }
+}
+
+private final class PlayerSurfaceView: UIView {
+    override static var layerClass: AnyClass { AVPlayerLayer.self }
+    var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
 }
