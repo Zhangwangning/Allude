@@ -165,7 +165,7 @@
 		<key>iCloud.com.jikezhang.allude</key>
 		<dict>
 			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
-			<true/>
+			<false/>
 			<key>NSUbiquitousContainerName</key>
 			<string>Allude</string>
 			<key>NSUbiquitousContainerSupportedFolderLevels</key>

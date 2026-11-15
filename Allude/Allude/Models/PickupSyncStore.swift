@@ -250,7 +250,7 @@ final class ICloudSyncController: ObservableObject {
         #endif
         guard let container = fileManager.url(forUbiquityContainerIdentifier: "iCloud.com.jikezhang.allude")
         else { return nil }
-        return container.appendingPathComponent("Documents/Allude", isDirectory: true)
+        return container.appendingPathComponent("Documents", isDirectory: true)
     }
 
     /// 设置页展示用：上次同步时间的文案
