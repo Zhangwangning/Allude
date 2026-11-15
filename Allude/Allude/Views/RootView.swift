@@ -57,10 +57,15 @@ struct RootView: View {
     private var showsStatsPreference = true
 
     /// 生效值；Debug 下可用 `ALLUDE_TAB_SHOWS_STATS=0` 强制关掉，方便截图验收。
+    ///
+    /// 🔴 2026-11-15：这项已是 **Allude Pro** 功能，非 Pro 一律显示统计页。
+    ///    否则「Pro 期间关掉统计 → 订阅过期」会留下一个**没有任何入口**的统计页，
+    ///    而设置里那个开关在非 Pro 下恒显示为"开" —— 两边自相矛盾。
     private var showsStats: Bool {
         #if DEBUG
         if ProcessInfo.processInfo.environment["ALLUDE_TAB_SHOWS_STATS"] == "0" { return false }
         #endif
+        guard EntitlementSnapshot.licensedPro else { return true }
         return showsStatsPreference
     }
 
@@ -88,6 +93,20 @@ struct RootView: View {
         }
         .environment(\.suppressTabBarCloak, PadLayout.isPad)
         .animation(AppMotion.panel, value: share.records?.first?.id)
+        // 🔴 **Pro 到期是一条纯时间事件**（2026-11-15 主人：到期后自动恢复非 Pro）。
+        //    没有任何通知、没有任何数据变化会触发重算 —— 用户开着 App 跨过到期时间，
+        //    界面就会一直显示「已开通」。这里每分钟对一次表：只在档位**真的变了**时
+        //    才刷新并收敛实时活动，平时只是一次静态比较，代价可忽略。
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+                let store = PickupStore.shared
+                guard store.isPro != EntitlementSnapshot.licensedPro else { continue }
+                store.refreshEntitlement()
+                // 降级后这张卡必须当场收掉（第 2 道门用的是 licensedPro）
+                PickupActivityController.sync(pending: store.pending)
+            }
+        }
         // 通知点击 → 切到这条记录所在的标签（待取 / 已取），
         // 具体打开详情由列表页消费同一个 `pendingRecordID`（2026-10-25）
         // 没有具体记录的通知（每日提醒等）被点击 → 至少切回待取

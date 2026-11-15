@@ -270,7 +270,7 @@ struct AlludeApp: App {
                 //   （可能正挂着两张卡）的真实状态。修复版的收敛发生在后面的阶段。
                 let audit = Activity<PickupActivityAttributes>.activities
                 Self.raceLog("race-0 audit running=\(audit.count) isPro="
-                             + "\(EntitlementSnapshot.load().isPro) codes=["
+                             + "\(EntitlementSnapshot.licensedPro) codes=["
                              + audit.map(\.content.state.item.code).joined(separator: ",") + "]")
 
                 // 探针：显式试一次 request 并把**错误原文**落盘。
@@ -803,6 +803,12 @@ struct AlludeApp: App {
                 // 桌面小组件的勾选框会在后台直接改共享文件，回前台时对齐一次
                 if phase == .active {
                     store.reloadFromStorage()
+                    // 🔴 权益跟着时间走（2026-11-15 主人：Pro 到期后自动回非 Pro）。
+                    //    订阅到期是**纯时间事件**，不产生任何数据变化 —— 不主动重算的话
+                    //    进程会一直停在旧档位：界面还写着「已开通」，可该拦的 Pro 功能
+                    //    一个都没拦。放在 sync 之前，过期的实时活动紧接着就被收掉。
+                    //    （冷启动本来就重算，这里补的是「后台放了一夜再回来」这条路。）
+                    store.refreshEntitlement()
                     // 🔴 实时活动**无条件**对齐一次（2026-09-25）。
                     //    `reloadFromStorage` 只在内容签名真的变了才写 records，
                     //    而「锁屏上多挂了一张重复卡」这件事**不改变任何数据** ——
@@ -851,7 +857,7 @@ struct AlludeApp: App {
         let running = Activity<PickupActivityAttributes>.activities
         var lines = ["\(tag) running=\(running.count) "
                      + (running.count <= 1 ? "PASS" : "FAIL")
-                     + " isPro=\(EntitlementSnapshot.load().isPro)"
+                     + " isPro=\(EntitlementSnapshot.licensedPro)"
                      + " sysEnabled=\(ActivityAuthorizationInfo().areActivitiesEnabled)"
                      + " ourToggle=\(LiveActivitySetting.isEnabled)"]
         for activity in running {

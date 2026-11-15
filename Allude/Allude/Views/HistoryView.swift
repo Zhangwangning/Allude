@@ -157,8 +157,18 @@ struct PickedUpView: View {
     /// simctl 点不了设置里的开关，验收两态只能靠它。仅调试构建存在。
     @State private var statsOverride: Bool?
 
-    /// 顶部统计卡到底出不出：跟随设置，脚手架可临时覆盖。
-    private var showsStatsCard: Bool { statsOverride.map { !$0 } ?? !showsStats }
+    /// 顶部统计卡到底出不出。
+    ///
+    /// 三档判定，顺序不能换：
+    ///   ① 截图脚手架（仅调试）优先；
+    ///   ② **非 Pro 一律不出** —— 非 Pro 的统计页本来就在（见 `RootView.showsStats`），
+    ///      再补一张卡等于同一份数据在两个地方；
+    ///   ③ 其余跟随设置里的开关。
+    private var showsStatsCard: Bool {
+        if let statsOverride { return !statsOverride }
+        guard EntitlementSnapshot.licensedPro else { return false }
+        return !showsStats
+    }
 
     /// 宽屏（iPhone Duo 展开态）判定 —— 与待取页同一口径。
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass

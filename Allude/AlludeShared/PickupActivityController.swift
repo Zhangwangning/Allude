@@ -269,7 +269,7 @@ enum PickupActivityController {
 
     private static func converge(to pending: [PickupRecord]) async {
         Logger(subsystem: "com.jikezhang.allude", category: "liveActivity")
-            .notice("converge pending=\(pending.count, privacy: .public) enabled=\(LiveActivitySetting.isEnabled, privacy: .public) pro=\(EntitlementSnapshot.load().isPro, privacy: .public) auth=\(ActivityAuthorizationInfo().areActivitiesEnabled, privacy: .public)")
+            .notice("converge pending=\(pending.count, privacy: .public) enabled=\(LiveActivitySetting.isEnabled, privacy: .public) pro=\(EntitlementSnapshot.licensedPro, privacy: .public) auth=\(ActivityAuthorizationInfo().areActivitiesEnabled, privacy: .public)")
         // 🔴 第 0 道门 = **用户自己的总开关**（设置 → 实时活动）。
         //    放在 VIP 判定之前：这是用户意志，优先级高于会员权益 ——
         //    一个主动关掉实时活动的年费会员，不该因为"他是会员"又被起一张卡。
@@ -278,11 +278,15 @@ enum PickupActivityController {
             return
         }
 
-        // 🔴 实时活动 / 灵动岛是 **VIP 权益**（2026-09-23 起由"高级功能"升格为
-        //    月付 / 年费 / 永久 三档会员），免费版不支持。
+        // 🔴 实时活动 / 灵动岛是 **Allude Pro 权益**，免费版不支持。
         //    免费版口径：有活动在跑也一律收掉，且不再起新的 ——
         //    升级 / 降级后下一次数据同步自动对齐，不需要专门的开关刷新。
-        guard EntitlementSnapshot.load().isPro else {
+        //
+        // 🔴🔴 必须用 `licensedPro`（2026-11-15 修）：它会把 `expiresAt` 算进去，
+        //     `load().isPro` **只看快照里那个布尔值、不看到期时间** ——
+        //     订阅到期后快照仍写着 true，卡片就会一直挂着，
+        //     用户看到的是「Pro 已经过期了，锁屏/灵动岛还在给完整版服务」。
+        guard EntitlementSnapshot.licensedPro else {
             await endAll()
             return
         }

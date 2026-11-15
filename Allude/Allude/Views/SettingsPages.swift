@@ -27,6 +27,14 @@ struct AppearancePersonalizationView: View {
                 store: UserDefaults(suiteName: PickupStorage.appGroupID))
     private var showsStats = true
 
+    /// 「显示「统计」」属于 Allude Pro：非 Pro 点一下直接弹订阅页（2026-11-15 主人）。
+    @State private var showPaywall = false
+
+    /// 当前是否 Pro。放进 `@State` 是为了**买完回来立刻生效** ——
+    /// 直接读 `EntitlementSnapshot.licensedPro` 只在别的状态变化时顺带重算，
+    /// 订阅页一关，开关常常还停在"未解锁"的样子。
+    @State private var isPro = EntitlementSnapshot.licensedPro
+
     /// 液态玻璃开关（2026-11-14 从「外观」页移过来）：仅 iOS 26+ 展示；
     /// 关闭后走系统毛玻璃材质，与 iOS 18 的观感一致。
     @State private var usesLiquidGlass = GlassSettings.isEnabled
@@ -73,13 +81,36 @@ struct AppearancePersonalizationView: View {
 
                 // 底部菜单栏：统计页可以关掉（2026-11-13 主人要求）。
                 // 关掉后底栏只剩 待取 / 已取 / 设置，统计页也就没有入口。
+                //
+                // 🔴 2026-11-15 主人：这一项属于 **Allude Pro**。非 Pro 点一下开关
+                //    = 直接弹订阅页，与「超时未取提醒」同一套做法（不显示任何加锁标志、
+                //    不先翻转开关再回弹）。买完回来开关立刻可用。
                 VStack(spacing: 0) {
                     HStack(spacing: 12) {
-                        Toggle(isOn: $showsStats) {
-                            Text("显示「统计」")
-                                .font(AppTheme.TypeScale.rowTitle)
+                        if isPro {
+                            Toggle(isOn: $showsStats) {
+                                Text("显示「统计」")
+                                    .font(AppTheme.TypeScale.rowTitle)
+                            }
+                            .tint(AppTheme.accent)
+                        } else {
+                            // 非 Pro 时开关恒显示为「开」（统计页本来就在），
+                            // 用 overlay 接管点击 —— 不能直接把 Toggle 包进 Button：
+                            // 那样整行会被压扁、开关被挤到中间（2026-11-08 踩过）。
+                            Toggle(isOn: .constant(true)) {
+                                Text("显示「统计」")
+                                    .font(AppTheme.TypeScale.rowTitle)
+                            }
+                            .tint(AppTheme.accent)
+                            .allowsHitTesting(false)
+                            .overlay {
+                                Color.clear
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { showPaywall = true }
+                                    .accessibilityLabel("显示「统计」")
+                                    .accessibilityHint("需要Allude Pro")
+                            }
                         }
-                        .tint(AppTheme.accent)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
@@ -103,6 +134,20 @@ struct AppearancePersonalizationView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("外观与个性化")
         .navigationBarTitleDisplayMode(.inline)
+        // 非 Pro 点「显示「统计」」→ 订阅页；关掉时重判一次权益，
+        // 买完不必退出重进，回来就能直接关统计。
+        .sheet(isPresented: $showPaywall, onDismiss: {
+            isPro = EntitlementSnapshot.licensedPro
+        }) {
+            NavigationStack { FullVersionView() }
+        }
+        .onAppear {
+            isPro = EntitlementSnapshot.licensedPro
+            // 截图脚手架（仅调试）：命令行点不了开关，`PAYWALL_DEMO=1` 直接把订阅页亮起来。
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["PAYWALL_DEMO"] == "1" { showPaywall = true }
+            #endif
+        }
     }
 
     @ViewBuilder
@@ -448,14 +493,10 @@ struct PrivacySimpleView: View {
                 }
                 .settingsCard()
 
-                NavigationLink {
-                    LegalDocumentView(document: .privacy)
-                } label: {
-                    SettingsRow(symbol: "doc.text.fill", title: "查看完整隐私政策",
-                                tint: AppTheme.doneTint)
-                }
-                .buttonStyle(.plain)
-                .settingsCard()
+                // 🔴 2026-11-15 主人：这里**不要**再放「查看完整隐私政策」入口。
+                //    上一级「关于 Allude」里已经有「隐私政策（完整版）」，
+                //    简明版再挂一个等于同一个东西两个入口，纯冗余。
+                //    （原 NavigationLink + settingsCard 已删，别再加回来。）
 
                 Text("最后更新：2026-11-12")
                     .font(AppTheme.TypeScale.note)
