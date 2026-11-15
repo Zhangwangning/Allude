@@ -132,6 +132,10 @@ final class ICloudSyncController: ObservableObject {
     // MARK: 开关
 
     func setEnabled(_ enabled: Bool) {
+        // 🔴 2026-11-15 主人：iCloud 同步并入 Allude Pro。
+        //    非 Pro 一律不许开启（入口处已经弹订阅页，这里是第二道门，
+        //    挡住「Pro 到期时页面还开着」这类绕过入口的情况）。
+        guard !enabled || EntitlementSnapshot.licensedPro else { return }
         guard enabled != isEnabled else { return }
         isEnabled = enabled
         UserDefaults(suiteName: PickupStorage.appGroupID)?.set(enabled, forKey: Self.enabledKey)
@@ -141,6 +145,15 @@ final class ICloudSyncController: ObservableObject {
             pendingTask?.cancel()
             status = .disabled
         }
+    }
+
+    /// Pro 失效后自动关掉同步（记录留在各设备本机，不会继续往 iCloud 写）。
+    ///
+    /// 只在「真的该关」时才动偏好：`isEnabled` 已经是 false 就直接返回，
+    /// 因此这个方法是幂等的，可以放在回前台、每分钟对表这类高频路径上。
+    func disableIfNotPro() {
+        guard isEnabled, !EntitlementSnapshot.licensedPro else { return }
+        setEnabled(false)
     }
 
     /// 远端是否可用（未登录 iCloud / 模拟器没登录时拿不到容器 URL）。

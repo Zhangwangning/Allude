@@ -523,6 +523,10 @@ struct PrivacySimpleView: View {
 struct ICloudSyncView: View {
     @StateObject private var sync = ICloudSyncController.shared
     @State private var showHelp = false
+    /// 非 Pro 试图打开同步时弹订阅页（2026-11-15 主人：iCloud 同步并入 Pro）
+    @State private var showPaywall = false
+
+    private var isPro: Bool { EntitlementSnapshot.licensedPro }
 
     var body: some View {
         ScrollView {
@@ -545,11 +549,37 @@ struct ICloudSyncView: View {
             NavigationStack { ICloudSyncHelpView() }
                 .presentationDetents([.medium, .large])
         }
+        .sheet(isPresented: $showPaywall) {
+            NavigationStack { FullVersionView() }
+        }
+        // 截图/验真脚手架（仅调试）：`SYNC_TOGGLE=1` 模拟用户把开关拨到「开」，
+        // 走的是与手指点击**同一个** setter，用来验收「非 Pro 弹订阅页」。
+        .onAppear {
+            #if DEBUG
+            let env = ProcessInfo.processInfo.environment
+            if env["SYNC_TOGGLE"] == "1" {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { setSyncEnabled(true) }
+            }
+            if env["PAYWALL_DEMO"] == "1" { showPaywall = true }
+            #endif
+        }
+    }
+
+    /// 开关的唯一入口（手指点击与脚手架都走这里）。
+    ///
+    /// 🔴 2026-11-15 主人：iCloud 同步并入 Allude Pro —— 订阅页弹在**这个开关**上，
+    ///    不是设置首页那一行（点标题照常进本页）。界面上不加锁形标记。
+    private func setSyncEnabled(_ newValue: Bool) {
+        if newValue, !isPro {
+            showPaywall = true
+            return
+        }
+        sync.setEnabled(newValue)
     }
 
     private var syncToggleCard: some View {
         Toggle(isOn: Binding(get: { sync.isEnabled },
-                             set: { sync.setEnabled($0) })) {
+                             set: { setSyncEnabled($0) })) {
             Text("开启同步")
                 .font(AppTheme.TypeScale.rowTitle)
         }

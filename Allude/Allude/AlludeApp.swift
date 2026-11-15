@@ -670,6 +670,10 @@ struct AlludeApp: App {
                         ) {}
                 case "version":
                     NavigationStack { VersionHistoryView() }
+                case "icloud":
+                    // iCloud 同步页（设置 › iCloud 同步）。命令行点不到那一行，
+                    // 「开启同步」开关的 Pro 门验收靠这个入口直渲。
+                    NavigationStack { ICloudSyncView() }
                 case "consent":
                     LegalConsentView { }
                 case "onboarding":
@@ -819,6 +823,9 @@ struct AlludeApp: App {
                     //    一个都没拦。放在 sync 之前，过期的实时活动紧接着就被收掉。
                     //    （冷启动本来就重算，这里补的是「后台放了一夜再回来」这条路。）
                     store.refreshEntitlement()
+                    // iCloud 同步 2026-11-15 起并入 Pro：回前台时若已过期满，
+                    // 顺手把它关掉，避免免费档继续往 iCloud 写。
+                    ICloudSyncController.shared.disableIfNotPro()
                     // 🔴 实时活动**无条件**对齐一次（2026-09-25）。
                     //    `reloadFromStorage` 只在内容签名真的变了才写 records，
                     //    而「锁屏上多挂了一张重复卡」这件事**不改变任何数据** ——

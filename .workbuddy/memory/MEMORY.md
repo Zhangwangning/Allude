@@ -80,7 +80,11 @@ xcodebuild -project Allude.xcodeproj -scheme Allude -destination "$DEST" \
 - 无 idb / applesimutils，AppleScript 被辅助功能拒绝（-10004）→ 一切面板靠 `SIMCTL_CHILD_SCREEN=xxx` 直渲。
 - `launch` 必须 `--terminate-running-process`，否则只切前台、变量不注入。
 - 装完先核对 `CFBundleVersion` 再截图（install/terminate 异步，旧进程会被静默沿用）。
-- 基准机 iPhone 16 Pro `272DD31C-D94F-46B4-9CC7-974A61439777`。
+- 🔴 **模拟器 ID 会变，别背旧值**：本机 `simctl list devices` 现为
+  iPhone 16 Pro `0211F7EF-0339-4BAF-B0D9-37521A0537AF`（**运行时 iOS 26.1**）、
+  iPhone 17 `053A79F6-6E92-4A30-A2C4-D1637863A976`（**iOS 27.2**）、
+  iPhone Duo `EEFA6F55-0ED4-40E8-BB54-695AA25EF8B5`（27.2，分栏布局）。
+  ⚠️ 验 `if #available(iOS 27)` 分支必须用 iPhone 17 —— 基准机是 26.1，走的是低版本分支。
 
 ## 图标（16 套，2026-11-15 一晚反复增删后的最终形态）
 - 🔴 全部 `AppIconNN.imageset` **只放 `AlludeShared/Assets.xcassets`**（2026-11-15 迁入）：

@@ -105,6 +105,9 @@ struct RootView: View {
                 store.refreshEntitlement()
                 // 降级后这张卡必须当场收掉（第 2 道门用的是 licensedPro）
                 PickupActivityController.sync(pending: store.pending)
+                // iCloud 同步 2026-11-15 起也是 Pro 功能：到期后自动关掉，
+                // 记录留在各设备本机，不会继续往 iCloud 写。
+                ICloudSyncController.shared.disableIfNotPro()
             }
         }
         // 通知点击 → 切到这条记录所在的标签（待取 / 已取），
@@ -475,7 +478,7 @@ struct OnboardingView: View {
                                title: "导入自动化",
                                detail: quickImportAvailable
                                    ? "点下面的按钮，把「收到短信 → 添加到Allude」导进系统"
-                                   : "当前系统需要手动新建：点下方「查看完整使用教程」，照步骤做一次")
+                                   : "当前系统不支持一键导入：到「设置 › 快捷指令」看 35 秒视频教程，照着建一次")
                 SettingsDivider()
                 OnboardingStep(index: 2, tint: AppTheme.amber,
                                title: "打开开关",
@@ -560,9 +563,10 @@ struct OnboardingView: View {
                     .buttonStyle(.plain)
                     .padding(.horizontal, 32)
                 } else {
-                    // 🔴 2026-11-11 主人：一键导入依赖 iOS 27 的快捷指令能力，
-                    //    iOS 26 及更早只能手动新建 —— 这里直接说清楚，不给按钮。
-                    Text("iOS 26 及更早版本不支持一键导入自动化，请点「查看完整使用教程」按步骤手动新建一条。")
+                    // 🔴 2026-11-15 主人：iOS 27 以下**只留文字引导**，
+                    //    并且要明确告诉用户去哪里看视频 —— 不再给「查看完整使用教程」按钮
+                    //    （那条路径在低版本上纯文字堆砌，不如直接看 35 秒视频）。
+                    Text("这台设备不支持一键导入自动化。请打开「设置 › 快捷指令」，那里有一段 35 秒的视频教程，照着新建一条即可。")
                         .font(AppTheme.TypeScale.note)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -572,7 +576,8 @@ struct OnboardingView: View {
                 }
             }
 
-            if state.page == 1 {
+            // 教程入口只给 iOS 27 及以上：低版本已经在上面直接指向设置里的视频了
+            if state.page == 1, quickImportAvailable {
                 NavigationLink {
                     UsageGuideView()
                 } label: {

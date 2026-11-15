@@ -257,6 +257,13 @@ struct SettingsView: View {
         }
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .overlay { feedbackToast }
+        // 截图/验真脚手架（仅调试）：`SETTINGS_OPEN=icloudSync` 直接切到该面板
+        // （命令行点不到行）。正式运行时该环境变量不存在，零影响。
+        .onAppear {
+            #if DEBUG
+            applyScaffoldOpen()
+            #endif
+        }
         // 订阅暂未开放：点了只弹提示，不进入二级页
         .sheet(isPresented: $feedback.showComposer) {
             MailComposeView(subject: feedback.composerSubject,
@@ -563,10 +570,17 @@ struct SettingsView: View {
         .tag(item)
     }
 
+    /// 截图脚手架：`SETTINGS_OPEN=icloudSync` 时启动直接切到该面板
+    /// （单列布局点不到侧栏，也点不到行）。
+    private func applyScaffoldOpen() {
+        guard let raw = ProcessInfo.processInfo.environment["SETTINGS_OPEN"],
+              let target = SettingsPane(rawValue: raw) else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { pane = target }
+    }
+
     /// 右侧内容：选中项展开的页面 / 卡片
     @ViewBuilder
-    private var appleIntelligencePane: some View {
-        if #available(iOS 26.0, *) { AICapabilityView() } else { AICapabilityUnsupportedView() }
+    private var appleIntelligencePane: some View {        if #available(iOS 26.0, *) { AICapabilityView() } else { AICapabilityUnsupportedView() }
     }
 
     @ViewBuilder
@@ -1176,6 +1190,11 @@ struct FullVersionView: View {
                 SettingsDivider()
                 featureRow(symbol: "iphone.gen3.radiowaves.left.and.right", title: "实时活动",
                            note: "灵动岛与锁屏常驻最新取件码")
+                SettingsDivider()
+                // 2026-11-15 主人：iCloud 同步并入 Pro —— 门加上了，清单也得写上，
+                // 否则用户被拦下来却看不到「同步」在解锁项里。
+                featureRow(symbol: "icloud.fill", title: "iCloud 同步",
+                           note: "记录另存一份到你自己的 iCloud，同一 Apple ID 的设备自动合并，不经开发者服务器")
                 SettingsDivider()
                 featureRow(symbol: "arrow.triangle.2.circlepath", title: "后续更新",
                            note: "订阅期内或买断后，新版本的新功能都包含")
