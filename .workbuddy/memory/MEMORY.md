@@ -78,14 +78,19 @@ xcodebuild -project Allude.xcodeproj -scheme Allude -destination "$DEST" \
 - 装完先核对 `CFBundleVersion` 再截图（install/terminate 异步，旧进程会被静默沿用）。
 - 基准机 iPhone 16 Pro `272DD31C-D94F-46B4-9CC7-974A61439777`。
 
-## 图标（13 套）
-- 🔴 13 套 `AppIconNN.imageset` **只放 `AlludeShared/Assets.xcassets`**（2026-11-15 迁入）：
+## 图标（21 套，2026-11-15 从 13 套扩到 21 套）
+- 🔴 全部 `AppIconNN.imageset` **只放 `AlludeShared/Assets.xcassets`**（2026-11-15 迁入）：
   App 与小组件两个 target 都编这份 catalog，扩展才取得到图；放 App 的 catalog 里 →
   灵动岛/锁屏 `Image("AppIconNN")` 静默渲染成**灰块**（312 的实际故障）。
 - 新增一套要动四处：imageset（60/120/180 + `template-rendering-intent: original`）、
-  `Allude/AppIcons/IconNN*.png`、`Info.plist` 的 `CFBundleAlternateIcons`、
-  `AppIconChoice` 的 case/title。同步组自动收文件，不改 pbxproj。
-- 第 13 套「快递箱」按主人要求图形内缩 1/5（内容占 60%，白底合成去 alpha）。
+  `Allude/AppIcons/IconNN@2x.png`(120) / `@3x.png`(180)、`Info.plist` 的
+  **`CFBundleIcons › CFBundleAlternateIcons`**（⚠️ 不在顶层！顶层查不到）、
+  `AppIconChoice` 的 case/number/title。`App/` 是同步组 → 不改 pbxproj。
+- ⚠️ `sips -z` **只改尺寸不改格式**：源是 JPEG 时必须加 `-s format png`，
+  否则 `.png` 里装的是 JPEG 数据（actool 会不认）。
+- 第 13 套「快递箱」按主人要求图形内缩 1/5（内容占 60%，白底合成去 alpha）；
+  第 14–21 套是 1536 满幅方图，**明确要求不裁切**，等比缩放即可。
+- 源图统一归档 `tools/appicon-source/iconNN-source.{png,jpg,svg}`。
 - 🔴 **岛内图标随 `ContentState.appIconRaw` 传**（2026-11-15 修，commit 1286c28）：
   扩展进程别自己读 `AppIconStore.current` —— App Group 那条链一断就回落到
   `AppIconChoice.fallback`（第 7 套 C 标），表现为「桌面换了、岛里还是旧图标」。
