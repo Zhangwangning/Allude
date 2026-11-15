@@ -65,6 +65,17 @@ struct AlludeApp: App {
         let deviceCode = LicenseDevice.current
         print("[allude-verify] device=\(deviceCode)")
 
+        // 2026-11-15 主人删掉 5 套图标（1/4/6/8/11）：老用户当时选的若正好是其中之一，
+        // 偏好里存着现在解不出 case 的名字 —— 这里一次性归位到默认 C 标，
+        // 并把系统侧的备用图标引用清掉（不清的话桌面还挂着已经不存在的图）。
+        if AppIconStore.hasDanglingSelection {
+            AppIconStore.store(AppIconChoice.fallback)
+            print("[allude-verify] appIcon=dangling->fallback")
+            DispatchQueue.main.async {
+                UIApplication.shared.setAlternateIconName(nil)
+            }
+        }
+
         // 内购（StoreKit 2）：拉起交易监听并取商品。冷启动最早期挂上，
         // 否则「购买待批准 / 跨设备购买」这类更新要等下一次冷启才反映出来。
         PurchaseStore.shared.start()

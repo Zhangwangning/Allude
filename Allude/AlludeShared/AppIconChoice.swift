@@ -3,9 +3,14 @@ import Foundation
 // MARK: ============================================================================
 // App 图标切换（2026-11-01 主人）
 //
-// 二十一套内置图标，**第 7 套（C 标）为默认主图标**（2026-11-11 主人定；
+// 十六套内置图标，**第 7 套（C 标）为默认主图标**（2026-11-11 主人定；
 // 2026-11-12 主人又补了第 9–12 套；2026-11-15 补第 13 套「快递箱」，
 // 同日晚再补第 14–21 套「快递盒 / ALLUDE 招牌」八个变体）。
+//
+// 🔴 2026-11-15 主人圈掉五套（1 号码牌 / 4 扫码件 / 6 手提袋 / 8 卡包 / 11 牛皮纸），
+//    要求删掉。**编号故意留空、不重排**：rawValue 与 `number` 都是持久化过的
+//    （App Group 偏好里的 `allude.appIcon`、资源名 `AppIconNN`、Info.plist 的
+//    `IconNN`），一重排就会让老用户选的图变成另一张。删掉的号从此不复用。
 //
 // 🔴 图标的 imageset 统一放 `AlludeShared/Assets.xcassets`（2026-11-15 从 App 的
 //    catalog 迁过来）：App 与小组件两个 target **都**编译这份共享 catalog，
@@ -28,11 +33,11 @@ import Foundation
 // ============================================================================
 
 enum AppIconChoice: String, CaseIterable, Identifiable {
-    case icon01, icon02, icon03, icon04, icon05, icon06, icon07, icon08
-    case icon09, icon10, icon11, icon12, icon13
+    /// ⚠️ 编号 1、4、6、8、11 已于 2026-11-15 删除，不再存在。
+    case icon02, icon03, icon05, icon07, icon09, icon10
     /// 2026-11-15 主人补的第二批：8 张「快递盒 / ALLUDE 招牌」变体（立体、平涂、光泽各配色）。
     /// 🔴 都是 1536 满幅方图，**不裁切**、直接等比缩放到 60/120/180 与 120/180。
-    case icon14, icon15, icon16, icon17, icon18, icon19, icon20, icon21
+    case icon12, icon13, icon14, icon15, icon16, icon17, icon18, icon19, icon20, icon21
 
     /// 默认图标 = 第 7 套（C 标）。
     ///
@@ -42,20 +47,15 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    /// 序号（1–13），用于文案与文件名
+    /// 序号（= 历史编号，**有空洞**：1/4/6/8/11 已删）。用于文案与文件名。
     var number: Int {
         switch self {
-        case .icon01: 1
         case .icon02: 2
         case .icon03: 3
-        case .icon04: 4
         case .icon05: 5
-        case .icon06: 6
         case .icon07: 7
-        case .icon08: 8
         case .icon09: 9
         case .icon10: 10
-        case .icon11: 11
         case .icon12: 12
         case .icon13: 13
         case .icon14: 14
@@ -72,17 +72,12 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
     /// 格子里的名字。主人没点名，这里按图形起的描述名，随时可改。
     var title: String {
         switch self {
-        case .icon01: "号码牌"
         case .icon02: "信封"
         case .icon03: "取件袋"
-        case .icon04: "扫码件"
         case .icon05: "文件夹"
-        case .icon06: "手提袋"
         case .icon07: "C 标"
-        case .icon08: "卡包"
         case .icon09: "霓虹 A"
         case .icon10: "折纸 A"
-        case .icon11: "牛皮纸"
         case .icon12: "包裹"
         case .icon13: "快递箱"
         case .icon14: "黑盒立体"
@@ -92,7 +87,7 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
         case .icon18: "蓝盒平涂"
         case .icon19: "黑牌"
         case .icon20: "暗牌"
-        case .icon21: "光泽黑牌"
+        case .icon21: "光泽黑标"
         }
     }
 
@@ -143,6 +138,29 @@ enum AppIconStore {
             return choice
         }
         return .fallback
+    }
+
+    /// 存下来的原始值，**不做合法性校验**；三处按与 `current` 相同的优先级，
+    /// 取第一个非空。没存过 → nil。
+    private static var storedRawValue: String? {
+        if let raw = UserDefaults(suiteName: PickupStorage.appGroupID)?.string(forKey: key) {
+            return raw
+        }
+        if let raw = try? String(contentsOf: mirrorURL, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines) {
+            return raw
+        }
+        return UserDefaults.standard.string(forKey: key)
+    }
+
+    /// 🔴 2026-11-15 删掉 5 套图标（1 号码牌 / 4 扫码件 / 6 手提袋 / 8 卡包 / 11 牛皮纸）
+    ///    之后必须处理的一种存量状态：老用户当时选的正好是被删的那几套，
+    ///    偏好里存着 `icon01` 这类现在解不出 case 的名字。
+    ///    App 内读到 true 就 `store(.fallback)` 并 `setAlternateIconName(nil)` ——
+    ///    后者会把系统的备用图标引用归零，否则桌面还挂着已经不存在的图。
+    static var hasDanglingSelection: Bool {
+        guard let raw = storedRawValue, !raw.isEmpty else { return false }
+        return AppIconChoice(rawValue: raw) == nil
     }
 
     /// 写选择：三处都写（App Group 偏好、镜像文件、本进程偏好），

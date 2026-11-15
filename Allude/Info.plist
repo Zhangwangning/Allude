@@ -12,15 +12,6 @@
 	<dict>
 		<key>CFBundleAlternateIcons</key>
 		<dict>
-			<key>Icon01</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>Icon01</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<false/>
-			</dict>
 			<key>Icon02</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
@@ -39,15 +30,6 @@
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>Icon04</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>Icon04</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<false/>
-			</dict>
 			<key>Icon05</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
@@ -57,29 +39,11 @@
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>Icon06</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>Icon06</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<false/>
-			</dict>
 			<key>Icon07</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
 					<string>Icon07</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<false/>
-			</dict>
-			<key>Icon08</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>Icon08</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
@@ -98,15 +62,6 @@
 				<key>CFBundleIconFiles</key>
 				<array>
 					<string>Icon10</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<false/>
-			</dict>
-			<key>Icon11</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>Icon11</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
