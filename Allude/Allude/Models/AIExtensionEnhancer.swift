@@ -141,7 +141,7 @@ enum AIExtensionEnhancer {
         正则解析结果（供复核，可能为空或有误）：
         code: \(record.code)
         courier: \(record.courier ?? "")
-        station: \(record.station ?? "")
+        station: \(record.station)
         address: \(record.address)
         locker: \(record.locker ?? "")
         shelf: \(record.shelf ?? "")

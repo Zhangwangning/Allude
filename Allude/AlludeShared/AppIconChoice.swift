@@ -3,8 +3,14 @@ import Foundation
 // MARK: ============================================================================
 // App 图标切换（2026-11-01 主人）
 //
-// 十二套内置图标，**第 7 套（C 标）为默认主图标**（2026-11-11 主人定；
-// 2026-11-12 主人又补了第 9–12 套）。
+// 十三套内置图标，**第 7 套（C 标）为默认主图标**（2026-11-11 主人定；
+// 2026-11-12 主人又补了第 9–12 套；2026-11-15 补第 13 套「快递箱」）。
+//
+// 🔴 图标的 imageset 统一放 `AlludeShared/Assets.xcassets`（2026-11-15 从 App 的
+//    catalog 迁过来）：App 与小组件两个 target **都**编译这份共享 catalog，
+//    灵动岛/锁屏才取得到图。之前只放在 App 的 catalog 里，小组件进程找不到
+//    `AppIconNN` 这名字，`Image(…)` 直接渲染成灰块 —— 那是 1.0.0(312) 灵动岛
+//    不显示 App 图标的根因。
 // 图都是 512 满幅方图，不再裁切；主图标 art 与 alternate 的对应关系见下。
 //
 // 主图标放 `AppIcon.appiconset`；其余是 **alternate icon** —— 由 Info.plist 的
@@ -22,7 +28,7 @@ import Foundation
 
 enum AppIconChoice: String, CaseIterable, Identifiable {
     case icon01, icon02, icon03, icon04, icon05, icon06, icon07, icon08
-    case icon09, icon10, icon11, icon12
+    case icon09, icon10, icon11, icon12, icon13
 
     /// 默认图标 = 第 7 套（C 标）。
     ///
@@ -32,7 +38,7 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    /// 序号（1–12），用于文案与文件名
+    /// 序号（1–13），用于文案与文件名
     var number: Int {
         switch self {
         case .icon01: 1
@@ -47,6 +53,7 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
         case .icon10: 10
         case .icon11: 11
         case .icon12: 12
+        case .icon13: 13
         }
     }
 
@@ -65,6 +72,7 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
         case .icon10: "折纸 A"
         case .icon11: "牛皮纸"
         case .icon12: "包裹"
+        case .icon13: "快递箱"
         }
     }
 

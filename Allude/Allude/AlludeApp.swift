@@ -722,8 +722,6 @@ struct AlludeApp: App {
                     NavigationStack { UsageGuideView() }
                 case "widgets":
                     NavigationStack { WidgetPreviewGallery() }
-                case "widgetSettings":
-                    NavigationStack { WidgetSettingsView() }
                 case "activity":
                     NavigationStack { ActivityPreviewGallery() }
                 case "appearance":

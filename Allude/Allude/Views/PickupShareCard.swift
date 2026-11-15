@@ -226,7 +226,7 @@ struct PickupShareCard: View {
     }
 
     /// 卡头：件数。地址不在这里 —— 多条不一定同地，地址跟各自的行走（主人指认）。
-    /// 图标用**软件图标**（AppMark），不是第一家快递 —— 多条来自不同快递时，
+    /// 图标用**软件图标**（`AppMarkIcon` → 当前选中的 `AppIconNN`），不是第一家快递 —— 多条来自不同快递时，
     /// 抬头摆任何一家的图标都误导（2026-09-23 主人指认）。
     private var multiHead: some View {
         HStack(spacing: 12) {

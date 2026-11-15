@@ -412,12 +412,13 @@ struct ActivityLockScreenCard: View {
 //     上下文，读不出这个数是干什么的。
 //   · 最小态 = 只有约 20×20pt，仅放 App 图标，任何数字/文字都读不出来。
 //
-// 🔴 App 图标的**唯一存放处 = `AlludeShared/Assets.xcassets/AppMark.imageset`**
-//    （2026-09-23 核实）：这份共享资源在 pbxproj 里被 **App 与小组件扩展两个 target
-//    各自编译一次**（`Allude.xcodeproj` 有两个 Resources build phase 各引一份），
-//    所以图标资源在**两个进程的 main bundle** 里都查得到。
-//    已用 `xcrun assetutil --info <appex>/Assets.car` 确认过 `Name: AppMark`
-//    确实在扩展产物里 —— 真机岛内显示异常**不是**"扩展缺图"造成的。
+// 🔴 App 图标（`AppIcon01`…`AppIcon13` 这些 imageset）**只放在
+//    `AlludeShared/Assets.xcassets`**（2026-11-15 从 App 的 catalog 迁过来）。
+//    这份共享 catalog 被 **App 与小组件扩展两个 target 各编译一次**
+//    （`Allude.xcodeproj` 里两个 Resources build phase 各引一份），
+//    所以两个进程的 `Assets.car` 里都查得到同名 imageset。
+//    ⚠️ 只放在 App 的 catalog = 扩展进程查不到 → `Image("AppIcon07")` 静默渲染成
+//    灰块。1.0.0(312) 灵动岛不显示 App 图标就是这个原因，别再把图挪回 App 目录。
 //
 // 🔴 **灵动岛的可画尺寸（Apple HIG 官方值，必须按它约束内容）**：
 // ```
