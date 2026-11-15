@@ -190,7 +190,7 @@ struct PickedUpView: View {
         // 📱 2026-10-25：宽屏走平行视图（左列表 / 右详情），常规 iPhone 仍单栈。
         Group {
             // 与待取页同口径：按实际宽度分栏（iPad mini 竖屏 744pt 不分栏）。
-            if PadLayout.usesSplit, paneWidth >= 900 {
+            if PadLayout.usesSplit, paneWidth >= PadLayout.splitMinWidth {
                 splitLayout
             } else {
                 stackedLayout
@@ -249,7 +249,7 @@ struct PickedUpView: View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             listPane
                 // 左右等分（与待取页同口径；主人已否掉中轴方案）
-                .navigationSplitViewColumnWidth(min: 340, ideal: 440, max: 600)
+                .navigationSplitViewColumnWidth(min: 300, ideal: PadLayout.splitColumnIdeal, max: 600)
         } detail: {
             if let record = splitDetailRecord {
                 // 与待取页同口径：绑定 id，避免编辑草稿串到下一条（2026-10-25 审查修）
@@ -281,7 +281,7 @@ struct PickedUpView: View {
     }
 
     /// 列表本体（两种布局共用）。`navigationDestination` 由各布局挂到自己的栈上。
-    private var splitPane: Bool { PadLayout.usesSplit && paneWidth >= 900 }
+    private var splitPane: Bool { PadLayout.usesSplit && paneWidth >= PadLayout.splitMinWidth }
 
     private var listPane: some View {
         listBody
@@ -291,7 +291,8 @@ struct PickedUpView: View {
         List {
             if splitPane {
                 Section {
-                    PadSidebarHeader(title: "已取", onToggleSidebar: { columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly })
+                    // 导航栏已自带侧栏切换（◫），这里不再重复给图标（2026-11-15 主人）
+                    PadSidebarHeader(title: "已取")
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -403,7 +404,9 @@ struct PickedUpView: View {
             .frame(maxWidth: splitPane ? .infinity : AppTheme.contentMaxWidth)
             .frame(maxWidth: .infinity)
             .background(Color(.systemGroupedBackground))
-            .toolbar(splitPane ? .hidden : .visible, for: .navigationBar)
+            // 与待取页同口径：分栏也要留导航栏，否则里面的按钮会一起被藏掉（2026-11-15 主人）。
+            .toolbar(.visible, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .navigationTitle(splitPane ? "" : "已取")
             .toolbarTitleDisplayMode(splitPane ? .inline : .large)
             .toolbar {

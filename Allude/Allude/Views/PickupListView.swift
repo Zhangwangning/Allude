@@ -452,7 +452,7 @@ struct PickupListView: View {
             //    两栏硬塞进 744pt 会把详情挤到屏幕外。改判**实际可用宽度**（≥ 900pt 才分栏）。
             //    宽度用 preference 量，不能用 GeometryReader 包一层：那会让 NavigationSplitView
             //    丢掉顶部安全区，标签栏直接压在详情列标题上。
-            if PadLayout.usesSplit, paneWidth >= 900 {
+            if PadLayout.usesSplit, paneWidth >= PadLayout.splitMinWidth {
                 splitLayout
             } else {
                 stackedLayout
@@ -574,7 +574,7 @@ struct PickupListView: View {
     private var splitLayout: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             listPane
-                .navigationSplitViewColumnWidth(min: 340, ideal: 440, max: 600)
+                .navigationSplitViewColumnWidth(min: 300, ideal: PadLayout.splitColumnIdeal, max: 600)
         } detail: {
             ZStack {
                 // 右栏整列铺浅灰：详情限宽 760 居中，两侧不能露出系统白
@@ -603,13 +603,18 @@ struct PickupListView: View {
     /// 列表本体（两种布局共用）：List + 内边距 / 背景 / 搜索 / 工具栏 / 弹层。
     /// ⚠️ `navigationDestination` 不在这里 —— 它由各布局自己挂在对应的栈上，
     ///    否则分栏模式下会被注册到没有栈的 sidebar 列（无效且会告警）。
-    private var splitPane: Bool { PadLayout.usesSplit && paneWidth >= 900 }
+    private var splitPane: Bool { PadLayout.usesSplit && paneWidth >= PadLayout.splitMinWidth }
 
     private var listPane: some View {
         VStack(spacing: 0) {
             if splitPane {
+                // 🔴 2026-11-15 主人：分栏后导航栏已经自带侧栏切换（◫），
+                //    列表里那个重复的图标去掉；大标题挪到搜索框**上方**，
+                //    顺序恢复成「待取 → 搜索 → 统计卡 → 列表」。
+                PadSidebarHeader(title: "待取")
+                    .padding(.top, 2)
                 PadSidebarSearchField(text: $model.query, prompt: "取件码 / 快递公司 / 地址")
-                    .padding(.top, 6)
+                    .padding(.bottom, 6)
             }
             listBody
         }
@@ -617,14 +622,6 @@ struct PickupListView: View {
 
     private var listBody: some View {
         List {
-            if splitPane {
-                Section {
-                    PadSidebarHeader(title: "待取", onToggleSidebar: { columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly })
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                }
-            }
                 // 顶部统计卡：待取 / 今日新增 / 今日已取 三格一组，只报数不切页。
                 Section {
                     HeroStatsCard(primary: scopedPending.count,
@@ -685,7 +682,12 @@ struct PickupListView: View {
             // 🔴 2026-10-08 结构重构：浏览（已取件）独立成 Tab 后，取件页不再需要
             //    分段切换器 —— 回归系统导航栏（大标题「取件」+ drawer 搜索 + 系统
             //    toolbar）。此前为「分段居中于标题位」做的自绘顶栏随分段一起退役。
-            .toolbar(splitPane ? .hidden : .visible, for: .navigationBar)
+            // 🔴 2026-11-15 主人：「分栏后添加、分组、选择都看不见了」——
+            //    以前分栏把整条导航栏 `.hidden`，连带 `+` / 筛选 / 选择一起藏了。
+            //    现在导航栏照常显示，只把**标题**置空（标题由左列内的 PadSidebarHeader 承担，
+            //    避免和导航栏标题重复）。
+            .toolbar(.visible, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .navigationTitle(splitPane ? "" : "待取")
             .toolbarTitleDisplayMode(splitPane ? .inline : .large)
             .toolbar { toolbarContent }

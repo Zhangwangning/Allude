@@ -432,7 +432,7 @@ struct SettingsView: View {
             // 侧栏宽度**按屏幕宽比例**（2026-10-25 主人：Duo 展开竖屏也要照 iPad 竖屏布局）：
             // 横屏 951pt → ~380pt；竖屏 669pt → ~280pt（下限）。
             // 写死 434 会让竖屏侧栏占到 65%，右侧内容被挤扁。
-            .navigationSplitViewColumnWidth(min: 340, ideal: 440, max: 600)
+            .navigationSplitViewColumnWidth(min: 300, ideal: PadLayout.splitColumnIdeal, max: 600)
         } detail: {
             // 右栏与左栏**同一底色**（2026-10-25 主人两次强调：Duo 展开时左侧浅灰、
             // 右侧白色，「先全部是一个底色」）。

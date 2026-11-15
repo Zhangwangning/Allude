@@ -15,10 +15,58 @@ enum PadLayout {
         }()
     }
 
+    /// 当前窗口尺寸。iOS 17+ 不再用 `UIScreen.main`：多窗口 / 投屏时它会取错，
+    /// 而 Duo 折叠展开恰好就是要跟着窗口变。
+    private static var windowSize: CGSize {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let window = scenes.flatMap(\.windows).first { $0.isKeyWindow } ?? scenes.first?.windows.first
+        return window?.bounds.size ?? .zero
+    }
+
+    /// iPhone Duo **展开态（内屏）**。
+    ///
+    /// 🔴 实测（2026-11-15，Duo 模拟器内屏）：
+    /// ```
+    ///   window.bounds = 951 × 669   ← 内屏横向，宽高按方向颠倒
+    ///   UIScreen.main = 466 × 678   ← 报的是外屏，别用！
+    /// ```
+    /// 所以判据用**最短边**，与方向无关：
+    /// ```
+    ///   Duo 内屏   951 × 669  → 最短边 669 > 600 ✅
+    ///   Duo 外屏   678 × 466  → 466 ✗
+    ///   直板机     874 × 402  → 402 ✗（横屏也是 402）
+    /// ```
+    /// 没有公开的「是否折叠」API，Apple 只用尺寸与 size class 表达（2026-11-01 结论）。
+    static var isExpandedFoldable: Bool {
+        guard UIDevice.current.userInterfaceIdiom == .phone else { return false }
+        let size = windowSize
+        guard size != .zero else { return false }
+        return min(size.width, size.height) > 600
+    }
+
+    /// 是否**允许**分栏（设备级门槛）：iPad 与 Duo 内屏都算。
+    /// 真正是否分栏还要再看 `splitMinWidth` 与可用宽度 —— 见各页的 `paneWidth` 判断。
     static var usesSplit: Bool {
-        guard UIDevice.current.userInterfaceIdiom == .pad else { return false }
-        if #available(iOS 26.0, *) { return true }
-        return false
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            if #available(iOS 26.0, *) { return true }
+            return false
+        }
+        // 🔴 2026-11-15 主人：Duo 内屏要分栏（左列表 / 右详情、设置左标题右页面）。
+        //    之前这里写死 `idiom == .pad`，Duo 展开态被当成直板机走单列。
+        return isExpandedFoldable
+    }
+
+    /// 分栏所需的最小可用宽度。
+    /// · iPad mini 竖屏 744pt 不分栏 —— 两栏硬塞会把详情挤到屏幕外（2026-11-14 结论）；
+    /// · Duo 内屏展开后内容区约 585pt（右侧竖排标签栏吃掉 84pt），阈值必须低于它。
+    static var splitMinWidth: CGFloat {
+        UIDevice.current.userInterfaceIdiom == .pad ? 900 : 520
+    }
+
+    /// 分栏左列宽度：Duo 内屏只有 ~585pt，ideal 440 会把右栏压到只剩 145pt。
+    /// iPad 维持原值不动。
+    static var splitColumnIdeal: CGFloat {
+        UIDevice.current.userInterfaceIdiom == .pad ? 440 : 320
     }
 }
 
