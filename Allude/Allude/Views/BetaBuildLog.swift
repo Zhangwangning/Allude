@@ -31,6 +31,12 @@ struct BetaBuild: Identifiable {
 enum BetaBuildLog {
     /// 全部内测构建，**新的在上**。
     static let all: [BetaBuild] = [
+        BetaBuild(build: "318", date: "2026-11-16", points: [
+            "修复 iPhone Duo 内屏竖屏时「外观与个性化」「关于 Allude」两个页面里的子项全部点不动（自定义 App 图标 / 外观 / 字体大小 / 语言，以及关于页五项）。",
+            "根因是「是否分栏」的判定只看了屏幕宽度：Duo 内屏竖屏宽度同样是 regular，被误判成分栏，子项渲染成切换右栏的按钮，而单列布局里没有右栏可切。",
+            "设置页的 Pro 横幅、帮助与反馈页里的入口同属一个根因，一并修正。",
+            "分栏（Duo 内屏横屏 / iPad）与普通 iPhone 单列的行为不变。",
+        ]),
         BetaBuild(build: "316", date: "2026-11-16", points: [
             "修复 iPhone Duo 内屏竖屏时「统计」「设置」等页面大标题不显示（顶部一片空白）：解除了一套全局导航栏外观设置，它把大标题的文字属性清空了。",
             "iPhone Duo 内屏竖屏改为单列显示，不再强行分栏；内屏横屏仍然分栏（左列表 / 右详情）。",

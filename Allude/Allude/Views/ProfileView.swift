@@ -241,6 +241,22 @@ struct SettingsView: View {
     /// 设置详情列的显式导航路径（分栏里 destination 型 push 会被吞，见 2026-11-14 记录）
     @State private var detailPath = NavigationPath()
 
+    /// **是否真的在分栏**（左列目录 + 右栏内容）。
+    ///
+    /// 🔴 2026-11-16 主人：「Duo 内屏竖屏时，外观与个性化里的四个功能、关于 Allude 里的
+    /// 五个功能全部点不进去」。根因就是下面几处只判了 `horizontalSizeClass == .regular`：
+    /// Duo 内屏**竖屏也是 regular 宽度（762pt）**，但布局走的是 `stackedSettings` 单列分支，
+    /// `pane` 没有绑定任何导航 —— 子行被当成「分栏模式」渲染成 `Button { openPane(item) }`，
+    /// 点下去只是改了个没人读的 `pane`，所以一点反应都没有。
+    ///
+    /// 判据必须与 body 里选 `splitSettings` / `stackedSettings` 的条件**完全一致**，
+    /// 否则又会分叉。以后加新判定请一律走这里。
+    private var isSplitLayout: Bool {
+        PadLayout.usesSplit
+            && horizontalSizeClass == .regular
+            && ProcessInfo.processInfo.environment["SETTINGS_COMPACT"] != "1"
+    }
+
     var body: some View {
         Group {
             // 🔴 2026-11-07 主人：宽屏（Duo 展开态 / iPad）就该用分栏，窄屏用单列。
@@ -248,8 +264,7 @@ struct SettingsView: View {
             //    所以功能完全一致，只是排列不同。
             // 截图脚手架：`SETTINGS_COMPACT=1` 强制走单列，用来在宽屏模拟器上
             // 验证窄屏样式（尤其 iOS 26 的玻璃行），平时不影响任何布局。
-            if PadLayout.usesSplit, horizontalSizeClass == .regular,
-               ProcessInfo.processInfo.environment["SETTINGS_COMPACT"] != "1" {
+            if isSplitLayout {
                 splitSettings
             } else {
                 stackedSettings
@@ -261,6 +276,10 @@ struct SettingsView: View {
         // （命令行点不到行）。正式运行时该环境变量不存在，零影响。
         .onAppear {
             #if DEBUG
+            // 探针：确认「单列 / 分栏」判定与实际渲染一致。
+            // 判错的后果就是子行拿到 openPane、渲染成按钮、点了没反应（2026-11-16 那个 bug）。
+            print("[allude-layout] isSplit=\(isSplitLayout) "
+                  + "sizeClass=\(horizontalSizeClass == .regular ? "regular" : "compact")")
             applyScaffoldOpen()
             #endif
         }
@@ -619,7 +638,7 @@ struct SettingsView: View {
         case .disclaimer:   StatementView()
         case .help:
             // 宽屏下这页是常驻详情列，里面 push 不落地；交给它直接切 pane。
-            if horizontalSizeClass == .regular {
+            if isSplitLayout {
                 HelpCenterView { pane = $0 }
             } else {
                 HelpCenterView()
@@ -629,11 +648,11 @@ struct SettingsView: View {
         // 2026-11-12 设置页改版新增
         case .appearanceGroup:
             AppearancePersonalizationView(
-                openPane: horizontalSizeClass == .regular ? { pane = $0 } : nil
+                openPane: isSplitLayout ? { pane = $0 } : nil
             )
         case .aboutAllude:
             AboutAlludeView(
-                openPane: horizontalSizeClass == .regular ? { pane = $0 } : nil
+                openPane: isSplitLayout ? { pane = $0 } : nil
             )
         case .icloudSync:   ICloudSyncView()
         case .encourage:    EncourageView()
@@ -737,7 +756,7 @@ struct SettingsView: View {
         // 🔴 2026-11-07 主人：恢复订阅页 —— 横幅直接进 FullVersionView。
         // 🔴 同一天又发现：分栏侧栏里放 `NavigationLink` 点了没反应
         //    （侧栏是 List + 选中状态，push 会被吞）。所以分栏改用 Button 切右栏。
-        if horizontalSizeClass == .regular {
+        if isSplitLayout {
             Button { pane = .license } label: { proBannerLabel }
                 .buttonStyle(.plain)
         } else {
