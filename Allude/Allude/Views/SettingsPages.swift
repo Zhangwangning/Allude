@@ -140,6 +140,7 @@ struct AppearancePersonalizationView: View {
             isPro = EntitlementSnapshot.licensedPro
         }) {
             NavigationStack { FullVersionView() }
+                .modifier(PaywallSheetSizing())
         }
         .onAppear {
             isPro = EntitlementSnapshot.licensedPro
@@ -551,6 +552,7 @@ struct ICloudSyncView: View {
         }
         .sheet(isPresented: $showPaywall) {
             NavigationStack { FullVersionView() }
+                .modifier(PaywallSheetSizing())
         }
         // 截图/验真脚手架（仅调试）：`SYNC_TOGGLE=1` 模拟用户把开关拨到「开」，
         // 走的是与手指点击**同一个** setter，用来验收「非 Pro 弹订阅页」。

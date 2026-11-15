@@ -106,6 +106,7 @@ struct NotificationSettingsView: View {
         .navigationTitle("通知")
         .sheet(isPresented: $showPaywall) {
             NavigationStack { FullVersionView() }
+                .modifier(PaywallSheetSizing())
         }
         .cloaksTabBar()
         .navigationBarTitleDisplayMode(.inline)

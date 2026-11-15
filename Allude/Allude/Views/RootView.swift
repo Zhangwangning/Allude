@@ -950,6 +950,29 @@ private struct NativeTabBarBridge: UIViewControllerRepresentable {
 
 /// 量「当前页面可用宽度」用：拿宽度但不能影响布局（GeometryReader 会吃掉安全区，
 /// 2026-11-14 把 iPad 分栏包进 GeometryReader 后，标签栏直接压到详情列标题上）。
+/// Pro 订阅 sheet 的尺寸（2026-11-16 主人）。
+///
+/// Duo 内屏（regular 宽度）上 sheet 默认铺得很宽、内容拉成一条，底部按钮还被切掉。
+/// 用 `.form` 收成 iPad 那种居中的表单宽度，整页（方案卡 + 解锁清单 + 购买按钮）才看得全。
+/// iOS 18 以下没有 `presentationSizing`，退回系统默认。
+struct PaywallSheetSizing: ViewModifier {
+    /// 🔴 必须判宽度：iPhone 直板机只有 402pt，套上 500 的 minWidth 会溢出。
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *), sizeClass == .regular {
+            // 先给内容一个明确宽度区间，再让 sheet 按它收紧 ——
+            // 单用 `.fitted` 会缩成一条 120pt 的窄条、单用 `.form` 在 Duo 上不生效（都实测过）;
+            // `minHeight` 也不能省，否则 ScrollView 的 ideal 高度会把 sheet 压成一条横条。
+            content
+                .frame(minWidth: 500, idealWidth: 540, maxWidth: 560, minHeight: 600)
+                .presentationSizing(.fitted)
+        } else {
+            content
+        }
+    }
+}
+
 struct AlludePaneWidthKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {

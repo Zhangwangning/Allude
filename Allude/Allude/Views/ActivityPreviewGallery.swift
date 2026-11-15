@@ -455,6 +455,7 @@ struct ActivityPreviewGallery: View {
         .onAppear(perform: startAutoplayIfNeeded)
         .sheet(isPresented: $showPaywall) {
             NavigationStack { FullVersionView() }
+                .modifier(PaywallSheetSizing())
         }
     }
 
