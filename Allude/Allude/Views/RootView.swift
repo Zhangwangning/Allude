@@ -414,9 +414,9 @@ struct OnboardingView: View {
     // 首启页里的「导入自动化」用的分享面板
 
     var body: some View {
-        // 🔴 必须自带 NavigationStack：引导住在 fullScreenCover 里，
-        // 那是一层独立的表现上下文，没有栈的话第 2 页「查看完整使用教程」
-        // 的 NavigationLink 点了不会有任何反应。
+        // 保留 NavigationStack：引导住在 fullScreenCover 里（独立表现上下文），
+        // 现在第 2 页已经没有内页跳转了（「查看完整使用教程」入口已按主人要求删除），
+        // 但分享面板与后续可能的二级页仍依赖这层栈，去掉会多一次回归风险。
         NavigationStack {
             TabView(selection: $state.page) {
                 welcomePage.tag(0)
@@ -539,7 +539,7 @@ struct OnboardingView: View {
 
     private var bottomBar: some View {
         VStack(spacing: 14) {
-            // 自动化页：一键导入 + 完整教程（都放底栏，页面圆点不会压到它们）
+            // 自动化页底栏：iOS 27+ 给一键导入按钮；以下只给一段文字指路。
             if state.page == 1 {
                 if quickImportAvailable {
                     Button {
@@ -576,20 +576,9 @@ struct OnboardingView: View {
                 }
             }
 
-            // 教程入口只给 iOS 27 及以上：低版本已经在上面直接指向设置里的视频了
-            if state.page == 1, quickImportAvailable {
-                NavigationLink {
-                    UsageGuideView()
-                } label: {
-                    Label("查看完整使用教程", systemImage: "book.fill")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 13)
-                        .background(AppTheme.accent.opacity(0.12), in: .capsule)
-                        .foregroundStyle(AppTheme.accent)
-                }
-                .padding(.horizontal, 32)
-            }
+            // 🔴 2026-11-15 主人：引导页**不要**「查看完整使用教程」这个入口了
+            //    （截图圈掉了）。iOS 27+ 只留一键导入；低版本只留文字指路，
+            //    文字里已经写明去「设置 › 快捷指令」看视频。
 
             Button {
                 if state.page < 2 {

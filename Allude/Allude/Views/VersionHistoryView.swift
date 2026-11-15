@@ -54,7 +54,7 @@ struct VersionHistoryView: View {
         //    内测阶段的每一次构建单独记在下面的「1.0.0 内测记录」里，带 build 号。
         Entry(version: "1.0.0", date: "2026-11-14", theme: "首个正式版 · 更名 Allude · 支持 iOS 17 · iCloud 与第三方模型", highlights: [
             "产品更名：拾码 → Allude，订阅版叫 Allude Pro；图标、关于页与法务页同步换新",
-            "最低系统从 iOS 18 下调到 iOS 17：iPhone 与 iPad 上 iOS 17 也能安装使用",
+            "最低系统从 iOS 18 下调到 iOS 17：iOS 17 及以上的 iPhone 都能安装使用",
             "设置页重新分组：快捷指令 / 通知 / 桌面小组件 / 实时活动 / iCloud 同步 / Apple 智能与扩展，其余（外观与个性化、存储空间、关于 Allude）收进二级页",
             "新增 iCloud 同步（默认关闭）：记录写入你自己的 iCloud 云盘，经同一 Apple ID 的设备自动合并，不经开发者服务器；同步页是状态面板（网络 / iCloud / 同步状态 / 最近同步），同步跑在后台线程",
             "Apple 智能与扩展：端侧模型与第三方模型两条独立通道；可选 DeepSeek / 豆包 / 千问 / Kimi，自备 API Key、地址内置不可改，而且必须测通才能启用",
@@ -72,7 +72,7 @@ struct VersionHistoryView: View {
             "桌面小组件尺寸集改为固定全部尺寸：解锁 Pro 后大尺寸立即生效，不用删掉重加",
             "修好底部标签栏偶发浮到列表中间的问题；补上「已存放…」句式的取件地址解析；识别「按需派送运单 9005」这类没有取件码的短信",
             "默认 App 图标换成「C 标」，原来的「取件袋」仍可在设置里选；新增四套图标与「自定义 App 图标」入口",
-            "iPad 原生两栏布局与侧栏设置；备用 App 图标补齐 iPad 尺寸，可通过审核",
+            "本版本起专注 iPhone：iPad 与折叠屏的分栏适配一并下线，界面按 iPhone 单一尺寸集设计",
             "四条快捷指令的 iCloud 链接全部换成新版（旧链接作废，请用 App 内新链接或文件导入）",
             "隐私政策与使用条款同步更新：补充权限清单、TestFlight 诊断信息说明、订阅与买断条款；关于页把声明与免责并入服务条款，并新增隐私政策简明版",
         ], beta: BetaBuildLog.all),
@@ -115,7 +115,6 @@ struct VersionHistoryView: View {
             "新增「字体大小」：预览卡 + 七档滑块，也可跟随系统；调大后列表、卡片、设置一起变",
             "新增「语言」入口：直接跳到 设置 › App › Allude › 语言",
             "新增繁体中文界面：系统语言为繁體中文时自动切换，简体环境不受影响",
-            "实时活动页在 iPhone Duo 上只保留开关与说明（本机无真机，无法验证渲染）",
         ]),
         Entry(version: "0.3.3", date: "2026-11-01", theme: "iPhone 直板机功能完成 · 细节收口", highlights: [
             "首次打开：先阅读并同意《使用条款》与《隐私政策》，再进入使用教程，之后不再出现",
@@ -195,10 +194,8 @@ struct VersionHistoryView: View {
             "分享面板在常规 iPhone 上重构：卡片居中、操作按钮回到底部横排，面板圆角跟随机型屏幕圆角",
             "标签栏固定显示，不再随列表滚动收缩",
         ]),
-        Entry(version: "0.2.4", date: "2026-10-25", theme: "折叠屏适配与全量缺陷修复", highlights: [
-            "iPhone Duo 适配：内屏展开改为左侧列表 / 右侧常驻详情的平行视图，左右等宽分列",
-            "统计页与设置页同步支持分栏；设置页采用 iPad 式「侧栏分组 + 右侧内容」布局",
-            "分享面板重做：卡片按可用宽高自适应放大、右侧竖排液态玻璃操作钮，面板四角贴合 D 型屏",
+        Entry(version: "0.2.4", date: "2026-10-25", theme: "全量缺陷修复与分享面板重做", highlights: [
+            "分享面板重做：卡片按可用宽高自适应放大、右侧竖排液态玻璃操作钮，面板四角贴合屏幕圆角",
             "详情页编辑保存修复：此前保存不生效（编辑后数据未落库），现已正常写回",
             "货架号识别修复：短信里的「货架号：5-12」「3号货架」等写法现在能正确解析",
             "实时活动修复：全新安装时锁屏与灵动岛不出卡的问题已解决",
@@ -526,6 +523,16 @@ struct VersionHistoryView: View {
 
             if expanded {
                 VStack(alignment: .leading, spacing: 0) {
+                    // 🔴 2026-11-15 主人：现在仅支持 iPhone（iOS）。
+                    //    内测流水里留着早期 iPad / 折叠屏适配的尝试记录（那是当时真做过的），
+                    //    但直接铺给用户看会像"现在也支持平板"，所以这里先交代一句。
+                    Text("以下是 TestFlight 的逐次构建记录，含早期 iPad 与折叠屏适配的尝试；1.0.0 起仅支持 iPhone。")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 10)
+                        .padding(.bottom, 4)
+
                     ForEach(Array(entry.beta.enumerated()), id: \.element.id) { index, build in
                         betaRow(build,
                                 isLatest: index == 0,

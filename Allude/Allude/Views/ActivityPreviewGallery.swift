@@ -475,7 +475,7 @@ struct ActivityPreviewGallery: View {
                 Spacer(minLength: 0)
             }
 
-            Text("由于开发者没有 iPhone Duo 真机，无法进行 iPhone Duo 的实时活动渲染。\n\n开关仍然有效：打开后，锁屏与灵动岛会按系统的方式显示最新待取的取件码。")
+            Text("这台设备的灵动岛形态比较特殊，暂不提供预览。\n\n开关仍然有效：打开后，锁屏与灵动岛会按系统的方式显示最新待取的取件码。")
                 .font(AppTheme.TypeScale.body)
                 .foregroundStyle(.secondary)
                 .lineSpacing(3)
