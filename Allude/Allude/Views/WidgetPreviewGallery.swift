@@ -66,7 +66,7 @@ struct WidgetCanvas: View {
             case .small: "小尺寸 · 最多 4 条"
             case .medium: "中尺寸 · 3 条/页"
             case .large: "大尺寸 · 8 条/页"
-            case .extraLarge: "iPad 超大 · 6 条/页"
+            case .extraLarge: "超大 · 6 条/页"
             case .extraLargePortrait: "iPhone 竖版超大 · 14 条/页"
             }
         }

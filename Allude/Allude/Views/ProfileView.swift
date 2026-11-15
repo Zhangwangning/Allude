@@ -1179,7 +1179,7 @@ struct FullVersionView: View {
                            note: "Allude同屏 \(PickupStore.freeVisibleLimit) 条、最多存 \(PickupStore.freeStorageLimit) 条；Allude Pro 全部放开")
                 SettingsDivider()
                 featureRow(symbol: "square.grid.2x2.fill", title: "桌面小组件全尺寸",
-                           note: "Allude只有小、中两种尺寸；Allude Pro 大尺寸与 iPad 尺寸一并可用")
+                           note: "Allude 只有小、中两种尺寸；Allude Pro 大尺寸与大号竖版一并可用")
                 SettingsDivider()
                 featureRow(symbol: "iphone.gen3.radiowaves.left.and.right", title: "实时活动",
                            note: "灵动岛与锁屏常驻最新取件码")
