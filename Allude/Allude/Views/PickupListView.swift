@@ -42,19 +42,24 @@ enum PickupUndoAction {
 final class PickupListModel: ObservableObject {
     /// 排序方式存本机（2026-11-15 主人：分组方式要记住，下次进来还是上次选的）。
     /// 用 App 自己的 UserDefaults 就够 —— 小组件不参与排序，不需要 App Group。
-    private static let sortKey = "allude.list.sort"
+    private static let sortKey = PickupStorage.listSortKey
 
     @Published var path = NavigationPath()
 
     // 检索
     @Published var query = ""
     @Published var sort: PickupSortMode {
-        didSet { UserDefaults.standard.set(sort.rawValue, forKey: Self.sortKey) }
+        didSet {
+            // 写进 App Group：小组件要跟着同一套分组排（2026-11-15）
+            PickupStorage.sharedDefaults.set(sort.rawValue, forKey: Self.sortKey)
+            UserDefaults.standard.set(sort.rawValue, forKey: Self.sortKey)
+        }
     }
 
     init() {
         // 读回上次选的分组方式（2026-11-15 主人：下次进来要保持上次的选择）
-        let saved = UserDefaults.standard.string(forKey: Self.sortKey)
+        let saved = PickupStorage.sharedDefaults.string(forKey: Self.sortKey)
+            ?? UserDefaults.standard.string(forKey: Self.sortKey)
         sort = saved.flatMap(PickupSortMode.init(rawValue:)) ?? .newest
     }
 

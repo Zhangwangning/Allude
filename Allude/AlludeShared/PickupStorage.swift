@@ -36,6 +36,22 @@ enum PickupStorage {
         FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) != nil
     }
 
+    /// 列表排序 / 分组的键：主 App 写、小组件读（2026-11-15 主人：
+    /// 「桌面小组件优先让小组件跟随待取页的排序逻辑会更统一」）。
+    static let listSortKey = "allude.list.sort"
+
+    /// 共享偏好域：App Group 优先；小组件进程读同一个域。
+    static var sharedDefaults: UserDefaults {
+        UserDefaults(suiteName: appGroupID) ?? .standard
+    }
+
+    /// 当前排序方式（未知值一律回落「最近收到」）。
+    static var listSort: PickupSortLogic.Mode {
+        let raw = sharedDefaults.string(forKey: listSortKey)
+            ?? UserDefaults.standard.string(forKey: listSortKey)
+        return raw.flatMap(PickupSortLogic.Mode.init(rawValue:)) ?? .newest
+    }
+
     private static var encoder: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -267,9 +283,12 @@ struct WidgetSnapshot {
         let cap = isPro ? PickupLimits.widgetListCap : PickupLimits.freeVisible
 
         let all = PickupStorage.load()
-        let pending = all
-            .filter { !$0.isPickedUp }
-            .sorted { $0.receivedAt > $1.receivedAt }
+        // 跟主 App 待取页同一套排序 / 分组（2026-11-15 主人要求）：
+        // 主界面按驿站找件，桌面就按驿站排，不用切换认知。
+        let pending = PickupSortLogic.sort(
+            all.filter { !$0.isPickedUp },
+            mode: PickupStorage.listSort
+        )
         // 今天**取走**的件数：按取件时刻算（`pickupMoment` = pickedUpAt ?? receivedAt），
         // 与统计页 `PickupStats.pickedToday` 和 App 内 `todayPickedCount` 同口径
         // （2026-10-25 审查修：原来看 `receivedAt`，昨天收到今天取走的件会被漏掉）。
@@ -776,6 +795,61 @@ enum WidgetDisplayPreset: String, CaseIterable {
         case .stationOnly:
             return WidgetDisplayOptions(showsCompany: true, showsStation: true,
                                         showsAddress: false, showsLocker: true)
+        }
+    }
+}
+
+
+// MARK: - 列表排序 / 分组的共享实现
+//
+// 主 App 的待取页与桌面小组件必须用**同一套**排序，否则用户在列表里按驿站
+// 找件、桌面却按时间排，认知要来回切换（2026-11-15 主人要求）。
+// 放在 AlludeShared 里两边共用；原始值必须与 `PickupSortMode` 一致。
+
+enum PickupSortLogic {
+    enum Mode: String {
+        case newest = "最近收到"
+        case oldest = "最早收到"
+        case company = "按快递公司"
+        case station = "按快递驿站"
+    }
+
+    /// 未标注驿站时的分组名（与 App 内一致）
+    static let noStation = "未标注驿站"
+
+    static func stationName(of record: PickupRecord) -> String {
+        let name = record.station.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? noStation : name
+    }
+
+    static func companyName(of record: PickupRecord) -> String {
+        // 与卡面主名同口径：快递公司标准名优先，没有就退到 company
+        let name = (record.courierDisplay ?? record.company)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? "其他" : name
+    }
+
+    /// 稳定排序：同组内仍按「最近收到」倒序。
+    static func sort(_ records: [PickupRecord], mode: Mode) -> [PickupRecord] {
+        switch mode {
+        case .newest:
+            return records.sorted { $0.receivedAt > $1.receivedAt }
+        case .oldest:
+            return records.sorted { $0.receivedAt < $1.receivedAt }
+        case .company:
+            return records.sorted {
+                let a = companyName(of: $0), b = companyName(of: $1)
+                if a != b { return a < b }
+                return $0.receivedAt > $1.receivedAt
+            }
+        case .station:
+            return records.sorted {
+                let a = stationName(of: $0), b = stationName(of: $1)
+                let aIsNone = (a == noStation), bIsNone = (b == noStation)
+                if aIsNone != bIsNone { return bIsNone }   // 未标注驿站永远置底
+                if a != b { return a < b }
+                return $0.receivedAt > $1.receivedAt
+            }
         }
     }
 }
