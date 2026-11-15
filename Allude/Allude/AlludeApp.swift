@@ -14,6 +14,20 @@ struct AlludeApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        // 🔴 2026-11-15 主人：「待取左上角为啥有一块白色」。
+        //    那块白是 iOS 26/27 导航栏的玻璃材质取样出来的，`.toolbarBackground(色, .visible)`
+        //    在 NavigationSplitView 的侧栏列上压不住（试过：容器层 / 列内 / hidden 均无效）。
+        //    改在 App 层统一给导航栏一个**不透明**底色 —— 与页面底色同为 systemGroupedBackground，
+        //    这样分栏左列的顶部、以及所有二级页的标题栏都不会再出现白条。
+        let navAppearance = UINavigationBarAppearance()
+        navAppearance.configureWithOpaqueBackground()
+        navAppearance.backgroundColor = .systemGroupedBackground
+        navAppearance.shadowColor = .clear
+        UINavigationBar.appearance().standardAppearance = navAppearance
+        UINavigationBar.appearance().compactAppearance = navAppearance
+        UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
+        UINavigationBar.appearance().compactScrollEdgeAppearance = navAppearance
+
         // 命令行验证脚手架：走的是 ParsePickupTextIntent.perform() 里**同一个**
         // `PickupStore.shared.ingest`，用于在模拟器上取证「短信文本 → 解析 → 落库 →
         // 列表 / 小组件」整条链路。只在注入 SCREEN=ingest 时执行一次，正式运行零影响。

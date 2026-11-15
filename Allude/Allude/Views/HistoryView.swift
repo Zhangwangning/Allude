@@ -249,7 +249,7 @@ struct PickedUpView: View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             listPane
                 // 左右等分（与待取页同口径；主人已否掉中轴方案）
-                .navigationSplitViewColumnWidth(min: 300, ideal: PadLayout.splitColumnIdeal, max: 600)
+                .navigationSplitViewColumnWidth(min: 400, ideal: PadLayout.splitColumnIdeal, max: 600)
         } detail: {
             if let record = splitDetailRecord {
                 // 与待取页同口径：绑定 id，避免编辑草稿串到下一条（2026-10-25 审查修）
@@ -260,6 +260,8 @@ struct PickedUpView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
+        // 与待取页同口径：导航栏透明，露出列底色（上色压不住系统材质，2026-11-15 实测）
+        .toolbarBackground(.hidden, for: .navigationBar)
     }
 
     /// 分栏右栏要显示的记录：选中的那条优先，没选中就显示第一条（同待取页口径）。
@@ -285,19 +287,19 @@ struct PickedUpView: View {
 
     private var listPane: some View {
         listBody
+            .background(Color(.systemGroupedBackground).ignoresSafeArea())
     }
 
     private var listBody: some View {
         List {
-            if splitPane {
-                Section {
-                    // 导航栏已自带侧栏切换（◫），这里不再重复给图标（2026-11-15 主人）
-                    PadSidebarHeader(title: "已取")
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
+                if splitPane {
+                    Section {
+                        PadSidebarHeader(title: "已取")
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                    }
                 }
-            }
                 if list.isEmpty {
                     Section {
                         EmptyStateView(symbol: "archivebox",
@@ -404,9 +406,10 @@ struct PickedUpView: View {
             .frame(maxWidth: splitPane ? .infinity : AppTheme.contentMaxWidth)
             .frame(maxWidth: .infinity)
             .background(Color(.systemGroupedBackground))
-            // 与待取页同口径：分栏也要留导航栏，否则里面的按钮会一起被藏掉（2026-11-15 主人）。
+            // 与待取页同口径（三页统一）：导航栏常显、标题进导航栏、底色与列表同为浅灰。
             .toolbar(.visible, for: .navigationBar)
             .toolbarBackground(.hidden, for: .navigationBar)
+            // 分栏时标题自绘在列表里，导航栏只留按钮（三页统一）
             .navigationTitle(splitPane ? "" : "已取")
             .toolbarTitleDisplayMode(splitPane ? .inline : .large)
             .toolbar {

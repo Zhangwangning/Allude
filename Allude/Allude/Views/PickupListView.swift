@@ -573,8 +573,16 @@ struct PickupListView: View {
     ///    左栏几乎被压扁，随即改回等分 —— 不要再试中轴方案。
     private var splitLayout: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            listPane
-                .navigationSplitViewColumnWidth(min: 300, ideal: PadLayout.splitColumnIdeal, max: 600)
+            // 🔴 2026-11-15：左列结构与右列**完全对称** —— 外层 ZStack 铺满浅灰 + 内层 NavigationStack。
+            //    右列一直这么写，所以它顶部是灰的；左列只写 `NavigationStack { listPane }`
+            //    时，那块灰铺不到状态栏/导航栏后面，顶部就露出系统白（主人说的「左上角一块白」）。
+            ZStack {
+                Color(.systemGroupedBackground).ignoresSafeArea()
+                NavigationStack {
+                    listPane
+                }
+            }
+            .navigationSplitViewColumnWidth(min: 400, ideal: PadLayout.splitColumnIdeal, max: 600)
         } detail: {
             ZStack {
                 // 右栏整列铺浅灰：详情限宽 760 居中，两侧不能露出系统白
@@ -598,6 +606,10 @@ struct PickupListView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
+        // 🔴 2026-11-15 主人：「待取左上角为啥有一块白色」。
+        //    给导航栏**上色压不住**系统材质（试过 toolbarBackground(色, .visible)，仍是白的），
+        //    改成让它透明 —— 内容（listPane 的浅灰底）延伸上去，白块才真的没了。
+        .toolbarBackground(.hidden, for: .navigationBar)
     }
 
     /// 列表本体（两种布局共用）：List + 内边距 / 背景 / 搜索 / 工具栏 / 弹层。
@@ -608,16 +620,22 @@ struct PickupListView: View {
     private var listPane: some View {
         VStack(spacing: 0) {
             if splitPane {
-                // 🔴 2026-11-15 主人：分栏后导航栏已经自带侧栏切换（◫），
-                //    列表里那个重复的图标去掉；大标题挪到搜索框**上方**，
-                //    顺序恢复成「待取 → 搜索 → 统计卡 → 列表」。
+                // 🔴 2026-11-15 主人：「左上角为啥有一块白色」——
+                //    那块白是导航栏默认底色 + 这个 VStack 没铺底色，透出了窗口白。
+                //    现在导航栏改成浅灰（见下面的 toolbarBackground），这里也补同色底。
+                //    标题统一交给系统导航栏，不再自绘 PadSidebarHeader。
+                // 🔴 2026-11-15 三页统一：大标题自绘在列表里（34pt bold，与直板机同字号）。
+                //    侧栏列不让系统画 large title（设置页实测压成居中 inline），
+                //    干脆三页都自己画，位置与字号才真的一致。
                 PadSidebarHeader(title: "待取")
-                    .padding(.top, 2)
                 PadSidebarSearchField(text: $model.query, prompt: "取件码 / 快递公司 / 地址")
-                    .padding(.bottom, 6)
+                    .padding(.bottom, 4)
             }
             listBody
         }
+        // 🔴 2026-11-15：`ignoresSafeArea()` 是关键 —— 不加的话底色只铺内容区，
+        //    导航栏那一条露出的是 **sidebar 列自身**的系统白，看起来就是「左上角一块白」。
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
     }
 
     private var listBody: some View {
@@ -682,12 +700,13 @@ struct PickupListView: View {
             // 🔴 2026-10-08 结构重构：浏览（已取件）独立成 Tab 后，取件页不再需要
             //    分段切换器 —— 回归系统导航栏（大标题「取件」+ drawer 搜索 + 系统
             //    toolbar）。此前为「分段居中于标题位」做的自绘顶栏随分段一起退役。
-            // 🔴 2026-11-15 主人：「分栏后添加、分组、选择都看不见了」——
-            //    以前分栏把整条导航栏 `.hidden`，连带 `+` / 筛选 / 选择一起藏了。
-            //    现在导航栏照常显示，只把**标题**置空（标题由左列内的 PadSidebarHeader 承担，
-            //    避免和导航栏标题重复）。
+            // 🔴 2026-11-15 三页统一（待取 / 已取 / 设置）：
+            //    · 标题交给系统导航栏（分栏用 inline，单列仍是大标题）；
+            //    · 导航栏底色与列表同为浅灰，不再是白块；
+            //    · 工具栏按钮统一 topBarTrailing。
             .toolbar(.visible, for: .navigationBar)
             .toolbarBackground(.hidden, for: .navigationBar)
+            // 分栏时标题自绘在列表里，导航栏只留按钮
             .navigationTitle(splitPane ? "" : "待取")
             .toolbarTitleDisplayMode(splitPane ? .inline : .large)
             .toolbar { toolbarContent }

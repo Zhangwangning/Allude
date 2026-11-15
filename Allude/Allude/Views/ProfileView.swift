@@ -394,23 +394,19 @@ struct SettingsView: View {
     /// 改成 plain List + 自绘行背景：底色浅灰、选中行白色圆角块。
     private var splitSettings: some View {
         NavigationSplitView {
-            VStack(spacing: 0) {
-                // 大标题（与「统计」页同字号），Apple 设置也是标题在搜索之上
-
-
-                // 侧栏顶部搜索框（照 iPad 设置：胶囊输入框 + 放大镜）
-                settingsSearchField
-
-
-                List {
-                    Section {
+            // 与待取 / 已取 同一套骨架：ZStack 铺灰 + NavigationStack。
+            // 🔴 缺了 NavigationStack 标题会退化成**居中 inline**，和另外两页的大标题不一致
+            //    （2026-11-15 主人要求「标题大小与直板机一致」）。
+            ZStack {
+                Color(.systemGroupedBackground).ignoresSafeArea()
+                NavigationStack {
+                    VStack(spacing: 0) {
+                        // 🔴 2026-11-15 三页统一：大标题自绘（34pt bold），位置字号与待取 / 已取 一致。
                         PadSidebarHeader(title: "设置")
-                            .listRowInsets(EdgeInsets())
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                    }
-
-                    // Pro 入口回到列表第一条
+                        // 🔴 2026-11-15 主人：设置页**不要**左上角那个搜索框（截图圈掉了）。
+                //    设置项本来就不多，一页能扫完；标题统一交给导航栏，
+                //    与待取 / 已取 保持同一套（日期 2026-11-15）。
+                List {
                     proBanner
                         .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 10, trailing: 10))
                         .listRowBackground(Color.clear)
@@ -422,17 +418,24 @@ struct SettingsView: View {
                     settingsGroup("", items: filtered(SettingsPane.supportGroup))
                     settingsGroup("", items: filtered(SettingsPane.aboutGroupAll))
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .background(Color(.systemGroupedBackground))
-                .toolbarBackground(.hidden, for: .navigationBar)
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
+                        .background(Color(.systemGroupedBackground))
+                        // 🔴 标题必须挂在 **List 上**（与待取 / 已取 同口径）。
+                        //    挂在外面那层 VStack 上会退化成居中 inline 小字，
+                        //    和另外两页的大标题对不齐（2026-11-15 实测）。
+                        .toolbar(.visible, for: .navigationBar)
+                        .toolbarBackground(.hidden, for: .navigationBar)
+                        // 侧栏标题自绘（三页统一），导航栏只留按钮
+                        .navigationTitle("")
+                        .toolbarTitleDisplayMode(.inline)
+                }
             }
-            .background(Color(.systemGroupedBackground))
-            .toolbar(.hidden, for: .navigationBar)
+            }
             // 侧栏宽度**按屏幕宽比例**（2026-10-25 主人：Duo 展开竖屏也要照 iPad 竖屏布局）：
             // 横屏 951pt → ~380pt；竖屏 669pt → ~280pt（下限）。
             // 写死 434 会让竖屏侧栏占到 65%，右侧内容被挤扁。
-            .navigationSplitViewColumnWidth(min: 300, ideal: PadLayout.splitColumnIdeal, max: 600)
+            .navigationSplitViewColumnWidth(min: 400, ideal: PadLayout.splitColumnIdeal, max: 600)
         } detail: {
             // 右栏与左栏**同一底色**（2026-10-25 主人两次强调：Duo 展开时左侧浅灰、
             // 右侧白色，「先全部是一个底色」）。
@@ -478,6 +481,8 @@ struct SettingsView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
+        // 与待取页同口径：导航栏透明，露出列底色（上色压不住系统材质，2026-11-15 实测）
+        .toolbarBackground(.hidden, for: .navigationBar)
         .onAppear { TabBarCloak.shared.reveal() }
     }
 

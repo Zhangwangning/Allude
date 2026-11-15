@@ -63,10 +63,12 @@ enum PadLayout {
         UIDevice.current.userInterfaceIdiom == .pad ? 900 : 520
     }
 
-    /// 分栏左列宽度：Duo 内屏只有 ~585pt，ideal 440 会把右栏压到只剩 145pt。
-    /// iPad 维持原值不动。
+    /// 分栏左列宽度。
+    /// · iPad 维持 440；
+    /// · 🔴 iPhone Duo 内屏用 **466pt** —— 主人 2026-11-15：「左侧卡片区域宽度做成和外屏一样」。
+    ///   Duo 外屏实测就是 466pt，这样左列的卡片尺寸与折叠状态下完全一致，切换姿势不会跳。
     static var splitColumnIdeal: CGFloat {
-        UIDevice.current.userInterfaceIdiom == .pad ? 440 : 320
+        isPad ? 440 : 466
     }
 }
 
@@ -254,6 +256,9 @@ struct RootView: View {
         .tint(AppTheme.accent)
         // 装配后接管系统 tabBar 引用（见 `TabBarCloak`），供显隐动画驱动。
         .background(NativeTabBarBridge())
+        // 🔴 2026-11-15：整个窗口铺浅灰。iOS 26 的导航栏是玻璃材质，**取样背后的内容**；
+        //    窗口默认是白，所以分栏左列顶部总有一条白。铺灰之后取样到灰，白块消失。
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
         // 🔴 2026-11-14 主人定：iPad 要**底部标签栏**（像 Infuse / Scriptable 那样），
         // 不要系统顶部栏、也不要侧边栏。iPad 上把系统标签栏藏掉，自己画一条；
         // iPhone / Duo 外屏仍然用系统原生标签栏。
