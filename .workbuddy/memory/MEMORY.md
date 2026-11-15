@@ -18,7 +18,10 @@ cd Allude && xcodebuild -project Allude.xcodeproj -scheme Allude \
 - 缺 `-disable-sandbox` → 宏插件起不来，报假错（`SwipeActionRow` 的 `'self' is immutable`）。
 - 🔴 **agent 会话内构建必然停在 CoreML 阶段**：`sandbox-exec: sandbox_apply: Operation not permitted`
   （Xcode 硬编码用 sandbox-exec 包 coremlc；本环境只允许最简 profile）。
-  `ENABLE_USER_SCRIPT_SANDBOXING=NO` 与关沙箱都无效 → 构建验证只能请主人在宿主终端跑。
+  `ENABLE_USER_SCRIPT_SANDBOXING=NO` 与关沙箱都无效。
+  **可绕过（已验证）**：临时 `mv AlludePickup.mlmodel{,.bak}` + 把 `coremlc generate`
+  出的 Swift 放进 `Models/` → 构建 → 立刻还原。只用于 UI 验证，产物缺 `.mlmodelc` 不能发版。
+  纯校验用 `swiftc -typecheck -disable-sandbox`（全量 swift + 生成的 CoreML Swift）。
 - pbxproj 改版本号必须「先读进变量再写回」，内联读写会截断成 0 字节。
 - `AlludeShared/`、`AlludeWidget/` 是显式 PBXGroup：新增 Swift 必须手动进 pbxproj 三处。
 
@@ -51,6 +54,16 @@ cd Allude && xcodebuild -project Allude.xcodeproj -scheme Allude \
 - `launch` 必须 `--terminate-running-process`，否则只切前台、变量不注入。
 - 装完先核对 `CFBundleVersion` 再截图（install/terminate 异步，旧进程会被静默沿用）。
 - 基准机 iPhone 16 Pro `272DD31C-D94F-46B4-9CC7-974A61439777`。
+
+## 图标（13 套）
+- 🔴 13 套 `AppIconNN.imageset` **只放 `AlludeShared/Assets.xcassets`**（2026-11-15 迁入）：
+  App 与小组件两个 target 都编这份 catalog，扩展才取得到图；放 App 的 catalog 里 →
+  灵动岛/锁屏 `Image("AppIconNN")` 静默渲染成**灰块**（312 的实际故障）。
+- 新增一套要动四处：imageset（60/120/180 + `template-rendering-intent: original`）、
+  `Allude/AppIcons/IconNN*.png`、`Info.plist` 的 `CFBundleAlternateIcons`、
+  `AppIconChoice` 的 case/title。同步组自动收文件，不改 pbxproj。
+- 第 13 套「快递箱」按主人要求图形内缩 1/5（内容占 60%，白底合成去 alpha）。
+- ⚠️ 模拟器截不到真实灵动岛（前台/后台/主屏都无胶囊），只能真机验。
 
 ## 现状（2026-11-15）
 - 1.0.0 已提交审核（WAITING_FOR_REVIEW），**绑构建 309**；312 已上传未挂。
