@@ -82,7 +82,7 @@ xcodebuild -project Allude.xcodeproj -scheme Allude -destination "$DEST" \
 - 装完先核对 `CFBundleVersion` 再截图（install/terminate 异步，旧进程会被静默沿用）。
 - 基准机 iPhone 16 Pro `272DD31C-D94F-46B4-9CC7-974A61439777`。
 
-## 图标（16 套，2026-11-15 从 13→21 再删到 16）
+## 图标（17 套，2026-11-15：13→21→删 6 套→补 2 套）
 - 🔴 全部 `AppIconNN.imageset` **只放 `AlludeShared/Assets.xcassets`**（2026-11-15 迁入）：
   App 与小组件两个 target 都编这份 catalog，扩展才取得到图；放 App 的 catalog 里 →
   灵动岛/锁屏 `Image("AppIconNN")` 静默渲染成**灰块**（312 的实际故障）。
@@ -92,8 +92,9 @@ xcodebuild -project Allude.xcodeproj -scheme Allude -destination "$DEST" \
   `AppIconChoice` 的 case/number/title。`App/` 是同步组 → 不改 pbxproj。
 - ⚠️ `sips -z` **只改尺寸不改格式**：源是 JPEG 时必须加 `-s format png`，
   否则 `.png` 里装的是 JPEG 数据（actool 会不认）。
-- 🔴 **编号留空不复用**：2026-11-15 主人圈掉第 1/4/6/8/11 套（号码牌 / 扫码件 /
-  手提袋 / 卡包 / 牛皮纸）要求删除。现存活编号 2,3,5,7,9,10,12…21，**不要重排** ——
+- 🔴 **编号留空不复用**：2026-11-15 主人圈掉第 1/4/6/8/11/13 套（号码牌 / 扫码件 /
+  手提袋 / 卡包 / 牛皮纸 / 快递箱）要求删除，同晚又补了 22、23 两套白色 ALLUDE 立方体。
+  现存活编号 2,3,5,7,9,10,12,14…23（共 17 套），**不要重排** ——
   `rawValue`、`number`、`AppIconNN`、Info.plist 的 `IconNN` 都持久化过，重排会让
   老用户选的图变成另一张。删号同时要动四处：imageset、`AppIcons/IconNN*.png`、
   `CFBundleAlternateIcons` 条目、`AppIconChoice` 的 case/number/title。

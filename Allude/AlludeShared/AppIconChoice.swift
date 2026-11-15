@@ -3,12 +3,12 @@ import Foundation
 // MARK: ============================================================================
 // App 图标切换（2026-11-01 主人）
 //
-// 十六套内置图标，**第 7 套（C 标）为默认主图标**（2026-11-11 主人定；
+// 十七套内置图标，**第 7 套（C 标）为默认主图标**（2026-11-11 主人定；
 // 2026-11-12 主人又补了第 9–12 套；2026-11-15 补第 13 套「快递箱」，
 // 同日晚再补第 14–21 套「快递盒 / ALLUDE 招牌」八个变体）。
 //
-// 🔴 2026-11-15 主人圈掉五套（1 号码牌 / 4 扫码件 / 6 手提袋 / 8 卡包 / 11 牛皮纸），
-//    要求删掉。**编号故意留空、不重排**：rawValue 与 `number` 都是持久化过的
+// 🔴 2026-11-15 主人圈掉六套（1 号码牌 / 4 扫码件 / 6 手提袋 / 8 卡包 / 11 牛皮纸 /
+//    13 快递箱），要求删掉；同晚又给了两张「白色 ALLUDE 立方体」补成 22、23。**编号故意留空、不重排**：rawValue 与 `number` 都是持久化过的
 //    （App Group 偏好里的 `allude.appIcon`、资源名 `AppIconNN`、Info.plist 的
 //    `IconNN`），一重排就会让老用户选的图变成另一张。删掉的号从此不复用。
 //
@@ -33,11 +33,14 @@ import Foundation
 // ============================================================================
 
 enum AppIconChoice: String, CaseIterable, Identifiable {
-    /// ⚠️ 编号 1、4、6、8、11 已于 2026-11-15 删除，不再存在。
+    /// ⚠️ 编号 1、4、6、8、11、13 已于 2026-11-15 删除，不再存在。
     case icon02, icon03, icon05, icon07, icon09, icon10
     /// 2026-11-15 主人补的第二批：8 张「快递盒 / ALLUDE 招牌」变体（立体、平涂、光泽各配色）。
+    /// 其中第 13 套「快递箱」同晚被删。
     /// 🔴 都是 1536 满幅方图，**不裁切**、直接等比缩放到 60/120/180 与 120/180。
-    case icon12, icon13, icon14, icon15, icon16, icon17, icon18, icon19, icon20, icon21
+    case icon12, icon14, icon15, icon16, icon17, icon18, icon19, icon20, icon21
+    /// 2026-11-15 深夜第三笔：主人给的两张「白色 ALLUDE 立方体」（2D 平涂 / 3D 玻璃质感）。
+    case icon22, icon23
 
     /// 默认图标 = 第 7 套（C 标）。
     ///
@@ -47,7 +50,7 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    /// 序号（= 历史编号，**有空洞**：1/4/6/8/11 已删）。用于文案与文件名。
+    /// 序号（= 历史编号，**有空洞**：1/4/6/8/11/13 已删）。用于文案与文件名。
     var number: Int {
         switch self {
         case .icon02: 2
@@ -57,7 +60,6 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
         case .icon09: 9
         case .icon10: 10
         case .icon12: 12
-        case .icon13: 13
         case .icon14: 14
         case .icon15: 15
         case .icon16: 16
@@ -66,6 +68,8 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
         case .icon19: 19
         case .icon20: 20
         case .icon21: 21
+        case .icon22: 22
+        case .icon23: 23
         }
     }
 
@@ -79,7 +83,6 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
         case .icon09: "霓虹 A"
         case .icon10: "折纸 A"
         case .icon12: "包裹"
-        case .icon13: "快递箱"
         case .icon14: "黑盒立体"
         case .icon15: "蓝盒立体"
         case .icon16: "蓝牌"
@@ -88,6 +91,8 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
         case .icon19: "黑牌"
         case .icon20: "暗牌"
         case .icon21: "光泽黑标"
+        case .icon22: "白盒平涂"
+        case .icon23: "玻璃白盒"
         }
     }
 

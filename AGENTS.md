@@ -189,24 +189,25 @@ iPhone 直板机已完工（0.3.3）；**iPhone Duo 折叠屏适配已开工**�
 
 ## App 图标切换
 
-十六套内置图标（2026-11-15 补第 13 套「快递箱」，同日晚再补第 14–21 套
-「快递盒 / ALLUDE 招牌」八个变体；同日晚主人圈掉第 1/4/6/8/11 套并删除），
+十七套内置图标（2026-11-15 补第 13 套「快递箱」，同日晚再补第 14–21 套
+「快递盒 / ALLUDE 招牌」八个变体；同日晚主人圈掉第 1/4/6/8/11/13 套并删除，
+又给了两张「白色 ALLUDE 立方体」补成第 22、23 套），
 **默认是第 7 套「C 标」**（2026-11-11 主人改的；此前默认是第 3 套「取件袋」）。
-🔴 **编号故意留空、不重排**（现存 2,3,5,7,9,10,12…21）：`rawValue`、`number`、
+🔴 **编号故意留空、不重排**（现存 2,3,5,7,9,10,12,14…23）：`rawValue`、`number`、
 资源名 `AppIconNN` 与 Info.plist 的 `IconNN` 都是持久化过的，一重排老用户选的
 图就会变成另一张。删掉的号从此不复用。
 设置 › 外观与个性化 › 自定义 App 图标可切换（版式同快递公司页的网格）。
 原主图标「取件袋」现在作为 alternate icon `Icon03` 保留，仍可在设置里选。
 
 - 主图标：`Allude/Assets.xcassets/AppIcon.appiconset`（1024，**不能有透明通道、不能自带圆角**）。
-- 🔴 **16 套 `AppIconNN.imageset`（App 内预览 / 灵动岛 / 关于页 / 分享卡共用；编号不连续）
+- 🔴 **17 套 `AppIconNN.imageset`（App 内预览 / 灵动岛 / 关于页 / 分享卡共用；编号不连续）
   统一放 `AlludeShared/Assets.xcassets`**（2026-11-15 从 App 的 catalog 迁过来）。
   理由：共享 catalog 被 App 与小组件**两个 target 各编译一次**，扩展进程才查得到；
   放在 App 的 catalog 里，小组件取不到图，`Image("AppIconNN")` 会**静默渲染成灰块**
   —— 1.0.0(312) 灵动岛不显示 App 图标就是这个原因。每份 imageset 必须带
   `"template-rendering-intent": "original"` + 1x(60)/2x(120)/3x(180) 三档。
 - 除默认那套以外全部由 **真实 `Allude/Info.plist`** 的
-  `CFBundleIcons › CFBundleAlternateIcons` 声明 `Icon02`…`Icon21`（去掉已删的 5 个），文件是 bundle
+  `CFBundleIcons › CFBundleAlternateIcons` 声明 `Icon02`…`Icon23`（跳过已删的 6 个），文件是 bundle
   根目录的 `IconNN@2x.png`(120) / `@3x.png`(180)（纯 iPhone 工程，不需要 `~ipad`）。
   新增一套要同时动三处：imageset、`AppIcons/IconNN*.png`、Info.plist 声明，
   再加 `AppIconChoice` 的 case 与 `title`（`assetName`/`alternateName` 由 `number` 自动拼）。
