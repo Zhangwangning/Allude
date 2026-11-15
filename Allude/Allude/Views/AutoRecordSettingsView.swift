@@ -122,14 +122,14 @@ struct AutoRecordSettingsView: View {
                 if let player {
                     PlayerSurface(player: player)
                         .aspectRatio(1350.0 / 2760.0, contentMode: .fit)
-                        .frame(height: 320)
+                        .frame(height: 400)
                         .clipShape(.rect(cornerRadius: 12, style: .continuous))
                         .onTapGesture { togglePlayback() }
                 } else {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(Color(.tertiarySystemFill))
                         .aspectRatio(1350.0 / 2760.0, contentMode: .fit)
-                        .frame(height: 320)
+                        .frame(height: 400)
                         .overlay {
                             Text("视频缺失")
                                 .font(AppTheme.TypeScale.note)
