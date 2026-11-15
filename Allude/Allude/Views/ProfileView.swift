@@ -439,13 +439,7 @@ struct SettingsView: View {
 
                 NavigationStack(path: $detailPath) {
                     // 照 iPad 设置的内容列：左右留白更大、内容限宽居中
-                    paneContent(pane ?? .notification, openAIHub: { route in detailPath.append(route) })
-                        .navigationDestination(for: AIHubRoute.self) { route in
-                            switch route {
-                            case .appleIntelligence: appleIntelligencePane
-                            case .extensions:        AIExtensionsListView()
-                            }
-                        }
+                    paneContent(pane ?? .notification)
                         // 每个 pane 一份独立栈：切面板后旧栈的路径会残留，
                         // 表现为「点了二级页没反应」（2026-11-14 修）。
                         .id(pane)
@@ -576,8 +570,7 @@ struct SettingsView: View {
     }
 
     @ViewBuilder
-    private func paneContent(_ item: SettingsPane,
-                             openAIHub: @escaping (AIHubRoute) -> Void = { _ in }) -> some View {
+    private func paneContent(_ item: SettingsPane) -> some View {
         switch item {
         case .appearance: AppearanceSettingsView()
         case .fontSize:   FontSizeView()
@@ -599,7 +592,7 @@ struct SettingsView: View {
         case .aiCapability:
             // 2026-11-14 主人：这一行原本直达「Apple 智能」检测页，把「扩展」（第三方模型）
             // 那一半整个挡住了 —— 改成先进总览，两条通道各一个入口。
-            AIExtensionsHomeView(onOpen: openAIHub)
+            AIExtensionsHomeView()
         case .appIcon:      AppIconSettingsView()
         case .privacyDoc:   LegalDocumentView(document: .privacy)
         // 2026-11-12 主人：服务条款与「声明与免责」合并成一页

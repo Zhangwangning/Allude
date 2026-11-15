@@ -21,33 +21,20 @@ enum AIHubRoute: Hashable {
 }
 
 /// 二级页：Apple 智能 + 扩展 两个入口。
+///
+/// 2026-11-15：改成**纯 value-based push**，目标注册在本页自己身上。
+/// 之前两种写法都踩过坑：分栏里 `NavigationLink(destination:)` 会被吞；
+/// 单栈里靠外部注入的闭包 append（外部没注入时就等于点了没反应）。
+/// `navigationDestination` 注册在被 push 的页面上，SwiftUI 会挂到**外层同一个栈**，
+/// 所以 iPhone 单栈与分栏详情栈都能正常 push，不需要任何外部回调。
 struct AIExtensionsHomeView: View {
-    /// 由设置详情栈注入：分栏里 destination 型 push 会被吞，统一走显式 path。
-    /// 单栈（iPhone / 窄屏）传 nil —— 这时用普通 `NavigationLink` push，
-    /// 否则按钮点了没有栈可 append，表现就是「点不进去」（2026-11-15 主人复现）。
-    var onOpen: ((AIHubRoute) -> Void)? = nil
-
     @ViewBuilder
     private func hubRow(_ route: AIHubRoute, symbol: String, title: String, tint: Color) -> some View {
-        let row = SettingsRow(symbol: symbol, title: title, showsChevron: true, tint: tint)
-        if let onOpen {
-            Button { onOpen(route) } label: { row }
-                .buttonStyle(.plain)
-        } else {
-            NavigationLink {
-                switch route {
-                case .appleIntelligence:
-                    if #available(iOS 26.0, *) {
-                        AICapabilityView()
-                    } else {
-                        AICapabilityUnsupportedView()
-                    }
-                case .extensions:
-                    AIExtensionsListView()
-                }
-            } label: { row }
-            .buttonStyle(.plain)
+        NavigationLink(value: route) {
+            SettingsRow(symbol: symbol, title: title, showsChevron: true, tint: tint)
+                .contentShape(.rect)
         }
+        .buttonStyle(.plain)
     }
 
     var body: some View {
@@ -78,6 +65,14 @@ struct AIExtensionsHomeView: View {
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 18)
             .padding(.bottom, 40)
+            .navigationDestination(for: AIHubRoute.self) { route in
+                switch route {
+                case .appleIntelligence:
+                    if #available(iOS 26.0, *) { AICapabilityView() } else { AICapabilityUnsupportedView() }
+                case .extensions:
+                    AIExtensionsListView()
+                }
+            }
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Apple 智能与扩展")

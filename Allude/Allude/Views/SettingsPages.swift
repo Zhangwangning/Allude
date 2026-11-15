@@ -160,6 +160,7 @@ struct AppearancePersonalizationView: View {
 
 struct StorageSpaceView: View {
     @EnvironmentObject private var store: PickupStore
+    @State private var showClearAll = false
 
     private var quotaText: String {
         store.isPro
@@ -199,19 +200,14 @@ struct StorageSpaceView: View {
                 }
                 .settingsCard()
 
-                VStack(spacing: 0) {
-                    SettingsRow(symbol: "square.stack.3d.up.fill", title: "当前额度",
-                                subtitle: quotaText,
+                Button {
+                    showClearAll = true
+                } label: {
+                    SettingsRow(symbol: "trash.fill", title: "一键清除数据",
                                 showsChevron: false,
-                                tint: AppTheme.amber)
-
-                    SettingsDivider()
-
-                    SettingsRow(symbol: "rectangle.stack.fill", title: "同屏展示",
-                                detail: store.isPro ? "全部" : "\(PickupLimits.freeVisible) 条",
-                                showsChevron: false,
-                                tint: AppTheme.violet)
+                                tint: .red)
                 }
+                .buttonStyle(.plain)
                 .settingsCard()
 
                 Text("默认只保存在这台设备上；开启 iCloud 同步后只存进你自己的 iCloud，不经过开发者服务器。")
@@ -229,6 +225,12 @@ struct StorageSpaceView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color(.systemGroupedBackground))
+        .destructiveConfirm(isPresented: $showClearAll,
+                            title: "清除全部数据？",
+                            message: "将删除这台设备上的 \(store.records.count) 条取件记录，无法恢复。",
+                            confirmLabel: "清除") {
+            store.deleteMany(store.records)
+        }
         .navigationTitle("存储空间")
         .navigationBarTitleDisplayMode(.inline)
     }

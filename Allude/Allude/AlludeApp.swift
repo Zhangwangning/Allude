@@ -731,7 +731,9 @@ struct AlludeApp: App {
                 case "personalization":
                     NavigationStack { AppearancePersonalizationView() }
                 case "aiHub":
-                    NavigationStack { AIExtensionsHomeView() }
+                    AIHubScaffold()
+                case "storage":
+                    NavigationStack { StorageSpaceView() }
                 case "aiExtensions":
                     NavigationStack { AIExtensionsListView() }
                 case "aiUsage":
@@ -1020,3 +1022,23 @@ struct ColorCheckView: View {
         }
     }
 }
+
+/// 截图/回归脚手架：`AI_HUB_ROUTE=extensions|apple` 启动 1 秒后往栈里 push 一次，
+/// 用来验证「Apple 智能与扩展」的两个入口确实能进二级页（命令行点不了屏）。
+private struct AIHubScaffold: View {
+    @State private var path = NavigationPath()
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            AIExtensionsHomeView()
+                .onAppear {
+                    guard let raw = ProcessInfo.processInfo.environment["AI_HUB_ROUTE"] else { return }
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
+                        path.append(raw == "apple" ? AIHubRoute.appleIntelligence : .extensions)
+                    }
+                }
+        }
+    }
+}
+
