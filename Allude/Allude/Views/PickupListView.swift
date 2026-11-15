@@ -40,11 +40,23 @@ enum PickupUndoAction {
 /// 「Xcode GUI」与「命令行 xcodebuild」两条链路下都能编译（本机 Xcode 27 beta
 /// 的 swift-plugin-server 在命令行下对 SwiftUI 宏返回 malformed response）。
 final class PickupListModel: ObservableObject {
+    /// 排序方式存本机（2026-11-15 主人：分组方式要记住，下次进来还是上次选的）。
+    /// 用 App 自己的 UserDefaults 就够 —— 小组件不参与排序，不需要 App Group。
+    private static let sortKey = "allude.list.sort"
+
     @Published var path = NavigationPath()
 
     // 检索
     @Published var query = ""
-    @Published var sort: PickupSortMode = .newest
+    @Published var sort: PickupSortMode {
+        didSet { UserDefaults.standard.set(sort.rawValue, forKey: Self.sortKey) }
+    }
+
+    init() {
+        // 读回上次选的分组方式（2026-11-15 主人：下次进来要保持上次的选择）
+        let saved = UserDefaults.standard.string(forKey: Self.sortKey)
+        sort = saved.flatMap(PickupSortMode.init(rawValue:)) ?? .newest
+    }
 
     // 交互反馈
     @Published var completing: Set<UUID> = []
@@ -84,8 +96,6 @@ final class PickupListModel: ObservableObject {
     private var completeTasks: [UUID: Task<Void, Never>] = [:]
     private var hideTask: Task<Void, Never>?
     private var toastTask: Task<Void, Never>?
-
-    init() {}
 
     // MARK: 多选分享
 
