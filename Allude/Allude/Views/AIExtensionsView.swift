@@ -30,7 +30,16 @@ enum AIHubRoute: Hashable {
 struct AIExtensionsHomeView: View {
     @ViewBuilder
     private func hubRow(_ route: AIHubRoute, symbol: String, title: String, tint: Color) -> some View {
-        NavigationLink(value: route) {
+        // 回到 294 那套「destination 型」写法 —— 那时能点开；value-based 在本工程的
+        // 设置栈里反而失效（外层是 destination push，内层再 value push 不落地）。
+        NavigationLink {
+            switch route {
+            case .appleIntelligence:
+                if #available(iOS 26.0, *) { AICapabilityView() } else { AICapabilityUnsupportedView() }
+            case .extensions:
+                AIExtensionsListView()
+            }
+        } label: {
             SettingsRow(symbol: symbol, title: title, showsChevron: true, tint: tint)
                 .contentShape(.rect)
         }
@@ -65,14 +74,6 @@ struct AIExtensionsHomeView: View {
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 18)
             .padding(.bottom, 40)
-            .navigationDestination(for: AIHubRoute.self) { route in
-                switch route {
-                case .appleIntelligence:
-                    if #available(iOS 26.0, *) { AICapabilityView() } else { AICapabilityUnsupportedView() }
-                case .extensions:
-                    AIExtensionsListView()
-                }
-            }
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Apple 智能与扩展")

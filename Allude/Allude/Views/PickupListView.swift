@@ -775,52 +775,54 @@ struct PickupListView: View {
             // 「按快递公司」= 按公司归类显示（组头是公司名），不是筛出某一家。
             ForEach(companyGroups, id: \.company) { bucket in
                 Section {
-                    ForEach(bucket.items) { record in
-                        row(for: record)
-                    }
-                } header: {
                     SectionHeader(title: bucket.company,
                                   trailing: "\(bucket.items.count) 件",
                                   symbol: "building.2.fill",
                                   tint: CourierBrand.info(for: bucket.company).color)
-                        .padding(.horizontal, AppTheme.hInset)
-                        .padding(.top, 4)
-                        .padding(.bottom, 6)
-                        .textCase(nil)
+                        .listRowInsets(EdgeInsets(top: 2, leading: AppTheme.hInset,
+                                                  bottom: 0, trailing: AppTheme.hInset))
+                        .listRowBackground(Color(.systemGroupedBackground))
+                        .listRowSeparator(.hidden)
+
+                    ForEach(bucket.items) { record in
+                        row(for: record)
+                    }
                 }
             }
         } else if model.sort == .station {
             // 「按快递驿站」= 按驿站归类显示（组头是驿站名），站内按时间倒序。
             ForEach(stationGroups, id: \.station) { bucket in
                 Section {
-                    ForEach(bucket.items) { record in
-                        row(for: record)
-                    }
-                } header: {
                     SectionHeader(title: bucket.station,
                                   trailing: "\(bucket.items.count) 件",
                                   symbol: "mappin.circle.fill",
                                   tint: AppTheme.accent)
-                        .padding(.horizontal, AppTheme.hInset)
-                        .padding(.top, 4)
-                        .padding(.bottom, 6)
-                        .textCase(nil)
+                        .listRowInsets(EdgeInsets(top: 2, leading: AppTheme.hInset,
+                                                  bottom: 0, trailing: AppTheme.hInset))
+                        .listRowBackground(Color(.systemGroupedBackground))
+                        .listRowSeparator(.hidden)
+
+                    ForEach(bucket.items) { record in
+                        row(for: record)
+                    }
                 }
             }
         } else {
             // 最近收到 / 最早收到：按时间流分组（今天 / 昨天 / 更早）。
             ForEach(groups, id: \.group) { section in
                 Section {
+                    // 组头当普通行塞进 Section：Section header 的默认上下留白不受
+                    // listRowInsets 控制（2026-11-15 踩过），当行放才能真正压到 2pt。
+                    SectionHeader(title: section.group.rawValue,
+                                  trailing: "\(section.items.count) 件")
+                        .listRowInsets(EdgeInsets(top: 2, leading: AppTheme.hInset,
+                                                  bottom: 0, trailing: AppTheme.hInset))
+                        .listRowBackground(Color(.systemGroupedBackground))
+                        .listRowSeparator(.hidden)
+
                     ForEach(section.items) { record in
                         row(for: record)
                     }
-                } header: {
-                    SectionHeader(title: section.group.rawValue,
-                                  trailing: "\(section.items.count) 件")
-                        .padding(.horizontal, AppTheme.hInset)
-                        .padding(.top, 4)
-                        .padding(.bottom, 6)
-                        .textCase(nil)
                 }
             }
         }
@@ -1155,7 +1157,7 @@ struct PickupListView: View {
             //    根因就是它（改的值从未生效，吃的全是系统默认行边距）。
             // 挪到链尾后真正生效：上下各 7.5pt = 卡片间实距 15pt，
             // 即主人要求的"原来 29.3pt 的一半"。
-            .listRowInsets(EdgeInsets(top: 7.5, leading: AppTheme.hInset,
+            .listRowInsets(EdgeInsets(top: 2, leading: AppTheme.hInset,
                                       bottom: 7.5, trailing: AppTheme.hInset))
     }
 

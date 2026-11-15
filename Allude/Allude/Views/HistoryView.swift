@@ -259,16 +259,16 @@ struct PickedUpView: View {
                 } else {
                     ForEach(groups, id: \.group) { section in
                         Section {
+                            SectionHeader(title: section.group.rawValue,
+                                          trailing: "\(section.items.count) 件")
+                                .listRowInsets(EdgeInsets(top: 2, leading: AppTheme.hInset,
+                                                          bottom: 0, trailing: AppTheme.hInset))
+                                .listRowBackground(Color(.systemGroupedBackground))
+                                .listRowSeparator(.hidden)
+
                             ForEach(section.items) { record in
                                 row(for: record)
                             }
-                        } header: {
-                            SectionHeader(title: section.group.rawValue,
-                                          trailing: "\(section.items.count) 件")
-                                .padding(.horizontal, AppTheme.hInset)
-                                .padding(.top, 4)
-                                .padding(.bottom, 6)
-                                .textCase(nil)
                         }
                     }
 
@@ -430,7 +430,7 @@ struct PickedUpView: View {
         .listRowBackground(Color(.systemGroupedBackground))
         .listRowSeparator(.hidden)
         // 上下各 7.5pt = 卡片间实距 15pt，与待取页同口径。
-        .listRowInsets(EdgeInsets(top: 7.5, leading: AppTheme.hInset,
+        .listRowInsets(EdgeInsets(top: 2, leading: AppTheme.hInset,
                                   bottom: 7.5, trailing: AppTheme.hInset))
     }
 

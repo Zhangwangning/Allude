@@ -143,7 +143,7 @@ enum AppTheme {
     static let capsuleRadius: CGFloat = 1_000
     static let hInset: CGFloat = 16
     static let cardPadding: CGFloat = 15
-    static let listSpacing: CGFloat = 6
+    static let listSpacing: CGFloat = 2
 
     /// 内容列最大宽度（2026-10-25 · iPhone Duo 适配）
     ///

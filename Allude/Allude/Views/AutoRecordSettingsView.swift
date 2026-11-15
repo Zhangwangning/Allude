@@ -1,4 +1,5 @@
 import SwiftUI
+import AVKit
 import SafariServices
 import UIKit
 
@@ -48,45 +49,24 @@ struct AutoRecordSettingsView: View {
         if #available(iOS 27.0, *) { return true } else { return false }
     }
 
+    /// 页内播放器（2026-11-15 主人：直接在页面里播，不要全屏弹出）
+    @State private var player: AVPlayer?
+    @State private var isPlaying = false
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                // 🔴 2026-11-08 主人：用户看不懂上面四个「添加」是干嘛的。
-                //    第一句就直接说清楚目的，再给卡片。
-                Text("装一条「自动化」：收到快递短信，Allude自动收码，不用手动粘贴。")
-                    .font(AppTheme.TypeScale.body)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 4)
-
-                keywordsCard
-                note
-
-                // 🔴 2026-11-08 主人：必须讲清楚"上面的能导入，就不用看下面的"。
-                // 2026-11-11：iOS 26 及更早没有一键导入，下面这段是**必看**。
-                SectionHeader(title: quickImportAvailable
-                              ? "手动配置（仅在上面导入不了时）"
-                              : "手动配置（当前系统需要手动新建）")
-
-                Text(quickImportAvailable
-                     ? "点「添加」后，「快捷指令」里没出现这条自动化（没能直接保存），才需要照下面的步骤手动建一条。".richText
-                     : "iOS 26 及更早版本不支持一键导入自动化，请照下面的步骤在「快捷指令 › 自动化」里手动新建一条。".richText)
-                    .font(AppTheme.TypeScale.body)
-                    .foregroundStyle(.secondary)
-                    .lineSpacing(4)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .settingsCard()
-
-                // 🔴 2026-11-08 主人：和使用教程合成**一页**，不要再套下级页面。
-                UsageGuideView.UsageGuideContent()
+            VStack(alignment: .leading, spacing: 16) {
+                heroCard
+                stepsRow
+                videoCard
+                optionalKeywords
+                footnote
             }
             .padding(.horizontal, AppTheme.hInset)
-            .padding(.vertical, 18)
+            .padding(.vertical, 16)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("快捷指令自动化")
+        .navigationTitle("快捷指令")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: Binding(
             get: { linkURL.map(WebLink.init) },
@@ -96,55 +76,192 @@ struct AutoRecordSettingsView: View {
         }
     }
 
-    // MARK: 关键词列表
+    // MARK: 主卡片（图标 + 两行字 + 主按钮）
 
-    private var keywordsCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(spacing: 0) {
-                keywordRow(ShortcutAutomation.presets[0], showsDivider: false)
+    private var heroCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "envelope.badge.fill")
+                    .font(.system(size: 26, weight: .regular))
+                    .foregroundStyle(AppTheme.accent)
+                    .frame(width: 34, height: 34)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("收到短信，自动收码")
+                        .font(AppTheme.TypeScale.rowTitle)
+                    Text("不用手动粘贴，装一次就行")
+                        .font(AppTheme.TypeScale.rowSubtitle)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
             }
-            .settingsCard()
 
-            Text("可选关键词")
-                .font(AppTheme.TypeScale.section)
-                .foregroundStyle(.secondary)
-                .padding(.leading, 4)
+            if quickImportAvailable {
+                addMenu(ShortcutAutomation.presets[0], wide: true)
+            } else {
+                Text("这个系统版本不支持一键导入，照下面的步骤手动建一条。")
+                    .font(AppTheme.TypeScale.rowSubtitle)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .settingsCard()
+    }
 
-            VStack(spacing: 0) {
-                ForEach(Array(ShortcutAutomation.presets.dropFirst().enumerated()), id: \.element.id) { index, preset in
-                    keywordRow(preset, showsDivider: index < ShortcutAutomation.presets.count - 2)
+    // MARK: 三步（一条卡里的三行，带序号）
+
+    // MARK: 视频教程（页内播放）
+
+    private var videoCard: some View {
+        ZStack {
+                if let player {
+                    // 竖屏录屏（1350×2760）：按原始比例放，不要拉伸成两侧大黑边
+                    VideoPlayer(player: player)
+                        .aspectRatio(1350.0 / 2760.0, contentMode: .fit)
+                        .frame(height: 320)
+                        .clipShape(.rect(cornerRadius: 12, style: .continuous))
+                        .onTapGesture { togglePlayback() }
+                } else {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color(.tertiarySystemFill))
+                        .aspectRatio(1350.0 / 2760.0, contentMode: .fit)
+                        .frame(height: 320)
+                        .overlay {
+                            Text("视频缺失")
+                                .font(AppTheme.TypeScale.note)
+                                .foregroundStyle(.secondary)
+                        }
+                }
+
+                if let player, !isPlaying {
+                    // 暂停时盖一个大播放键，比去找系统控件直观
+                    Button { togglePlayback() } label: {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 26, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 64, height: 64)
+                            .background(Circle().fill(Color.black.opacity(0.45)))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("播放视频教程")
                 }
             }
-            .settingsCard()
+        .frame(maxWidth: .infinity, alignment: .center)
+        .settingsCard()
+        .onAppear { preparePlayer() }
+        .onDisappear { player?.pause(); isPlaying = false }
+    }
+
+    private func preparePlayer() {
+        guard player == nil,
+              let url = Bundle.main.url(forResource: "ShortcutAutomation", withExtension: "mp4")
+        else { return }
+        player = AVPlayer(url: url)
+    }
+
+    private func togglePlayback() {
+        guard let player else { return }
+        if isPlaying {
+            player.pause()
+        } else {
+            if player.currentItem?.duration.seconds ?? 0 > 0,
+               player.currentTime() >= (player.currentItem?.duration ?? .zero) {
+                player.seek(to: .zero)
+            }
+            player.play()
+        }
+        isPlaying.toggle()
+    }
+
+    private var stepsRow: some View {
+        VStack(spacing: 0) {
+            if quickImportAvailable {
+                stepRow(index: 1, title: "点上面的按钮添加", detail: "走 iCloud 链接或文件导入", showsDivider: true)
+                stepRow(index: 2, title: "打开自动化开关", detail: "快捷指令 › 自动化", showsDivider: true)
+                stepRow(index: 3, title: "以后自动收码", detail: "短信进来直接进列表", showsDivider: false)
+            } else {
+                // iOS 26 及更早：系统不支持导入带触发器的自动化，只能手动新建
+                stepRow(index: 1, title: "新建一条自动化", detail: "快捷指令 › 自动化 › 新建", showsDivider: true)
+                stepRow(index: 2, title: "触发条件选「信息」", detail: "包含「【」，立即运行", showsDivider: true)
+                stepRow(index: 3, title: "动作选 Allude", detail: "「添加到 Allude」", showsDivider: true)
+                stepRow(index: 4, title: "关掉运行前询问", detail: "以后自动收码，不用点确认", showsDivider: false)
+            }
+        }
+        .settingsCard()
+    }
+
+    private func stepRow(index: Int, title: String, detail: String, showsDivider: Bool) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Text("\(index)")
+                    .font(AppTheme.TypeScale.badge)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 22, height: 22)
+                    .background(Circle().fill(Color(.tertiarySystemFill)))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(AppTheme.TypeScale.body)
+                    Text(detail)
+                        .font(AppTheme.TypeScale.note)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 11)
+
+            if showsDivider { SettingsDivider() }
         }
     }
 
-    @ViewBuilder
-    private func keywordRow(_ preset: ShortcutAutomation.Preset, showsDivider: Bool) -> some View {
-        HStack(spacing: 12) {
-            Text("信息 包含「\(preset.keyword)」")
-                .font(AppTheme.TypeScale.rowTitle)
-            if preset.recommended {
-                Text("推荐")
-                    .font(AppTheme.TypeScale.badge)
-                    .foregroundStyle(AppTheme.accent)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(AppTheme.accent.opacity(0.12)))
-            }
-            Spacer(minLength: 8)
+    // MARK: 可选关键词
+
+    private var optionalKeywords: some View {
+        VStack(alignment: .leading, spacing: 8) {
             if quickImportAvailable {
-                addMenu(preset)
+                SectionHeader(title: "换个关键词也行")
+                HStack(spacing: 8) {
+                    ForEach(Array(ShortcutAutomation.presets.dropFirst().prefix(3))) { preset in
+                        keywordChip(preset)
+                    }
+                    Spacer(minLength: 0)
+                }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+    }
 
-        if showsDivider { SettingsDivider() }
+    private func keywordChip(_ preset: ShortcutAutomation.Preset) -> some View {
+        Menu {
+            if let link = ShortcutAutomation.icloudURL(for: preset.keyword) {
+                Button { linkURL = link } label: { Label("iCloud 链接（推荐）", systemImage: "link") }
+            }
+            Button {
+                guard let url = ShortcutAutomation.preparedImportURL(for: preset) else { return }
+                ShareSheetPresenter.present([url])
+            } label: { Label("用文件导入", systemImage: "square.and.arrow.down") }
+        } label: {
+            Text(preset.keyword)
+                .font(AppTheme.TypeScale.rowSubtitle)
+                .foregroundStyle(AppTheme.accent)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 14)
+                .background(Capsule().fill(AppTheme.accent.opacity(0.10)))
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+    }
+
+    private var footnote: some View {
+        Text("每多一条自动化，就多一条系统通知；默认只加「【」就够。")
+            .font(AppTheme.TypeScale.note)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 4)
     }
 
     /// 右侧「添加」：点开是弹出菜单（iCloud 链接 / 文件）
-    private func addMenu(_ preset: ShortcutAutomation.Preset) -> some View {
+    private func addMenu(_ preset: ShortcutAutomation.Preset, wide: Bool) -> some View {
         Menu {
             if let link = ShortcutAutomation.icloudURL(for: preset.keyword) {
                 Button {
@@ -161,15 +278,21 @@ struct AutoRecordSettingsView: View {
                 Label("用文件导入", systemImage: "square.and.arrow.down")
             }
         } label: {
-            // 🔴 2026-11-08 主人：改成**蓝色填充的液态玻璃**按钮，文字白色。
-            //    iOS 26+ 走系统玻璃（靠 tint 染成品牌蓝）；iOS 18 没有液态玻璃，
-            //    由 appGlass 的回落实现铺两层同色，看起来同样是实心蓝。
-            Text("添加")
-                .font(AppTheme.TypeScale.bodyMedium)
-                .foregroundStyle(.white)
-                .padding(.vertical, 6)
-                .padding(.horizontal, 16)
-                .appGlass(.capsule, tint: AppTheme.accent, interactive: true)
+            // 主按钮铺满一行；可选关键词是小胶囊。
+            HStack(spacing: 6) {
+                if wide {
+                    Image(systemName: "plus.circle.fill")
+                    Text("添加「\(preset.keyword)」自动化")
+                } else {
+                    Text(preset.keyword)
+                }
+            }
+            .font(AppTheme.TypeScale.bodyMedium)
+            .foregroundStyle(.white)
+            .frame(maxWidth: wide ? .infinity : nil)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
+            .appGlass(.capsule, tint: AppTheme.accent, interactive: true)
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
