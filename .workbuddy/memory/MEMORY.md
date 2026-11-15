@@ -82,7 +82,7 @@ xcodebuild -project Allude.xcodeproj -scheme Allude -destination "$DEST" \
 - 装完先核对 `CFBundleVersion` 再截图（install/terminate 异步，旧进程会被静默沿用）。
 - 基准机 iPhone 16 Pro `272DD31C-D94F-46B4-9CC7-974A61439777`。
 
-## 图标（16 套，2026-11-15：13→21→删 6 套→补 2 套→再删 1 套）
+## 图标（16 套，2026-11-15 一晚反复增删后的最终形态）
 - 🔴 全部 `AppIconNN.imageset` **只放 `AlludeShared/Assets.xcassets`**（2026-11-15 迁入）：
   App 与小组件两个 target 都编这份 catalog，扩展才取得到图；放 App 的 catalog 里 →
   灵动岛/锁屏 `Image("AppIconNN")` 静默渲染成**灰块**（312 的实际故障）。
@@ -92,21 +92,21 @@ xcodebuild -project Allude.xcodeproj -scheme Allude -destination "$DEST" \
   `AppIconChoice` 的 case/number/title。`App/` 是同步组 → 不改 pbxproj。
 - ⚠️ `sips -z` **只改尺寸不改格式**：源是 JPEG 时必须加 `-s format png`，
   否则 `.png` 里装的是 JPEG 数据（actool 会不认）。
-- 🔴 **编号留空不复用**：2026-11-15 主人圈掉第 1/4/6/8/11/13 套（号码牌 / 扫码件 /
-  手提袋 / 卡包 / 牛皮纸 / 快递箱）要求删除，同晚又补了 22、23 两套白色 ALLUDE 立方体，
-  随后又删掉 23（主人说「最后一个图标」）。
-  现存活编号 2,3,5,7,9,10,12,14…22（共 16 套，4×4 整），**不要重排** ——
-  `rawValue`、`number`、`AppIconNN`、Info.plist 的 `IconNN` 都持久化过，重排会让
-  老用户选的图变成另一张。删号同时要动四处：imageset、`AppIcons/IconNN*.png`、
-  `CFBundleAlternateIcons` 条目、`AppIconChoice` 的 case/number/title。
-  存量兜底：`AppIconStore.hasDanglingSelection` → 启动时归位 fallback 并
-  `setAlternateIconName(nil)`。
+- 🔴 **编号已重排为连续的 01…16**（2026-11-15 深夜主人要求「从上到下、从左到右
+  依次编号」）。删掉的旧号：1/4/6/8/10/11/13/23；`fallback` 从 `.icon07` 改成 `.icon04`
+  （C 标重排后落在第 4 位），Info.plist 只注册 15 条 alternate（04 是主图标）。
+- 🔴 **重排必须靠迁移，不能靠「能不能解出 case」**：新旧 `iconNN` **同名不同图**
+  （老 icon09=霓虹A，新 icon09=蓝牌）。`AppIconStore.migrateLegacyNumberingIfNeeded()`
+  用 `allude.appIcon.scheme` 版本标记 + `legacyMap` 一次性换算，冷启动跑一次；
+  `store()` 会顺手写方案标记，否则新用户选的新编号会被下次迁移当成旧编号换错。
+  以后再改编号：扩 `legacyMap` + 升 `currentScheme`，两件事一起做。
+- 迁移实测：存档 `icon22`（白盒平涂）→ `icon15` ✓；存档 `icon07`（老 C 标）→ `icon04` ✓。
 - 第 13 套「快递箱」按主人要求图形内缩 1/5（内容占 60%，白底合成去 alpha）；
   第 14–21 套是 1536 满幅方图，**明确要求不裁切**，等比缩放即可。
 - 源图统一归档 `tools/appicon-source/iconNN-source.{png,jpg,svg}`。
 - 🔴 **岛内图标随 `ContentState.appIconRaw` 传**（2026-11-15 修，commit 1286c28）：
   扩展进程别自己读 `AppIconStore.current` —— App Group 那条链一断就回落到
-  `AppIconChoice.fallback`（第 7 套 C 标），表现为「桌面换了、岛里还是旧图标」。
+  `AppIconChoice.fallback`（第 4 套 C 标），表现为「桌面换了、岛里还是旧图标」。
   `AppMarkIcon(choice:)` 由调用方传 `state.appIcon`；换图标成功后走
   `PickupActivityController.refreshForAppIconChange()` 即时刷新活动。
 - ⚠️ `AlludeWidget/Assets.xcassets` 只许留 `AccentColor` + `WidgetBackground`。

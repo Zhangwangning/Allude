@@ -65,14 +65,13 @@ struct AlludeApp: App {
         let deviceCode = LicenseDevice.current
         print("[allude-verify] device=\(deviceCode)")
 
-        // 2026-11-15 主人删掉 5 套图标（1/4/6/8/11）：老用户当时选的若正好是其中之一，
-        // 偏好里存着现在解不出 case 的名字 —— 这里一次性归位到默认 C 标，
-        // 并把系统侧的备用图标引用清掉（不清的话桌面还挂着已经不存在的图）。
-        if AppIconStore.hasDanglingSelection {
-            AppIconStore.store(AppIconChoice.fallback)
-            print("[allude-verify] appIcon=dangling->fallback")
+        // 2026-11-15 图标编号重排（带空洞的 2,3,5,…22 → 连续的 1…16）：
+        // 老用户存的 rawValue 与新编号**同名不同图**，必须一次性换算，
+        // 并把系统侧的备用图标同步过去 —— 否则桌面还挂着换号前那张。
+        if let migrated = AppIconStore.migrateLegacyNumberingIfNeeded() {
+            print("[allude-verify] appIcon=migrated->\(migrated.rawValue)")
             DispatchQueue.main.async {
-                UIApplication.shared.setAlternateIconName(nil)
+                UIApplication.shared.setAlternateIconName(migrated.alternateName)
             }
         }
 

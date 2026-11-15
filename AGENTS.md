@@ -189,26 +189,28 @@ iPhone 直板机已完工（0.3.3）；**iPhone Duo 折叠屏适配已开工**�
 
 ## App 图标切换
 
-十六套内置图标（2026-11-15 补第 13 套「快递箱」，同日晚再补第 14–21 套
-「快递盒 / ALLUDE 招牌」八个变体；同日晚主人圈掉第 1/4/6/8/11/13 套并删除，
-又给了两张「白色 ALLUDE 立方体」补成第 22、23 套，随后删掉第 23 套），
-**默认是第 7 套「C 标」**（2026-11-11 主人改的；此前默认是第 3 套「取件袋」）。
-🔴 **编号故意留空、不重排**（现存 2,3,5,7,9,10,12,14…22）：`rawValue`、`number`、
-资源名 `AppIconNN` 与 Info.plist 的 `IconNN` 都是持久化过的，一重排老用户选的
-图就会变成另一张。删掉的号从此不复用。
+十六套内置图标，2026-11-15 一晚上反复增删后的**最终形态**：现存 15 套按
+「从上到下、从左到右」重排为 01–15，当晚新给的一张「蓝线稿白盒」补成 16。
+**默认是第 4 套「C 标」**（2026-11-11 主人改的；此前默认是第 3 套「取件袋」）。
+🔴 **编号与网格顺序严格一致（01…16 连续）**。重排会让老用户存的 `rawValue`
+指向另一张图（新旧 iconNN 同名不同图），所以 `AppIconStore` 里有一套
+**一次性迁移** `migrateLegacyNumberingIfNeeded()`：靠 `allude.appIcon.scheme`
+版本标记 + `legacyMap`（老编号→新图标）换算，冷启动时执行一次并同步系统图标。
+⚠️ 以后再改编号，必须同步扩 `legacyMap` 并升 `currentScheme`，否则老用户选择错位。
 设置 › 外观与个性化 › 自定义 App 图标可切换（版式同快递公司页的网格）。
-原主图标「取件袋」现在作为 alternate icon `Icon03` 保留，仍可在设置里选。
+原主图标「取件袋」现在作为 alternate icon `Icon02` 保留，仍可在设置里选。
 
 - 主图标：`Allude/Assets.xcassets/AppIcon.appiconset`（1024，**不能有透明通道、不能自带圆角**）。
-- 🔴 **16 套 `AppIconNN.imageset`（App 内预览 / 灵动岛 / 关于页 / 分享卡共用；编号不连续）
+- 🔴 **16 套 `AppIconNN.imageset`（App 内预览 / 灵动岛 / 关于页 / 分享卡共用）
   统一放 `AlludeShared/Assets.xcassets`**（2026-11-15 从 App 的 catalog 迁过来）。
   理由：共享 catalog 被 App 与小组件**两个 target 各编译一次**，扩展进程才查得到；
   放在 App 的 catalog 里，小组件取不到图，`Image("AppIconNN")` 会**静默渲染成灰块**
   —— 1.0.0(312) 灵动岛不显示 App 图标就是这个原因。每份 imageset 必须带
   `"template-rendering-intent": "original"` + 1x(60)/2x(120)/3x(180) 三档。
-- 除默认那套以外全部由 **真实 `Allude/Info.plist`** 的
-  `CFBundleIcons › CFBundleAlternateIcons` 声明 `Icon02`…`Icon22`（跳过已删的 7 个），文件是 bundle
-  根目录的 `IconNN@2x.png`(120) / `@3x.png`(180)（纯 iPhone 工程，不需要 `~ipad`）。
+- 除默认那套（`Icon04` = C 标 = 主图标，不注册为 alternate）以外，全部由
+  **真实 `Allude/Info.plist`** 的 `CFBundleIcons › CFBundleAlternateIcons`
+  声明 `Icon01`…`Icon16`（共 15 条），文件是 bundle 根目录的
+  `IconNN@2x.png`(120) / `@3x.png`(180)（纯 iPhone 工程，不需要 `~ipad`）。
   新增一套要同时动三处：imageset、`AppIcons/IconNN*.png`、Info.plist 声明，
   再加 `AppIconChoice` 的 case 与 `title`（`assetName`/`alternateName` 由 `number` 自动拼）。
   `AppIcons/` 与 `Allude/` 都在 Xcode 的同步组里，**不用改 pbxproj**。
@@ -219,7 +221,7 @@ iPhone 直板机已完工（0.3.3）；**iPhone Duo 折叠屏适配已开工**�
   增删 Info.plist 键要改那个真实文件，`INFOPLIST_KEY_*` 不再生效。
 - 选择状态存 **App Group**（`allude.appIcon`），但 🔴 **灵动岛/锁屏不靠它**：
   选择随 `ContentState.appIconRaw` 过进程边界（2026-11-15 修）。扩展进程自己读
-  共享偏好域那条链一断就回落到第 7 套 C 标，表现为「桌面换了、岛里还是旧图标」。
+  共享偏好域那条链一断就回落到第 4 套 C 标，表现为「桌面换了、岛里还是旧图标」。
 - `AppMarkIcon(choice:)`（灵动岛/锁屏）、关于页顶部、设置网格读同一份选择。
 - 🔴 **给灵动岛用的图片资源，`Contents.json` 必须写两样**，否则折叠态会渲染成
   一个纯色方块（2026-11-01 真机修复）：

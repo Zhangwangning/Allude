@@ -85,7 +85,7 @@ struct PickupActivityAttributes: ActivityAttributes {
         ///    灵动岛/锁屏由**小组件进程**渲染，那一侧和 App 之间只有 **App Group**
         ///    一条通路。App Group 一旦不可用（无签名调试包、容器重建、
         ///    扩展读不到共享偏好域），扩展读到的就是 nil，`AppIconStore.current`
-        ///    回落到 `AppIconChoice.fallback`（第 7 套「C 标」）——
+        ///    回落到 `AppIconChoice.fallback`（第 4 套「C 标」）——
         ///    于是「桌面图标已经换成快递箱，灵动岛里还是 C 标」，主人一眼看出对不上。
         ///    把选择**随 ContentState 跨进程传**，渲染端就完全不再依赖任何共享存储，
         ///    这条链路上再没有能"读到 nil"的地方。
@@ -431,7 +431,7 @@ struct ActivityLockScreenCard: View {
 //     上下文，读不出这个数是干什么的。
 //   · 最小态 = 只有约 20×20pt，仅放 App 图标，任何数字/文字都读不出来。
 //
-// 🔴 App 图标（`AppIcon02`…`AppIcon21`，**编号 1/4/6/8/11 已删故不连续**）**只放在
+// 🔴 App 图标（`AppIcon01`…`AppIcon16`，编号与设置里的网格顺序一致）**只放在
 //    `AlludeShared/Assets.xcassets`**（2026-11-15 从 App 的 catalog 迁过来）。
 //    这份共享 catalog 被 **App 与小组件扩展两个 target 各编译一次**
 //    （`Allude.xcodeproj` 里两个 Resources build phase 各引一份），
