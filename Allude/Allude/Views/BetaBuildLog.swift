@@ -31,6 +31,10 @@ struct BetaBuild: Identifiable {
 enum BetaBuildLog {
     /// 全部内测构建，**新的在上**。
     static let all: [BetaBuild] = [
+        BetaBuild(build: "317", date: "2026-11-16", points: [
+            "订阅页宽度回调到 460–520 档：再窄一档会让「解锁什么」的说明文字多换行，把底部条款重新顶出弹层。",
+            "其余同 316。",
+        ]),
         BetaBuild(build: "316", date: "2026-11-16", points: [
             "修复 iPhone Duo 内屏竖屏时「统计」「设置」等页面大标题不显示（顶部一片空白）：解除了一套全局导航栏外观设置，它把大标题的文字属性清空了。",
             "iPhone Duo 内屏竖屏改为单列显示，不再强行分栏；内屏横屏仍然分栏（左列表 / 右详情）。",

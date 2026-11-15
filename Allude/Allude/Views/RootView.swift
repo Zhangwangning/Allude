@@ -987,7 +987,7 @@ struct PaywallSheetSizing: ViewModifier {
             // ⚠️ 高度必须给 `minHeight`：只写 `.frame(width:)` 时 `.fitted` 会算成
             //    一条小横条（实测只剩标题），因为 ScrollView 没有高度约束时 ideal = 极小值。
             content
-                .frame(minWidth: 420, idealWidth: 450, maxWidth: 470, minHeight: 1000)
+                .frame(minWidth: 460, idealWidth: 500, maxWidth: 520, minHeight: 1000)
                 .presentationDetents([.large])
                 .presentationSizing(.fitted)
         } else {
