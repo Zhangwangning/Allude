@@ -1000,7 +1000,7 @@ struct FullVersionView: View {
             // 2026-10-31 主人：**一屏放得下，不要翻页**。
             // 所以去掉了页首的大标题块，版式与其它设置页同口径：
             // 分组标题 13pt、行标题 17pt、说明 11–12pt，靠紧凑间距压进一屏。
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 10) {
                 // 页内标题（2026-10-31 主人要求补上）。导航栏那个「完整版」太小，
                 // 进页面第一眼得知道这一页在卖什么；字号取 24pt，介于正文 17 与
                 // 系统大标题 34 之间，不与导航栏抢层级。
@@ -1048,7 +1048,7 @@ struct FullVersionView: View {
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 6)
-            .padding(.bottom, 20)
+            .padding(.bottom, 8)
             .frame(maxWidth: AppTheme.contentMaxWidth)
             .frame(maxWidth: .infinity)
         }
@@ -1084,7 +1084,7 @@ struct FullVersionView: View {
             Text("感谢订阅")
             Text("Allude Pro")
         }
-        .font(.system(size: 26, weight: .bold))
+        .font(.system(size: 24, weight: .bold))
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -1113,7 +1113,7 @@ struct FullVersionView: View {
                 .font(.caption)
                 .foregroundStyle(selected == .lifetime ? Color.secondary : Color.secondary)
                 .lineLimit(2)
-                .frame(height: 34, alignment: .topLeading)
+                .frame(height: 30, alignment: .topLeading)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 4)
         }
@@ -1145,7 +1145,7 @@ struct FullVersionView: View {
                     .minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .padding(.vertical, 12)
             .background {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(on ? AppTheme.champagneLight.opacity(0.55)

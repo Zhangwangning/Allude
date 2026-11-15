@@ -14,19 +14,17 @@ struct AlludeApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
-        // 🔴 2026-11-15 主人：「待取左上角为啥有一块白色」。
-        //    那块白是 iOS 26/27 导航栏的玻璃材质取样出来的，`.toolbarBackground(色, .visible)`
-        //    在 NavigationSplitView 的侧栏列上压不住（试过：容器层 / 列内 / hidden 均无效）。
-        //    改在 App 层统一给导航栏一个**不透明**底色 —— 与页面底色同为 systemGroupedBackground，
-        //    这样分栏左列的顶部、以及所有二级页的标题栏都不会再出现白条。
-        let navAppearance = UINavigationBarAppearance()
-        navAppearance.configureWithOpaqueBackground()
-        navAppearance.backgroundColor = .systemGroupedBackground
-        navAppearance.shadowColor = .clear
-        UINavigationBar.appearance().standardAppearance = navAppearance
-        UINavigationBar.appearance().compactAppearance = navAppearance
-        UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
-        UINavigationBar.appearance().compactScrollEdgeAppearance = navAppearance
+        // 🔴 2026-11-16 删掉了 `UINavigationBar.appearance()` 那套全局不透明外观。
+        //
+        // 它原本是 2026-11-15 为「待取左上角白块」加的，但那次真正的修复是
+        // `RootView` 里给 TabView 铺 `systemGroupedBackground` 窗口底色（玻璃导航栏
+        // 取样的是窗口背景，不是页面背景），这段是同时期的遗留尝试。
+        //
+        // 它带来的副作用：`UINavigationBarAppearance` 被整体替换后
+        // `largeTitleTextAttributes` 变成空值，**大标题占位还在、文字一个都不画**。
+        // 表现为 iPhone Duo 内屏竖屏时「统计 / 设置」页顶部一片空白
+        // （regular 宽度才走系统大标题，外屏 compact 不受影响，所以一直没暴露）。
+        // 删掉后三个状态（外屏 / 内屏横屏 / 内屏竖屏）标题全部正常，白块也没回来。
 
         // 命令行验证脚手架：走的是 ParsePickupTextIntent.perform() 里**同一个**
         // `PickupStore.shared.ingest`，用于在模拟器上取证「短信文本 → 解析 → 落库 →

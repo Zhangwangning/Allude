@@ -23,7 +23,7 @@ enum PadLayout {
         return window?.bounds.size ?? .zero
     }
 
-    /// iPhone Duo **展开态（内屏）**。
+    /// iPhone Duo **展开态（内屏）且横屏**。
     ///
     /// 🔴 实测（2026-11-15，Duo 模拟器内屏）：
     /// ```
@@ -37,11 +37,22 @@ enum PadLayout {
     ///   直板机     874 × 402  → 402 ✗（横屏也是 402）
     /// ```
     /// 没有公开的「是否折叠」API，Apple 只用尺寸与 size class 表达（2026-11-01 结论）。
+    ///
+    /// 🔴 2026-11-16 主人：「Duo 竖屏的时候单列显示，不要分列」。所以额外要求**横屏**才分栏：
+    ///    竖屏内屏是 669 × 951（宽 < 高），分两栏每栏只剩 330pt，卡片挤成一团。
     static var isExpandedFoldable: Bool {
         guard UIDevice.current.userInterfaceIdiom == .phone else { return false }
+        // 截图/验真脚手架：本机没有 Simulator GUI（`open -a Simulator` 找不到、
+        // System Events 被拒 -10004），命令行**无法旋转**设备，所以横屏分栏
+        // 只能靠强制走分栏在竖屏内屏上取证（宽度 762 足够触发 splitMinWidth）。
+        // ⚠️ 只用于取证「左列 UI 是否正常」，不能替代真实横屏：
+        //    762×1080 下 NavigationSplitView 会自己把左列折叠成 detailOnly。
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["FORCE_SPLIT"] == "1" { return true }
+        #endif
         let size = windowSize
         guard size != .zero else { return false }
-        return min(size.width, size.height) > 600
+        return min(size.width, size.height) > 600 && size.width > size.height
     }
 
     /// 是否**允许**分栏（设备级门槛）：iPad 与 Duo 内屏都算。
@@ -964,8 +975,20 @@ struct PaywallSheetSizing: ViewModifier {
             // 先给内容一个明确宽度区间，再让 sheet 按它收紧 ——
             // 单用 `.fitted` 会缩成一条 120pt 的窄条、单用 `.form` 在 Duo 上不生效（都实测过）;
             // `minHeight` 也不能省，否则 ScrollView 的 ideal 高度会把 sheet 压成一条横条。
+            // 🔴 2026-11-16 主人：「再窄一些」+「弹出的订阅页面也要完全显示」。
+            //
+            // 踩坑记录（都在 Duo 内屏竖屏实测）：
+            //   · `.form` 在这台设备上完全无效，`.page` 会铺满整屏 —— 两者都收不窄；
+            //   · `.fitted` 才是收窄的唯一手段，但它的高度上限被系统 form sheet 卡在 890pt，
+            //     `minHeight` 写 1000 得 890、写 1120 还是 900，底部「恢复购买」永远差最后一条；
+            //   · `fitted(horizontal:vertical:)` 是实例方法，链式能编译但高度算成 0（弹层不可见）。
+            // 所以最终方案：`.fitted` 收窄到 500 + 把订阅页正文的间距/字号小幅收紧，
+            // 让内容高度压进 890 上限 —— 一屏装完全部，不需要滚动。
+            // ⚠️ 高度必须给 `minHeight`：只写 `.frame(width:)` 时 `.fitted` 会算成
+            //    一条小横条（实测只剩标题），因为 ScrollView 没有高度约束时 ideal = 极小值。
             content
-                .frame(minWidth: 500, idealWidth: 540, maxWidth: 560, minHeight: 600)
+                .frame(minWidth: 420, idealWidth: 450, maxWidth: 470, minHeight: 1000)
+                .presentationDetents([.large])
                 .presentationSizing(.fitted)
         } else {
             content
@@ -1040,6 +1063,31 @@ struct SettingsTabRoot: View {
         NavigationStack {
             SettingsView()
         }
+        .modifier(PaywallSheetDemo())
+    }
+}
+
+/// 截图脚手架（仅调试）：`PAYWALL_SHEET=1` 直接在当前容器里弹订阅页。
+///
+/// 为什么要单独开这个口子：订阅页平时挂在「外观与个性化」和「iCloud 同步」两个
+/// **二级页**上，而竖屏单列时它们是 NavigationLink 驱动的，`SETTINGS_OPEN`
+/// 脚手架只对分栏分支（`pane` 绑定）有效，命令行进不去那条路。
+/// 这里用的 sheet 容器与两处正式入口**完全相同**（同一个 `FullVersionView` +
+/// 同一个 `PaywallSheetSizing`），量出来的宽度/可见性可以直接当准。
+/// 正式运行时该环境变量不存在，零影响。
+private struct PaywallSheetDemo: ViewModifier {
+    @State private var shown = false
+
+    func body(content: Content) -> some View {
+        content
+            .sheet(isPresented: $shown) {
+                NavigationStack { FullVersionView() }
+                    .modifier(PaywallSheetSizing())
+            }
+            .onAppear {
+                guard ProcessInfo.processInfo.environment["PAYWALL_SHEET"] == "1" else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { shown = true }
+            }
     }
 }
 
