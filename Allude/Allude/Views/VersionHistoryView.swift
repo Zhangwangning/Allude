@@ -4,11 +4,17 @@ import SwiftUI
 // 版本历史（「我的 › 关于 › 版本」点开的二级页）
 //
 // 2026-09-24 主人要求：把从 0 到现在的开发历程按版本总结，点版本号进来能看
-// 每个版本的成果。纯静态展示页 —— 没有任何状态、没有任何动作，零 @State。
+// 每个版本的成果。
 //
 // 版式 = 时间线：左侧一条竖线串起各版本节点，当前版本（列表首项）用主题色
 // 圆点 + 「当前版本」徽章高亮，历史版本灰点。每个版本一张卡：
 //   版本号（大字等宽）· 日期 · 主题一句话 · 成果条目列表。
+//
+// 2026-11-15 主人：「内测版本你可以写更新内容，但是后面的内测号 309、312 等也要
+// 跟上，你把 1.0.0 的内测版本各版本内容也添加到版本历史页面中」。
+//   → 1.0.0 卡片底部挂一个**可折叠的内测记录区**（默认收起，55 条构建一股脑
+//     铺开会把整页拉到几万点高）。数据在 `BetaBuildLog.swift`，本页只负责画。
+//   → 有折叠态就必须有 @State 了（`expandedBeta`），不再是纯静态页。
 //
 // 🔴 本页文案是**工作产出**，口径与对外承诺一致：
 //   · 不出现「主人」等对话称呼；
@@ -17,12 +23,23 @@ import SwiftUI
 
 struct VersionHistoryView: View {
     private struct Entry: Identifiable {
-        let id = UUID()
         let version: String
         let date: String
         let theme: String
         let highlights: [String]
+        /// 这一版的内测构建记录（默认空 = 没有内测区）。目前只有 1.0.0 有。
+        var beta: [BetaBuild] = []
+
+        /// 🔴 身份必须用**版本号**，不能用 `UUID()`：
+        /// `entries` 是 struct 的存储属性，视图结构体每被重建一次就重新生成一批 UUID，
+        /// 而 `@State` 里的 UUID 是上一批的 —— 一改状态、外层 body 重算，
+        /// `expandedBeta.contains(entry.id)` 就永远为假，表现为「点了展开又弹回去」。
+        /// 版本号本来就是唯一的（1.0.0 那条重复的已合并），天然适合当身份。
+        var id: String { version }
     }
+
+    /// 展开了内测区的版本（按版本号记）。默认空 = 全部收起。
+    @State private var expandedBeta: Set<String> = []
 
     /// 🔴 谁在最上面谁就是当前版本：不再手写 isCurrent，避免每发一版都要记得改上一个，
     ///    漏改就会出现两个"当前版本"（2026-11-05 主人发现 0.3.1 还挂着标记）。
@@ -31,39 +48,34 @@ struct VersionHistoryView: View {
     }
 
     private let entries: [Entry] = [
-        Entry(version: "1.0.0", date: "2026-11-14", theme: "第三方模型参与解析 · iCloud 同步 · iPad 与小组件细化", highlights: [
-            "设置页重新分组：快捷指令 / 通知 / 桌面小组件 / 实时活动 / iCloud 同步 / Apple 智能与扩展，其余收进二级页",
-            "新增 iCloud 同步（默认关闭）：记录只写入你自己的 iCloud 云盘，经同一 Apple ID 的设备自动合并，不经开发者服务器",
-            "Apple 智能与扩展：端侧模型与第三方模型两条独立通道；可选择 DeepSeek / 豆包 / 千问 / Kimi，自备 API Key，地址内置不可改",
-            "第三方模型改为「结合正则结果复核解析」：地址、柜位、货架、快递公司、驿站都可能被修正；取件码必须能在短信原文里原样找到才允许改",
-            "抗网络抖动：请求 8 秒、整条 12 秒超时，最多 2 条并发、每条最多重试一次；失败只影响补得更准，收码与界面完全不受影响",
-            "桌面小组件新增「显示占位符」开关：关掉后没填满的位置留白，不再画灰色骨架；「显示驿站」等开关的关闭状态现在会被记住",
-            "小组件设置里的效果预览改为实时反映各个开关，不再需要退出重进",
-            "iPad 原生两栏布局与侧栏设置；备用 App 图标补齐 iPad 尺寸，可正常通过审核",
-            "新增四套图标与「自定义 App 图标」入口；关于页把声明与免责并入服务条款，并新增隐私政策简明版",
-            "隐私政策与使用条款同步更新（三处副本一致）",
-        ]),
-        Entry(version: "1.0.0", date: "2026-11-11", theme: "首个正式版 · 更名 Allude · 支持 iOS 17", highlights: [
+        // 🔴 2026-11-15 主人：**版本号不许重复**。
+        //    这里原先并排两条 1.0.0（11-14 与 11-11 各一条），同一个版本号出现两次，
+        //    看起来像发了两版。现在合成一条，把两次的成果按主题合并去重；
+        //    内测阶段的每一次构建单独记在下面的「1.0.0 内测记录」里，带 build 号。
+        Entry(version: "1.0.0", date: "2026-11-14", theme: "首个正式版 · 更名 Allude · 支持 iOS 17 · iCloud 与第三方模型", highlights: [
             "产品更名：拾码 → Allude，订阅版叫 Allude Pro；图标、关于页与法务页同步换新",
             "最低系统从 iOS 18 下调到 iOS 17：iPhone 与 iPad 上 iOS 17 也能安装使用",
-            "修好首次引导里「一键导入自动化」点了没反应：现在会弹出分享面板，选「快捷指令」即可导入",
-            "导入后的自动化名称改成「Allude 取件码解析」加关键词，不再出现乱码文件名",
-            "快捷指令动作的输入字段现在可以自己选「快捷指令输入 / 信息 / 剪贴板」，不再只有一个改不动的占位",
+            "设置页重新分组：快捷指令 / 通知 / 桌面小组件 / 实时活动 / iCloud 同步 / Apple 智能与扩展，其余（外观与个性化、存储空间、关于 Allude）收进二级页",
+            "新增 iCloud 同步（默认关闭）：记录写入你自己的 iCloud 云盘，经同一 Apple ID 的设备自动合并，不经开发者服务器；同步页是状态面板（网络 / iCloud / 同步状态 / 最近同步），同步跑在后台线程",
+            "Apple 智能与扩展：端侧模型与第三方模型两条独立通道；可选 DeepSeek / 豆包 / 千问 / Kimi，自备 API Key、地址内置不可改，而且必须测通才能启用",
+            "第三方模型改为「结合正则结果复核解析」：地址、柜位、货架、快递公司、驿站都可能被修正；取件码必须能在短信原文里原样找到才允许改",
+            "抗网络抖动：请求 8 秒、整条 12 秒超时，最多 2 条并发、每条最多重试一次；失败只影响补得更准，收码与界面完全不受影响",
+            "桌面小组件新增「显示占位符」开关：关掉后没填满的位置留白，不再画灰色骨架；「显示驿站」等开关的关闭状态会被记住；效果预览实时反映各个开关",
+            "待取页新增「按快递驿站」排序与分组，分组方式会记住；桌面小组件跟随同一排序；分组之间的间距收紧",
+            "多选模式新增「全选 / 取消全选」，作用于当前可见集合（搜索、排序之后）",
+            "设置 › 快捷指令 页面重做：主卡一键添加 → 三步图（iOS 27+）/ 四步手动（iOS 26 及更早）→ 35 秒页内视频教程 → 可选关键词",
+            "修好首次引导里「一键导入自动化」点了没反应：现在会弹出分享面板，选「快捷指令」即可导入；导入后的自动化名称改成「Allude 取件码解析」加关键词",
+            "快捷指令动作的输入字段可以自己选「快捷指令输入 / 信息 / 剪贴板」，不再只有一个改不动的占位",
             "通知不再一直堆在通知中心：回到 App 时清掉 10 分钟前的旧通知，取件或删除的记录立刻撤掉对应通知",
-            "购买页新增「重新获取商品信息」：取不到价格时可以一键重试",
-            "首次安装不再预置测试快递记录（Release 包不再打包示例数据）",
-            "已取页长按卡片可直接删除单条记录（4 秒内可撤销）",
+            "购买页新增「重新获取商品信息」；买断与订阅两档价格一律取 App Store 显示价，代码里不写死",
+            "首次安装不再预置测试快递记录；已取页长按卡片可直接删除单条记录（4 秒内可撤销）",
             "桌面小组件尺寸集改为固定全部尺寸：解锁 Pro 后大尺寸立即生效，不用删掉重加",
-            "修好底部标签栏偶发浮到列表中间的问题；补上「已存放…」句式的取件地址解析",
-            "默认 App 图标换成「C 标」，原来的「取件袋」仍可在设置里选",
-            "一键添加快捷指令自动化仅支持 iOS 27 及以上；iOS 26 及更早改为按教程手动新建一条",
+            "修好底部标签栏偶发浮到列表中间的问题；补上「已存放…」句式的取件地址解析；识别「按需派送运单 9005」这类没有取件码的短信",
+            "默认 App 图标换成「C 标」，原来的「取件袋」仍可在设置里选；新增四套图标与「自定义 App 图标」入口",
+            "iPad 原生两栏布局与侧栏设置；备用 App 图标补齐 iPad 尺寸，可通过审核",
             "四条快捷指令的 iCloud 链接全部换成新版（旧链接作废，请用 App 内新链接或文件导入）",
-            "隐私政策与使用条款更新：补充权限清单、TestFlight 诊断信息说明、订阅与买断条款",
-            "设置页重新分组：外观与个性化、存储空间、关于 Allude 收进二级页；新增「隐私政策（简明版）」，声明与免责并入服务条款；新增可选 iCloud 同步（默认关闭，只写入你自己的 iCloud）；设置 › Apple 智能与扩展 支持用自己的 API Key 接入 DeepSeek / 豆包 / 千问 辅助识别短信（默认关闭，Key 只存本机）",
-            "iPad 原生支持：列表与详情自动两栏、设置自动分栏",
-            "iCloud 同步页改成状态面板（网络 / iCloud / 同步状态 / 最近同步），同步时状态行显示「正在同步…」和转圈；同步改到后台线程，不再卡界面",
-            "识别「按需派送运单 9005」这类没有取件码的短信；括号里的驿站名不再拼进地址",
-        ]),
+            "隐私政策与使用条款同步更新：补充权限清单、TestFlight 诊断信息说明、订阅与买断条款；关于页把声明与免责并入服务条款，并新增隐私政策简明版",
+        ], beta: BetaBuildLog.all),
         Entry(version: "0.3.7", date: "2026-11-08", theme: "整套设置换成液态玻璃 · 细节与文案收口", highlights: [
             "iOS 26 及以上：设置首页每一行都是独立的液态玻璃胶囊，二三级页面也一并换成玻璃卡片",
             "iOS 18：玻璃自动换回系统原生卡片，不加装饰、不冒充玻璃，功能完全一致",
@@ -293,18 +305,37 @@ struct VersionHistoryView: View {
             Color(.systemGroupedBackground)
                 .ignoresSafeArea()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    intro
-                    timeline
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        intro
+                        timeline
+                    }
+                    .padding(.horizontal, AppTheme.hInset)
+                    .padding(.top, 8)
+                    .padding(.bottom, 110)
                 }
-                .padding(.horizontal, AppTheme.hInset)
-                .padding(.top, 8)
-                .padding(.bottom, 110)
+                // 截图脚手架：`-e '{"SCROLL_BOTTOM":"1"}'` 直接把初始位置锚到底部，
+                // 用来拍 1.0.0 卡片末尾的内测区（simctl 没法滚动）。正式运行恒 .top。
+                .defaultScrollAnchor(ProcessInfo.processInfo.environment["SCROLL_BOTTOM"] == "1" ? .bottom : .top)
+                // 截图脚手架：`-e '{"SCROLL_TO":"beta"}'` 精确滚到内测区开头。
+                .onAppear {
+                    guard ProcessInfo.processInfo.environment["SCROLL_TO"] == "beta" else { return }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        proxy.scrollTo("beta", anchor: .top)
+                    }
+                }
             }
         }
         .navigationTitle("版本历史")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            // 截图脚手架：`-e '{"BETA_EXPAND":"1"}'` 直接展开内测区，省得手点。
+            // 55 条全展开要滚很久，截图用 `BETA_EXPAND=1` + 顶部可见区域即可。
+            if ProcessInfo.processInfo.environment["BETA_EXPAND"] == "1" {
+                expandedBeta = Set(entries.filter { !$0.beta.isEmpty }.map(\.id))
+            }
+        }
         .cloaksTabBar()
         // 隐藏入口：命中后推凭证页，返回即回到版本历史，不留任何标记
 
@@ -335,16 +366,23 @@ struct VersionHistoryView: View {
     //   · 中间行：竖线接上来 → 圆点 → 竖线继续；
     //   · 末行：竖线接上来 → 圆点收尾。
     private var timeline: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
+        let shown = shownEntries
+        return VStack(spacing: 0) {
+            ForEach(Array(shown.enumerated()), id: \.element.id) { index, entry in
                 HStack(alignment: .top, spacing: 14) {
-                    track(for: entry, at: index, isLast: index == entries.count - 1)
+                    track(for: entry, at: index, isLast: index == shown.count - 1)
 
                     entryCard(entry)
-                        .padding(.bottom, index == entries.count - 1 ? 0 : 16)
+                        .padding(.bottom, index == shown.count - 1 ? 0 : 16)
                 }
             }
         }
+    }
+
+    /// 正常情况就是全部版本；截图脚手架 `BETA_ONLY=1` 时只留首条（1.0.0），
+    /// 这样 1.0.0 卡片末尾的内测区不用滚动就能拍全。正式运行恒定走全量分支。
+    private var shownEntries: [Entry] {
+        ProcessInfo.processInfo.environment["BETA_ONLY"] == "1" ? Array(entries.prefix(1)) : entries
     }
 
     /// 左轨道：宽 16pt，圆点落在卡内标题的视觉中心高度（顶 13pt + 圆点半径）。
@@ -426,9 +464,133 @@ struct VersionHistoryView: View {
                     }
                 }
             }
+
+            if !entry.beta.isEmpty {
+                betaSection(entry)
+            }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .settingsCard()
+    }
+
+    // MARK: 内测记录（折叠区）
+    //
+    // 只挂在 1.0.0 卡内。收起时是一行"本次正式版之前，1.0.0 一共推了 N 次构建"，
+    // 展开后按构建号倒序逐条列出「1.0.0 (312) · 2026-11-15」+ 这一版改了什么。
+    // 不用 DisclosureGroup：系统那套会自带一圈缩进和灰底，跟卡内的排版打架。
+
+    private func betaSection(_ entry: Entry) -> some View {
+        let expanded = expandedBeta.contains(entry.id)
+
+        return VStack(alignment: .leading, spacing: 0) {
+            Rectangle()
+                .fill(Color(.separator).opacity(0.5))
+                .frame(height: 0.5)
+                .padding(.bottom, 12)
+
+            Button {
+                withAnimation(.snappy(duration: 0.26)) {
+                    if expanded {
+                        expandedBeta.remove(entry.id)
+                    } else {
+                        expandedBeta.insert(entry.id)
+                    }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "hammer.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(AppTheme.accent)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(entry.version) 内测记录")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.primary)
+
+                        Text("\(entry.beta.count) 个构建 · 每个构建改了什么")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.tertiary)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(expanded ? 180 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if expanded {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(entry.beta.enumerated()), id: \.element.id) { index, build in
+                        betaRow(build,
+                                isLatest: index == 0,
+                                isLast: index == entry.beta.count - 1)
+                    }
+                }
+                .padding(.top, 12)
+            }
+        }
+        .id("beta")
+    }
+
+    private func betaRow(_ build: BetaBuild, isLatest: Bool, isLast: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 6) {
+                // 🔴 行内不再重复写 "1.0.0 (312)"：分区标题已经写明版本号，
+                //    55 行每行都带一遍 1.0.0 反而像"版本号又重复了"（主人 2026-11-15 的要求）。
+                Text("构建 \(build.build)")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(isLatest ? AppTheme.accent : .secondary)
+
+                if isLatest {
+                    Text("最新构建")
+                        .font(.system(size: 9, weight: .bold))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(AppTheme.accent.opacity(0.14), in: .capsule)
+                        .foregroundStyle(AppTheme.accent)
+                }
+
+                Spacer(minLength: 8)
+
+                Text(build.date)
+                    .font(.system(size: 11, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.tertiary)
+            }
+
+            VStack(alignment: .leading, spacing: 5) {
+                ForEach(build.points, id: \.self) { point in
+                    HStack(alignment: .top, spacing: 7) {
+                        Circle()
+                            .fill(Color(.tertiaryLabel))
+                            .frame(width: 3, height: 3)
+                            .padding(.top, 6)
+
+                        Text(point.L)
+                            .font(.system(size: 12))
+                            .foregroundStyle(.primary.opacity(0.72))
+                            .lineSpacing(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .padding(.leading, 2)
+        }
+        .padding(.bottom, isLast ? 0 : 12)
+        .overlay(alignment: .bottom) {
+            if !isLast {
+                Rectangle()
+                    .fill(Color(.separator).opacity(0.35))
+                    .frame(height: 0.5)
+                    .padding(.bottom, 6)
+            }
+        }
     }
 }

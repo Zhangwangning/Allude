@@ -62,6 +62,10 @@ xcodebuild -project Allude.xcodeproj -scheme Allude -destination "$DEST" \
 - 给灵动岛的图片资源 `Contents.json` 必须写 `template-rendering-intent: original` + 1x/2x/3x 三档，
   否则折叠态渲染成纯色方块。
 - Section header 里 `listRowInsets` 完全不生效 → 分组标题当普通行塞进 Section 首行。
+- **版本历史页**（`VersionHistoryView` + `BetaBuildLog.swift`）：一个版本一张卡，
+  1.0.0 卡底部挂可折叠内测区（55 条 TestFlight 构建，默认收起，行首写「构建 312」）。
+  🔴 列表里做 `@State` 时 **`Entry.id` 不能用 `UUID()`** —— 视图结构体重建会换一批 ID，
+  与 `@State` 里存的旧 ID 对不上，折叠/展开点了就弹回。用版本号这类稳定值当 id。
 
 ## 解析与数据
 - `PickupParser` 四套正则 + 优先级链 code → waybill → tail → special；新增正则必须注册进
