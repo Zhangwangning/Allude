@@ -189,30 +189,34 @@ iPhone 直板机已完工（0.3.3）；**iPhone Duo 折叠屏适配已开工**�
 
 ## App 图标切换
 
-十三套内置图标（2026-11-15 补第 13 套「快递箱」），**默认是第 7 套「C 标」**
+二十一套内置图标（2026-11-15 补第 13 套「快递箱」，同日晚再补第 14–21 套
+「快递盒 / ALLUDE 招牌」八个变体），**默认是第 7 套「C 标」**
 （2026-11-11 主人改的；此前默认是第 3 套「取件袋」）。
 设置 › 外观与个性化 › 自定义 App 图标可切换（版式同快递公司页的网格）。
 原主图标「取件袋」现在作为 alternate icon `Icon03` 保留，仍可在设置里选。
 
 - 主图标：`Allude/Assets.xcassets/AppIcon.appiconset`（1024，**不能有透明通道、不能自带圆角**）。
-- 🔴 **13 套 `AppIconNN.imageset`（App 内预览 / 灵动岛 / 关于页 / 分享卡共用）
+- 🔴 **21 套 `AppIconNN.imageset`（App 内预览 / 灵动岛 / 关于页 / 分享卡共用）
   统一放 `AlludeShared/Assets.xcassets`**（2026-11-15 从 App 的 catalog 迁过来）。
   理由：共享 catalog 被 App 与小组件**两个 target 各编译一次**，扩展进程才查得到；
   放在 App 的 catalog 里，小组件取不到图，`Image("AppIconNN")` 会**静默渲染成灰块**
   —— 1.0.0(312) 灵动岛不显示 App 图标就是这个原因。每份 imageset 必须带
   `"template-rendering-intent": "original"` + 1x(60)/2x(120)/3x(180) 三档。
-- 另外 13 套（含默认那套）全部由 **真实 `Allude/Info.plist`** 的
-  `CFBundleAlternateIcons` 声明 `Icon01`…`Icon13`，文件是 bundle 根目录的
-  `IconNN@2x.png`(120) / `@3x.png`(180)（+ `~ipad`(76) / `@2x~ipad`(152)）。
+- 除默认那套以外全部由 **真实 `Allude/Info.plist`** 的
+  `CFBundleIcons › CFBundleAlternateIcons` 声明 `Icon01`…`Icon21`，文件是 bundle
+  根目录的 `IconNN@2x.png`(120) / `@3x.png`(180)（纯 iPhone 工程，不需要 `~ipad`）。
   新增一套要同时动三处：imageset、`AppIcons/IconNN*.png`、Info.plist 声明，
   再加 `AppIconChoice` 的 case 与 `title`（`assetName`/`alternateName` 由 `number` 自动拼）。
   `AppIcons/` 与 `Allude/` 都在 Xcode 的同步组里，**不用改 pbxproj**。
-- 图源自 512 满幅方图，**不再裁切**（早期那批是白底圆角，裁过角）。
+- 图源自满幅方图，**不再裁切**（早期那批是白底圆角，裁过角）。
+  ⚠️ `sips -z` 只改尺寸、**不改格式**：源是 JPEG 时要显式加 `-s format png`，
+  否则 `.png` 文件里装的是 JPEG 数据。
   ⚠️ 工程已改为 `GENERATE_INFOPLIST_FILE = NO` + `INFOPLIST_FILE = Info.plist`，
   增删 Info.plist 键要改那个真实文件，`INFOPLIST_KEY_*` 不再生效。
-- 选择状态存 **App Group**（`allude.appIcon`）：灵动岛/锁屏由小组件进程渲染，
-  读不到 App 偏好。三张图在 App 与 Widget **两个**资源目录里各有一份。
-- `AppMarkIcon`（灵动岛/锁屏）、关于页顶部都读同一份选择。
+- 选择状态存 **App Group**（`allude.appIcon`），但 🔴 **灵动岛/锁屏不靠它**：
+  选择随 `ContentState.appIconRaw` 过进程边界（2026-11-15 修）。扩展进程自己读
+  共享偏好域那条链一断就回落到第 7 套 C 标，表现为「桌面换了、岛里还是旧图标」。
+- `AppMarkIcon(choice:)`（灵动岛/锁屏）、关于页顶部、设置网格读同一份选择。
 - 🔴 **给灵动岛用的图片资源，`Contents.json` 必须写两样**，否则折叠态会渲染成
   一个纯色方块（2026-11-01 真机修复）：
   ```json

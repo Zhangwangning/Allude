@@ -3,8 +3,9 @@ import Foundation
 // MARK: ============================================================================
 // App 图标切换（2026-11-01 主人）
 //
-// 十三套内置图标，**第 7 套（C 标）为默认主图标**（2026-11-11 主人定；
-// 2026-11-12 主人又补了第 9–12 套；2026-11-15 补第 13 套「快递箱」）。
+// 二十一套内置图标，**第 7 套（C 标）为默认主图标**（2026-11-11 主人定；
+// 2026-11-12 主人又补了第 9–12 套；2026-11-15 补第 13 套「快递箱」，
+// 同日晚再补第 14–21 套「快递盒 / ALLUDE 招牌」八个变体）。
 //
 // 🔴 图标的 imageset 统一放 `AlludeShared/Assets.xcassets`（2026-11-15 从 App 的
 //    catalog 迁过来）：App 与小组件两个 target **都**编译这份共享 catalog，
@@ -29,6 +30,9 @@ import Foundation
 enum AppIconChoice: String, CaseIterable, Identifiable {
     case icon01, icon02, icon03, icon04, icon05, icon06, icon07, icon08
     case icon09, icon10, icon11, icon12, icon13
+    /// 2026-11-15 主人补的第二批：8 张「快递盒 / ALLUDE 招牌」变体（立体、平涂、光泽各配色）。
+    /// 🔴 都是 1536 满幅方图，**不裁切**、直接等比缩放到 60/120/180 与 120/180。
+    case icon14, icon15, icon16, icon17, icon18, icon19, icon20, icon21
 
     /// 默认图标 = 第 7 套（C 标）。
     ///
@@ -54,6 +58,14 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
         case .icon11: 11
         case .icon12: 12
         case .icon13: 13
+        case .icon14: 14
+        case .icon15: 15
+        case .icon16: 16
+        case .icon17: 17
+        case .icon18: 18
+        case .icon19: 19
+        case .icon20: 20
+        case .icon21: 21
         }
     }
 
@@ -73,6 +85,14 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
         case .icon11: "牛皮纸"
         case .icon12: "包裹"
         case .icon13: "快递箱"
+        case .icon14: "黑盒立体"
+        case .icon15: "蓝盒立体"
+        case .icon16: "蓝牌"
+        case .icon17: "黑盒平涂"
+        case .icon18: "蓝盒平涂"
+        case .icon19: "黑牌"
+        case .icon20: "暗牌"
+        case .icon21: "光泽黑牌"
         }
     }
 

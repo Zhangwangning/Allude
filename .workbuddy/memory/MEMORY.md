@@ -15,13 +15,36 @@ cd Allude && xcodebuild -project Allude.xcodeproj -scheme Allude \
   -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/allude-verify build \
   CODE_SIGNING_ALLOWED=NO OTHER_SWIFT_FLAGS="-disable-sandbox"
 ```
-- 缺 `-disable-sandbox` → 宏插件起不来，报假错（`SwipeActionRow` 的 `'self' is immutable`）。
+- 缺 `-disable-sandbox` → 宏插件起不来，报假错（`SwipeActionRow` 的 `'self' is immutable`、
+  `StateMacro could not be found`、一堆 `cannot find '$xxx' in scope`）。
 - 🔴 **agent 会话内构建必然停在 CoreML 阶段**：`sandbox-exec: sandbox_apply: Operation not permitted`
   （Xcode 硬编码用 sandbox-exec 包 coremlc；本环境只允许最简 profile）。
   `ENABLE_USER_SCRIPT_SANDBOXING=NO` 与关沙箱都无效。
-  **可绕过（已验证）**：临时 `mv AlludePickup.mlmodel{,.bak}` + 把 `coremlc generate`
-  出的 Swift 放进 `Models/` → 构建 → 立刻还原。只用于 UI 验证，产物缺 `.mlmodelc` 不能发版。
-  纯校验用 `swiftc -typecheck -disable-sandbox`（全量 swift + 生成的 CoreML Swift）。
+  **绕过**：临时 `mv AlludePickup.mlmodel{,.bak}` → 构建 → 立刻还原。
+  ⚠️ **不需要**生成 CoreML 的 Swift 包装（`PickupClassifier` 只按 Bundle url 找 `.mlmodelc`，
+  不引用生成的类），上一轮以为必须，实测多余。
+
+### 真机（2026-11-15 跑通，唯一能验灵动岛的路）
+``` 
+DEST='platform=iOS,id=00008140-001138A92E01801C'   # iPhone 16 Pro，真机名「Huawei Mate XT非凡大师1TB」
+xcodebuild -project Allude.xcodeproj -scheme Allude -destination "$DEST" \
+  -derivedDataPath /tmp/allude-device -allowProvisioningUpdates \
+  -allowProvisioningDeviceRegistration OTHER_SWIFT_FLAGS="-disable-sandbox" build
+```
+- 团队 `8499X3S9X8` automatic signing；证书 `Apple Development: zhang_wangning@126.com (K2FQFHU46Z)`。
+- 真机包签名完整（`application-groups` + iCloud + aps + `get-task-allow`）；模拟器
+  `CODE_SIGNING_ALLOWED=NO` 的包**没有 App Group**，扩展读不到共享域 —— 两回事。
+- **补 `.mlmodelc`**：`xcrun coremlc compile x.mlmodel /tmp/mlc` 手工跑得动（只有 Xcode 的
+  build rule 才包 sandbox-exec）→ `cp -R` 进 `Allude.app/` → **必须重签**。
+  重签要用**导出的** entitlements（`codesign -d --entitlements :-`），裸 `Config/*.entitlements`
+  缺 `application-identifier`/`team-identifier`/`get-task-allow`，装了起不来。先签 appex 再签 App。
+- 装 / 启动 / 退出：
+  `devicectl device install app`；`process launch --terminate-existing -e '{"SCREEN":"…"}'`；
+  `process terminate --pid <pid>`（**只吃 pid**，不吃 bundle id）。
+- 真机读写文件：`devicectl device info files|copy from|copy to`，
+  `--domain-type appGroupDataContainer --domain-identifier group.com.jikezhang.allude`。
+  偏好 `Library/Preferences/group.com.jikezhang.allude.plist`、记录 `…/Application Support/pickup-records.json`。
+- 真机 App 一启动会从 iCloud 同步真实数据，`SCREEN=ingest` 的种子可能被覆盖。
 - pbxproj 改版本号必须「先读进变量再写回」，内联读写会截断成 0 字节。
 - `AlludeShared/`、`AlludeWidget/` 是显式 PBXGroup：新增 Swift 必须手动进 pbxproj 三处。
 
@@ -63,6 +86,13 @@ cd Allude && xcodebuild -project Allude.xcodeproj -scheme Allude \
   `Allude/AppIcons/IconNN*.png`、`Info.plist` 的 `CFBundleAlternateIcons`、
   `AppIconChoice` 的 case/title。同步组自动收文件，不改 pbxproj。
 - 第 13 套「快递箱」按主人要求图形内缩 1/5（内容占 60%，白底合成去 alpha）。
+- 🔴 **岛内图标随 `ContentState.appIconRaw` 传**（2026-11-15 修，commit 1286c28）：
+  扩展进程别自己读 `AppIconStore.current` —— App Group 那条链一断就回落到
+  `AppIconChoice.fallback`（第 7 套 C 标），表现为「桌面换了、岛里还是旧图标」。
+  `AppMarkIcon(choice:)` 由调用方传 `state.appIcon`；换图标成功后走
+  `PickupActivityController.refreshForAppIconChange()` 即时刷新活动。
+- ⚠️ `AlludeWidget/Assets.xcassets` 只许留 `AccentColor` + `WidgetBackground`。
+  曾经有 AppIcon01–08 的副本，与 Shared catalog 同名同 target 编两遍（归属不确定）。
 - ⚠️ 模拟器截不到真实灵动岛（前台/后台/主屏都无胶囊），只能真机验。
 
 ## 现状（2026-11-15）
