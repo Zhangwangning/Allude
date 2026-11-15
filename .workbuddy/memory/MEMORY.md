@@ -117,8 +117,43 @@ xcodebuild -project Allude.xcodeproj -scheme Allude -destination "$DEST" \
   曾经有 AppIcon01–08 的副本，与 Shared catalog 同名同 target 编两遍（归属不确定）。
 - ⚠️ 模拟器截不到真实灵动岛（前台/后台/主屏都无胶囊），只能真机验。
 
+## TestFlight 发版（2026-11-15 打通，命令行全自动，不用 Xcode GUI）
+- 🔴 `xcodebuild -exportArchive` **在这台机器上不可用**：`com.apple.dt.Xcode.ITunesSoftwareService`
+  在无 GUI 会话时起不来（`Connection init failed at lookup ... error 3`），一律报
+  "No Accounts / Cloud signing permission error / No iOS Distribution certificate"。
+  `dangerouslyDisableSandbox` 也一样 —— 别在这条路上浪费时间。
+- 团队原本**一个分发证书都没有**，所以走 ASC API 自建（一次性，证书可长期复用）：
+  1. `openssl req -new -newkey rsa:2048 -nodes -keyout dist.key -out dist.csr`
+  2. `POST /v1/certificates` {certificateType: IOS_DISTRIBUTION, csrContent} →
+     证书 **P76B23FF7S**（"iPhone Distribution: Wangnjng Zhang (8499X3S9X8)"，2027-11-15 到期）
+  3. DER→pem→p12 必须加 **`-legacy`**（openssl 3 默认算法 macOS 不认，报 MAC verification failed）
+  4. `security import dist.p12 -k login.keychain-db -P <pass> -T /usr/bin/codesign -A`
+  5. `POST /v1/profiles` {profileType: IOS_APP_STORE} + bundleId + 上面那张证书 →
+     主 App **7H29P7MJ8Q**（bundleId `N42529Q6F6`）、Widget **4F62FDJ8K2**（`M53D3TXT6B`）
+     ⚠️ 别用 `bids["data"][0]`——列表第一个是 Widget，我踩过，建出来的 profile 没有 iCloud/aps
+- 🔴 **entitlements 不能照抄 profile**：profile 里 `icloud-services = *`、
+  `icloud-container-environment = [Production, Development]`、
+  `ubiquity-kvstore-identifier = 8499X3S9X8.*` 三者都会被 iOS 拒（90045/90046/90211）。
+  要手写精简版：`CloudDocuments`（数组）、删掉 environment 键、`keychain-access-groups`
+  写具体 bundle id 不用通配、`get-task-allow=false`、`aps-environment=production`、
+  `beta-reports-active=true`。
+- 重签顺序：先 `PlugIns/AlludeWidget.appex` 再 `Allude.app`，同时替换两处 `embedded.mobileprovision`。
+- 打包：`ditto -c -k --keepParent Payload Allude.ipa`。
+  🔴 **不能加 `--sequesterRsrc`** —— 会生成 `__MACOSX/` 被打进包，上传容易被拒。
+- 验证 / 上传（altool 仍可用，路径在 ContentDelivery.framework 下）：
+  ```
+  xcrun altool --validate-app -f Allude.ipa -t ios --apiKey 34Z43R5SGY --apiIssuer e2936bfc-e52b-4931-a763-9f03dec868e3
+  xcrun altool --upload-app   -f Allude.ipa -t ios --apiKey 34Z43R5SGY --apiIssuer e2936bfc-e52b-4931-a763-9f03dec868e3
+  ```
+  `WILL RETRY / network connection was lost` 是常态，会自己重试成功，别当中断。
+- 上传后处理约 2–3 分钟（`processingState` → VALID），再挂群组：
+  `python3 tools/testflight-publish.py --build 313 --notes-file tools/testflight-notes/1.0.0-313.md`
+  （自动：挂「Allude公测」+ 写测试内容 + 提交 Beta 审核）
+
 ## 现状（2026-11-15）
-- 1.0.0 已提交审核（WAITING_FOR_REVIEW），**绑构建 309**；312 已上传未挂。
+- 1.0.0 已提交审核（WAITING_FOR_REVIEW），**绑构建 309**。
+- **313 已上传、VALID、已挂「Allude公测」群组、Beta 审核已提交**（312 未挂、已被 313 取代）。
+
 - 两个内购仍 `READY_TO_SUBMIT`，**未随版本提交** → 必须先补内购审核，否则上线买不了。
 - git `main` 领先 `origin/main` 7 个提交（305–312 未推）。
 - Gitee Pages 法务镜像 404；GitHub Pages 正常。
