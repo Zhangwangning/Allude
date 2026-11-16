@@ -184,7 +184,22 @@ final class PickupStore: ObservableObject {
 
     /// `records` 变更后的全部派生动作（写盘 / 小组件 / 实时活动 / 通知）
     private func persistSideEffects(from oldValue: [PickupRecord]) {
-        PickupStorage.save(records)
+        // 🔴 2026-11-16 状态回滚专项：**写盘前先对齐共享容器**。
+        //    桌面小组件的勾选直接改 App Group 里的文件，而本进程可能还持有
+        //    改动前的内存副本；无条件 `save(records)` 会把旧状态整份盖回去，
+        //    表现就是「小组件点完变 4 → 打开 App 变 5 → 回桌面又变 5」。
+        //    `load()` 已自动重放增量日志，拿到的就是三方共同认可的最新状态。
+        let outgoing = Self.reconcileForSave(records, with: PickupStorage.load())
+        if outgoing != records {
+            // 界面也要跟到同一口径；用 isBatchUpdating 挡住 didSet 递归
+            isBatchUpdating = true
+            records = outgoing
+            isBatchUpdating = false
+        }
+        PickupStorage.save(outgoing)
+        // 日志记录的状态已经进 records 了，清掉（consume 自己会按时间戳复核，
+        // 万一这里写的仍是旧数据它会把标记留着，下次读盘继续生效）。
+        WidgetToggleJournal.consume(records: outgoing)
         // iCloud 同步：数据一变就排一次（控制器内部会去抖 1.5 秒；开关关着时是空操作）。
         // PickupStore 不是 @MainActor，统一经由 bridge 转到主线程。
         PickupSyncBridge.schedule()
@@ -195,6 +210,31 @@ final class PickupStore: ObservableObject {
         // 否则会出现「小组件已更新、锁屏还挂着旧取件码」。
         PickupActivityController.sync(pending: pending)
         syncReminders(from: oldValue)
+    }
+
+    /// 写盘前的状态对齐（2026-11-16 状态回滚专项）。
+    ///
+    /// 只合并**三个状态字段**（`isPickedUp` / `pickedUpAt` / `updatedAt`）：
+    /// 内存的其它字段是用户刚在 App 里编辑过的，磁盘不会比它新，整份替换反而会
+    /// 把编辑丢掉。判新旧统一用 `updatedAt ?? receivedAt` —— 与 iCloud 合并
+    /// `PickupSyncCore.changedAt` 同一口径，不会出现「这边赢、那边输」的分歧。
+    private static func reconcileForSave(_ local: [PickupRecord],
+                                          with disk: [PickupRecord]) -> [PickupRecord] {
+        var diskByID: [UUID: PickupRecord] = [:]
+        for record in disk { diskByID[record.id] = record }
+        guard !diskByID.isEmpty else { return local }
+
+        var out = local
+        for index in out.indices {
+            guard let remote = diskByID[out[index].id] else { continue }
+            let localStamp = out[index].updatedAt ?? out[index].receivedAt
+            let diskStamp = remote.updatedAt ?? remote.receivedAt
+            guard diskStamp > localStamp else { continue }
+            out[index].isPickedUp = remote.isPickedUp
+            out[index].pickedUpAt = remote.pickedUpAt
+            out[index].updatedAt = remote.updatedAt
+        }
+        return out
     }
 
     /// 把取件提醒与数据对齐（records 每次变动后调用）。

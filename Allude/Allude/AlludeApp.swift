@@ -59,6 +59,8 @@ struct AlludeApp: App {
         // 语言：把上次在「设置 › 语言」里的选择落到 AppleLanguages（下次启动生效）
         AppLanguageSettings.applyAtLaunch()
 
+        // 只有主 App 进程能起 / 重建实时活动；扩展进程只 update（2026-11-16）
+        PickupActivityController.isAppProcess = true
         PickupActivityController.pendingProvider = { PickupStore.shared.pending }
 
         PickupActivityController.stationResolver = { record in
@@ -856,6 +858,23 @@ struct AlludeApp: App {
             // 不传导给无头启动的 App（实测外观仍浅色），强制 colorScheme 才能拍到暗色。
             // 🔴 外观由根上的 AppearanceHost 统一管（`.preferredColorScheme`），
             //    这里**不能再设一次**：子层设 nil 会把父层的「深色」重置回跟随系统。
+            // 🔴 2026-11-16 状态回滚专项：**冷启动也要对齐一次**。
+            //    `.onChange(of: scenePhase)` 对**初始值**不触发 —— App 被杀之后
+            //    从灵动岛进入时 scenePhase 一上来就是 .active，那条链完全不会跑。
+            //    而桌面小组件可能刚刚改过共享文件，进程内存里若留着旧副本，
+            //    界面就会显示旧的待取数、并在下一次写盘时把新状态盖掉。
+            .task {
+                store.reloadFromStorage()
+                PickupActivityController.sync(pending: store.pending)
+                #if DEBUG
+                // 回归脚手架：SIMCTL_CHILD_ROLLBACK_PROBE=1
+                // 模拟「小组件在别的进程写盘 + App 内存仍是旧副本」的完整竞态，
+                // 把三端计数与增量日志耗时打到控制台（--console-pty 抓 stdout）。
+                if ProcessInfo.processInfo.environment["ROLLBACK_PROBE"] == "1" {
+                    runWidgetRollbackProbe(store: store)
+                }
+                #endif
+            }
             .onChange(of: scenePhase) { _, phase in
                 // 桌面小组件的勾选框会在后台直接改共享文件，回前台时对齐一次
                 if phase == .active {
@@ -1109,3 +1128,118 @@ private struct AIHubScaffold: View {
     }
 }
 
+
+#if DEBUG
+// MARK: - 小组件状态回滚回归探针（SIMCTL_CHILD_ROLLBACK_PROBE=1）
+//
+// 老大 2026-11-16 提的四项重点验证：写入耗时、三端计数、杀进程/重启不丢、
+// 大列表无负担。这里在**真实 App 进程**里跑完整竞态：
+//   ① 模拟小组件在另一个进程改共享文件 + 追加轻量标记（并计时）
+//   ② 把一份「旧内存」交给日志重放，验证护栏本身生效
+//   ③ 模拟主 App 后台持有旧副本并发生一次写盘 —— 这是原来回滚发生的地方
+//   ④ 重新读盘 = 模拟杀进程 / 重启
+//   ⑤ 临时铺 500 条记录测 load 平均耗时，测完恢复
+// 只在 DEBUG + 环境变量下跑，不影响正式运行。
+@MainActor
+private func runWidgetRollbackProbe(store: PickupStore) {
+    Task { @MainActor in
+        try? await Task.sleep(nanoseconds: 1_200_000_000)
+
+        let before = store.pending.count
+        guard let target = store.pending.first else {
+            print("[rollback-probe] ❌ 没有待取记录，跳过")
+            return
+        }
+
+        // ① 小组件在别的进程写盘
+        var disk = PickupStorage.load()
+        guard let di = disk.firstIndex(where: { $0.id == target.id }) else { return }
+        let stamp = Date()
+        disk[di].isPickedUp = true
+        disk[di].pickedUpAt = stamp
+        disk[di].updatedAt = stamp
+        PickupStorage.save(disk)
+        let t0 = CFAbsoluteTimeGetCurrent()
+        WidgetToggleJournal.append(id: target.id, picked: true, at: stamp)
+        let journalCost = (CFAbsoluteTimeGetCurrent() - t0) * 1000
+
+        // ② 纯函数：旧内存经日志重放后应变成已取
+        var stale = disk
+        stale[di].isPickedUp = false
+        stale[di].pickedUpAt = nil
+        stale[di].updatedAt = nil
+        let replayed = WidgetToggleJournal.applying(to: stale)[di].isPickedUp
+
+        // ②b 对照实验：**绕过** reconcile 直接盲写旧副本（等价于修复前的 App 写盘）。
+        //     磁盘文件本身会变回 44 条，但任何一处 load() 都会把标记重放回 43 ——
+        //     证明护栏独立于「写前对齐」存在，也反证了原来的回滚确实来自这次盲写。
+        PickupStorage.save(stale)
+        // 裸读必须沿用 records 文件的日期策略（iso8601），否则 Date 字段解不出来会误报 -1
+        let rawDecoder = JSONDecoder()
+        rawDecoder.dateDecodingStrategy = .iso8601
+        let rawFileCount = (try? rawDecoder.decode([PickupRecord].self,
+                                                  from: Data(contentsOf: PickupStorage.fileURL)))?
+            .filter { !$0.isPickedUp }.count ?? -1
+        let afterReplayCount = PickupStorage.load().filter { !$0.isPickedUp }.count
+        print("[rollback-probe] ②b 盲写旧副本：裸文件=\(rawFileCount) 经日志重放=\(afterReplayCount)")
+
+        // ②c 连续 10 次追加（同一 id 去重）的平均耗时 —— 快速响应看的是这个数
+        let t1 = CFAbsoluteTimeGetCurrent()
+        for _ in 0..<10 { WidgetToggleJournal.append(id: target.id, picked: true, at: stamp) }
+        let appendAvg = (CFAbsoluteTimeGetCurrent() - t1) / 10 * 1000
+        print("[rollback-probe] ②c 连续追加平均耗时 = \(String(format: "%.3f", appendAvg)) ms")
+        // 对照实验把磁盘写回了旧副本，这里恢复成小组件刚写的正确状态
+        PickupStorage.save(disk)
+
+        // ③ 主 App 内存仍是旧副本，且发生一次写盘（didSet → persistSideEffects）。
+        //    整体替换一次，避免三行各触发一次 didSet 造成中间态反复写盘。
+        if let si = store.records.firstIndex(where: { $0.id == target.id }) {
+            var old = store.records[si]
+            old.isPickedUp = false
+            old.pickedUpAt = nil
+            old.updatedAt = nil
+            store.records[si] = old
+        }
+        let afterMemory = store.pending.count
+        let afterDisk = PickupStorage.load().filter { !$0.isPickedUp }.count
+        let journalLeft = WidgetToggleJournal.load().count
+
+        // ④ 模拟杀进程 / 重启：全新读盘
+        let afterReboot = PickupStorage.load().filter { !$0.isPickedUp }.count
+
+        // ⑦ 三端计数：桌面小组件读 WidgetSnapshot.pendingTotal、App 主页读
+        //    store.pending、灵动岛由 sync(pending:) 拿共享盘过滤结果。
+        //    三条路径都经过同一个 PickupStorage.load()，必须给出同一个数。
+        let widgetCount = WidgetSnapshot.load().pendingTotal
+        let appCount = store.pending.count
+        let islandCount = PickupStorage.load().filter { !$0.isPickedUp }.count
+
+        print("[rollback-probe] ① 初始待取 = \(before)")
+        print("[rollback-probe] ② 追加轻量标记耗时 = \(String(format: "%.3f", journalCost)) ms")
+        print("[rollback-probe] ③ 旧内存经日志重放 isPickedUp = \(replayed)")
+        print("[rollback-probe] ④ 写盘后 内存=\(afterMemory) 磁盘=\(afterDisk) 剩余标记=\(journalLeft)")
+        print("[rollback-probe] ⑤ 模拟重启后待取 = \(afterReboot)")
+        print("[rollback-probe] ⑦ 三端计数：小组件=\(widgetCount) App主页=\(appCount) 灵动岛输入=\(islandCount)")
+        let ok = afterMemory == before - 1 && afterDisk == before - 1
+            && afterReboot == before - 1 && replayed
+            && widgetCount == before - 1 && appCount == before - 1 && islandCount == before - 1
+        print("[rollback-probe] 结论 = \(ok ? "✅ 无回滚" : "❌ 仍有回滚")")
+
+        // ⑤ 大列表性能
+        let backup = PickupStorage.load()
+        var bulk: [PickupRecord] = []
+        for i in 0..<500 {
+            var copy = backup[0]
+            copy.id = UUID()
+            copy.code = "BULK-\(i)"
+            bulk.append(copy)
+        }
+        PickupStorage.save(bulk)
+        let b0 = CFAbsoluteTimeGetCurrent()
+        for _ in 0..<20 { _ = PickupStorage.load() }
+        let avg = (CFAbsoluteTimeGetCurrent() - b0) / 20 * 1000
+        print("[rollback-probe] ⑥ 500 条记录 load 平均耗时 = \(String(format: "%.2f", avg)) ms")
+        PickupStorage.save(backup)
+    }
+}
+#endif

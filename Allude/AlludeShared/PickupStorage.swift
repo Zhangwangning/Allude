@@ -66,8 +66,15 @@ enum PickupStorage {
     }
 
     static func load() -> [PickupRecord] {
-        guard let data = try? Data(contentsOf: fileURL) else { return [] }
-        return (try? decoder.decode([PickupRecord].self, from: data)) ?? []
+        guard let data = try? Data(contentsOf: fileURL) else {
+            // 文件都还没有（首启）时，日志里也不可能有有效条目
+            return []
+        }
+        let records = (try? decoder.decode([PickupRecord].self, from: data)) ?? []
+        // 🔴 2026-11-16 状态回滚专项：读盘统一过一层增量日志。
+        //    放在 `load()` 里而不是各调用点，是因为 App / 桌面小组件 / 灵动岛
+        //    是三个独立进程，任何一处漏掉就会出现「这边 4、那边 5」。
+        return WidgetToggleJournal.applying(to: records)
     }
 
     /// 数据文件是否**已存在**（哪怕内容是空数组）。
@@ -127,6 +134,118 @@ enum PickupLimits {
     /// 用户按到手抽筋也翻不完，且每次翻页都要重读整份 JSON。
     /// 头部数字仍显示**真实总数**（`pendingTotal`），这里截的只是「可翻动的量」。
     static let widgetListCap = 60
+}
+
+// MARK: - 小组件勾选增量日志（2026-11-16 主人：状态回滚专项）
+//
+// 背景：`pickup-records.json` 里已经有完整记录，小组件勾选也确实写了它。
+// 但主 App 后台持有的**内存副本**可能比磁盘旧，任何一次 `records` 赋值都会
+// 把旧状态整份写回去（这就是「点完变 4 → 打开 App 变 5 → 回桌面又变 5」）。
+// 只靠 records 文件挡不住这种覆盖，因为覆盖者写的也是「合法的完整数据」。
+//
+// 所以按主人的方案留一份**极小的增量标记**：一次勾选只追加一条 `{id, picked, at}`
+// （几十字节），`load()` 时按时间戳重放。这样三端（App / 桌面小组件 / 灵动岛）
+// 任何一处读盘都自带最新状态，无需各自再写一遍合并逻辑。
+//
+// 三个不变式：
+//   · **幂等**：`at <= 记录 updatedAt` 的条目跳过 —— App 里后来做的操作永远优先；
+//   · **自清理**：记录已反映该状态（`updatedAt >= at`）、记录已删除、或条目超过 7 天，
+//     由 App 落库后删掉，列表不会无限膨胀；
+//   · **轻量**：只存状态字段，不复制短信原文；写入是一次 atomic 小文件写。
+enum WidgetToggleJournal {
+    struct Entry: Codable, Hashable {
+        var id: String
+        var picked: Bool
+        /// 秒级 Unix 时间戳。
+        /// 🔴 不用 Date + iso8601：records 文件的 `updatedAt` 也是秒精度，
+        ///    两边精度不一致会让「记录已反映状态」永远判不成立、日志清不掉。
+        var at: TimeInterval
+    }
+
+    private static let fileName = "widget-toggles.json"
+    private static let maxEntries = 200
+    private static let ttl: TimeInterval = 7 * 24 * 60 * 60
+
+    /// 把任意 Date 归一到 records 写盘后的精度（秒）
+    private static func tick(_ date: Date) -> TimeInterval {
+        date.timeIntervalSince1970.rounded(.down)
+    }
+
+    private static var fileURL: URL {
+        PickupStorage.directory.appendingPathComponent(fileName)
+    }
+
+    private static func decoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }
+
+    private static func encoder() -> JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }
+
+    static func load() -> [Entry] {
+        guard let data = try? Data(contentsOf: fileURL),
+              let entries = try? decoder().decode([Entry].self, from: data) else { return [] }
+        return entries
+    }
+
+    private static func write(_ entries: [Entry]) {
+        guard let data = try? encoder().encode(entries) else { return }
+        try? FileManager.default.createDirectory(at: PickupStorage.directory,
+                                                 withIntermediateDirectories: true)
+        try? data.write(to: fileURL, options: .atomic)
+    }
+
+    /// 追加一条勾选。同一记录反复点只保留最后一次（含时间戳）。
+    static func append(id: UUID, picked: Bool, at: Date) {
+        var entries = load().filter { $0.id != id.uuidString }
+        entries.append(Entry(id: id.uuidString, picked: picked, at: tick(at)))
+        // 只保留最近 N 条 + 未过期的；超出就丢最旧的（那些状态早已落库）
+        let floor = tick(Date()) - ttl
+        entries = entries.filter { $0.at >= floor }.suffix(maxEntries)
+        write(Array(entries))
+    }
+
+    /// 把尚未反映到 records 里的勾选重放上去。
+    ///
+    /// 只改三个状态字段，其余字段一律以 records 为准 —— 日志不是数据源，
+    /// 只是一层「别把桌面刚点的那一下弄丢」的护栏。
+    static func applying(to records: [PickupRecord]) -> [PickupRecord] {
+        let entries = load()
+        guard !entries.isEmpty else { return records }
+        var out = records
+        for entry in entries {
+            guard let index = out.firstIndex(where: { $0.id.uuidString == entry.id }) else { continue }
+            let currentStamp = tick(out[index].updatedAt ?? out[index].receivedAt)
+            guard entry.at > currentStamp else { continue }   // App 里的后续操作优先
+            let stamp = Date(timeIntervalSince1970: entry.at)
+            out[index].isPickedUp = entry.picked
+            out[index].pickedUpAt = entry.picked ? (out[index].pickedUpAt ?? stamp) : nil
+            out[index].updatedAt = stamp
+        }
+        return out
+    }
+
+    /// App 落库成功后调用：删掉已经被 records 反映掉的条目。
+    ///
+    /// 🔴 判断依据是 `updatedAt >= at`，**不是**「save 成功」——
+    ///    万一某条路径写的仍是旧数据，这条标记必须留着，等下次读盘继续生效。
+    static func consume(records: [PickupRecord]) {
+        let before = load()
+        guard !before.isEmpty else { return }
+        let byID = Dictionary(records.map { ($0.id.uuidString, $0) },
+                               uniquingKeysWith: { first, _ in first })
+        let floor = tick(Date()) - ttl
+        let remaining = before.filter { entry in
+            guard entry.at >= floor, let record = byID[entry.id] else { return false }
+            return tick(record.updatedAt ?? record.receivedAt) < entry.at
+        }
+        if remaining.count != before.count { write(remaining) }
+    }
 }
 
 // MARK: - 小组件翻页状态

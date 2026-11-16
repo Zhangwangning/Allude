@@ -577,13 +577,23 @@ struct TogglePickupIntent: AppIntent {
         guard let index = all.firstIndex(where: { $0.id.uuidString == recordID }) else {
             return .result()
         }
-        all[index].isPickedUp.toggle()
+        // 🔴 2026-11-16 状态回滚专项：**必须与 App 侧 `setPicked` 同一口径**，
+        //    三个字段成对改。以前漏了 `updatedAt`，后果是 iCloud 合并 / 任何按
+        //    时间戳的对齐都把这次改动判成「旧数据」，桌面刚点的完成被抹回去。
+        let stamp = Date()
+        let picked = !all[index].isPickedUp
+        all[index].isPickedUp = picked
         // 时间戳与状态成对改（口径同 App 侧 `PickupStore.setPicked`）：
         // 桌面上点的这一下同样是真实的取件时刻，统计页要认它。
-        all[index].pickedUpAt = all[index].isPickedUp
-            ? (all[index].pickedUpAt ?? Date())
-            : nil
+        all[index].pickedUpAt = picked ? (all[index].pickedUpAt ?? stamp) : nil
+        all[index].updatedAt = stamp
+
+        // ① 先把完整状态落进共享文件 —— 小组件 UI 的即时反馈靠的就是这份数据
         PickupStorage.save(all)
+        // ② 再追加一条几十字节的增量标记作为护栏：主 App 后台若持有旧的内存副本，
+        //    下一次 `load()` 仍会把这条状态重放回来，不会被整份覆盖掉。
+        //    两步都是本机 atomic 文件写，无网络、无等待，点击响应不变慢。
+        WidgetToggleJournal.append(id: all[index].id, picked: picked, at: stamp)
         // 立即重画，否则要等系统下一个刷新周期才看到勾选结果
         WidgetCenter.shared.reloadAllTimelines()
         // 锁屏实时活动必须同步跟上：这个意图跑的进程**不一定是 App**

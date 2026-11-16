@@ -64,6 +64,16 @@ enum PickupActivityController {
     @MainActor private static var latest: [PickupRecord]?
     @MainActor private static var converging = false
 
+    /// 是否运行在**主 App 进程**（小组件 / 锁屏扩展里恒为 false）。
+    ///
+    /// 🔴 2026-11-16 状态回滚专项：扩展进程**不能** `Activity.request`
+    ///    （系统直接拒），却可以 `end` 掉 App 起的那张。下面 `apply` 的
+    ///    「进程首帧强制重建」原本在两个进程都会跑，于是用户在桌面小组件
+    ///    点一下勾选 → 扩展 endAll → request 被拒 → 灵动岛要么消失、要么
+    ///    停在旧数量。只有 App 进程有权重建；扩展只做 `update`。
+    ///    App 启动时注入 true（见 `AlludeApp.init`）。
+    nonisolated(unsafe) static var isAppProcess = false
+
     /// 🔴 **进程内首次收敛强制 update 一次**（2026-10-28）。
     ///
     /// 为什么必须有：`apply` 原本「内容与目标一致就跳过 update」是为了省 ActivityKit
@@ -350,7 +360,10 @@ enum PickupActivityController {
         //
         // 每进程只做一次：`needsForcedRender` 用完即置 false，之后的调用
         // 仍走原来省预算的 update 路径，不会频繁重建。
-        let force = needsForcedRender
+        // 🔴 2026-11-16：强制重建**只允许 App 进程**做。
+        //    扩展里 endAll 会把灵动岛收掉、随后的 request 又会被系统拒绝，
+        //    结果就是「小组件显示 4、灵动岛还挂着 5」甚至整张卡消失。
+        let force = needsForcedRender && isAppProcess
         needsForcedRender = false
         if force, !Activity<PickupActivityAttributes>.activities.isEmpty {
             await endAll()
@@ -376,6 +389,10 @@ enum PickupActivityController {
             await enforceSingle(preferring: state)
             return
         }
+
+        // 扩展进程不负责起活动：ActivityKit 只允许主 App `request`。
+        // 这里直接交回给 App（回前台时 `sync` 会重建），避免白撞一次系统拒绝。
+        guard isAppProcess else { return }
 
         // 一个都没有 → 起一个（本 App 的语义就是「一个取件码待办清单」，
         // 全系统只允许存在一个活动）
