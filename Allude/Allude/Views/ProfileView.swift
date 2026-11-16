@@ -55,6 +55,13 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     case icloudSync
     case encourage
     case privacySimple
+    // 🔴 2026-11-16：分栏右栏的**内部面板**，不进入任何目录数组（不会显示成设置行）。
+    //    为什么需要：横屏分栏右栏的根内容会随 `pane` 被整棵替换，往它内部 push
+    //    会被当成无效操作丢掉（日志能看到 push 被调用、界面不动）。所以 AI 子树
+    //    的两级改成「切右栏」，跟外观与个性化 / 关于 Allude 同一套做法。
+    case aiAppleIntelligence
+    case aiExtensions
+    case aiUsage
 
     var id: String { rawValue }
 
@@ -95,6 +102,10 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .icloudSync:   return "iCloud 同步"
         case .encourage:    return "鼓励一下"
         case .privacySimple: return "隐私政策（简明版）"
+        // 分栏右栏的内部面板，不会出现在任何目录里，只为 switch 穷尽
+        case .aiAppleIntelligence: return "Apple 智能"
+        case .aiExtensions: return "扩展"
+        case .aiUsage:      return "用量统计"
         }
     }
 
@@ -129,6 +140,9 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .icloudSync:   return "icloud.fill"
         case .encourage:    return "heart.fill"
         case .privacySimple: return "hand.raised.fill"
+        case .aiAppleIntelligence: return "brain.head.profile"
+        case .aiExtensions: return "puzzlepiece.extension.fill"
+        case .aiUsage:      return "chart.bar.xaxis"
         }
     }
 
@@ -163,6 +177,9 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .icloudSync:   return AppTheme.sky
         case .encourage:    return AppTheme.pendingTint
         case .privacySimple: return AppTheme.doneTint
+        case .aiAppleIntelligence: return AppTheme.violet
+        case .aiExtensions: return AppTheme.accent
+        case .aiUsage:      return AppTheme.accent
         }
     }
 
@@ -488,19 +505,19 @@ struct SettingsView: View {
                         // 🔴 2026-11-16：AI 子树的路由目标必须注册在**栈根**这一层。
                         //    写在 `AIExtensionsHomeView` 内部（`paneContent` 的条件分支里）
                         //    横屏分栏下完全不落地，日志显示 push 被调用、界面纹丝不动。
-                        .navigationDestination(for: AIHubRoute.self) {
-                            AIHubDestination(route: $0)
-                        }
-                        .navigationDestination(for: AIProviderRoute.self) {
-                            AIProviderDestination(route: $0)
-                        }
                         // 🔴 2026-11-07：帮助页里那两个入口是「切详情列」打开的
                         //    （push 在这层不落地），所以补一个返回按钮回到帮助与反馈。
                         .toolbar {
-                            if pane == .trainingSamples || pane == .contactInfo {
+                            if pane == .trainingSamples || pane == .contactInfo
+                                || pane == .aiAppleIntelligence || pane == .aiExtensions {
                                 ToolbarItem(placement: .topBarLeading) {
                                     Button {
-                                        pane = .help
+                                        // AI 的两个子面板回到总览，其余回帮助与反馈
+                                        if pane == .aiAppleIntelligence || pane == .aiExtensions {
+                                            pane = .aiCapability
+                                        } else {
+                                            pane = .help
+                                        }
                                     } label: {
                                         Label("返回", systemImage: "chevron.backward")
                                             .labelStyle(.titleAndIcon)
@@ -652,7 +669,13 @@ struct SettingsView: View {
         case .aiCapability:
             // 2026-11-14 主人：这一行原本直达「Apple 智能」检测页，把「扩展」（第三方模型）
             // 那一半整个挡住了 —— 改成先进总览，两条通道各一个入口。
-            AIExtensionsHomeView()
+            // 🔴 2026-11-16：分栏时把「切右栏」的能力交给它，否则两个入口点不动（见下方注释）。
+            AIExtensionsHomeView(openPane: isSplitLayout ? { pane = $0 } : nil)
+
+        // 分栏右栏的两个内部面板（单列下走 push，不会用到这两个 case）
+        case .aiAppleIntelligence: appleIntelligencePane
+        case .aiExtensions:        AIExtensionsListView(openPane: isSplitLayout ? { pane = $0 } : nil)
+        case .aiUsage:             AIUsageView()
         case .appIcon:      AppIconSettingsView()
         case .privacyDoc:   LegalDocumentView(document: .privacy)
         // 2026-11-12 主人：服务条款与「声明与免责」合并成一页

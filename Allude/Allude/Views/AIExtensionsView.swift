@@ -22,12 +22,6 @@ enum AIHubRoute: Hashable, Identifiable {
     case extensions
 }
 
-/// 「扩展」列表里的下级路由。
-enum AIProviderRoute: Hashable {
-    case detail(AIProvider)
-    case usage
-}
-
 /// 🔴 路由 → 视图的映射，**由外层的栈根注册**，不放在页面内部。
 ///
 /// 2026-11-16 实测记录：把 `navigationDestination` 写在 `AIExtensionsHomeView` 里
@@ -53,16 +47,6 @@ struct AIHubDestination: View {
     }
 }
 
-struct AIProviderDestination: View {
-    let route: AIProviderRoute
-
-    var body: some View {
-        switch route {
-        case .detail(let provider): AIProviderDetailView(provider: provider)
-        case .usage:                AIUsageView()
-        }
-    }
-}
 
 /// 二级页：Apple 智能 + 扩展 两个入口。
 ///
@@ -72,15 +56,40 @@ struct AIProviderDestination: View {
 /// `navigationDestination` 注册在被 push 的页面上，SwiftUI 会挂到**外层同一个栈**，
 /// 所以 iPhone 单栈与分栏详情栈都能正常 push，不需要任何外部回调。
 struct AIExtensionsHomeView: View {
+    /// 🔴 分栏右栏用：「把右侧切到指定面板」。
+    ///
+    /// 竖屏 / 外屏 / 直板机传 nil，走正常的 `NavigationLink` push；
+    /// Duo 内屏**横屏**（分栏）必须传回调 —— 那里 push 不落地：
+    /// 右栏的根内容是 `paneContent(pane)`，左侧换选中项时整棵树会被替换，
+    /// 往这种"随时会被换掉"的容器里再推一层，系统会把推入当无效操作丢掉
+    /// （日志能证明 push 被调用、界面纹丝不动）。
+    /// 这与「外观与个性化 / 关于 Allude」用的是同一套做法。
+    var openPane: ((SettingsPane) -> Void)? = nil
+
     @ViewBuilder
     private func hubRow(_ route: AIHubRoute, symbol: String, title: String, tint: Color) -> some View {
-        // 🔴 2026-11-16 改回 value-based：destination 型在本工程的设置栈里
-        //    （尤其横屏分栏的右栏）推不动，见 `AIHubDestination` 上方那段记录。
-        NavigationLink(value: route) {
-            SettingsRow(symbol: symbol, title: title, showsChevron: true, tint: tint)
-                .contentShape(.rect)
+        let row = SettingsRow(symbol: symbol, title: title, showsChevron: true, tint: tint)
+            .contentShape(.rect)
+
+        if let openPane {
+            // 分栏：切右栏（push 在那种容器里不落地）
+            Button {
+                openPane(route == .appleIntelligence ? .aiAppleIntelligence : .aiExtensions)
+            } label: {
+                row
+            }
+            .buttonStyle(.plain)
+        } else {
+            // 单列：**必须用 destination 型**。历史记录（2026-11-15）明确写过：
+            // 外层是 destination push 进来的页面，内层再做 value-based push 不落地。
+            // 所以这里千万不要改成 `NavigationLink(value:)`。
+            NavigationLink {
+                AIHubDestination(route: route)
+            } label: {
+                row
+            }
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
     }
 
     var body: some View {
@@ -135,38 +144,93 @@ struct AIExtensionsListView: View {
     @State private var ready: Set<AIProvider> = []
     @Environment(\.scenePhase) private var scenePhase
 
+    /// 分栏右栏用：把右侧切到指定面板（那里 push 不落地，理由见 `AIExtensionsHomeView`）。
+    var openPane: ((SettingsPane) -> Void)? = nil
+
+    /// 分栏态下点某家服务商：**在这页内部换成详情**，不走 push。
+    /// 单列态恒为 nil，走正常的 `NavigationLink`。
+    @State private var inlineProvider: AIProvider?
+
     private func refreshReady() {
         ready = Set(AIProvider.allCases.filter { AIProviderSettings.isReady($0) })
     }
 
     var body: some View {
+        Group {
+            // `inlineProvider` 只会在分栏态（`openPane != nil`）的行按钮里被赋值，
+            // 所以这里只需判它，不用再判一次 openPane。
+            if let provider = inlineProvider {
+                AIProviderDetailView(provider: provider)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button { inlineProvider = nil } label: {
+                                Label("返回", systemImage: "chevron.backward")
+                                    .labelStyle(.titleAndIcon)
+                            }
+                        }
+                    }
+            } else {
+                listBody
+            }
+        }
+    }
+
+    private var listBody: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(spacing: 0) {
                     ForEach(Array(AIProvider.allCases.enumerated()), id: \.element.id) { index, provider in
                         if index > 0 { SettingsDivider() }
-                        NavigationLink(value: AIProviderRoute.detail(provider)) {
-                            SettingsRow(symbol: provider.symbol,
-                                        imageAsset: provider.iconAsset,
-                                        title: provider.title,
-                                        detail: ready.contains(provider) ? "已接入" : "未接入",
-                                        showsChevron: true,
-                                        tint: provider.tint)
+                        if openPane != nil {
+                            Button { inlineProvider = provider } label: {
+                                SettingsRow(symbol: provider.symbol,
+                                            imageAsset: provider.iconAsset,
+                                            title: provider.title,
+                                            detail: ready.contains(provider) ? "已接入" : "未接入",
+                                            showsChevron: true,
+                                            tint: provider.tint)
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            // 单列：destination 型（理由见 `hubRow` 里的注释）
+                            NavigationLink {
+                                AIProviderDetailView(provider: provider)
+                            } label: {
+                                SettingsRow(symbol: provider.symbol,
+                                            imageAsset: provider.iconAsset,
+                                            title: provider.title,
+                                            detail: ready.contains(provider) ? "已接入" : "未接入",
+                                            showsChevron: true,
+                                            tint: provider.tint)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
                 .settingsCard()
 
                 VStack(spacing: 0) {
-                    NavigationLink(value: AIProviderRoute.usage) {
-                        SettingsRow(symbol: "chart.bar.xaxis",
-                                    title: "用量统计",
-                                    detail: AIUsageStore.costText(AIUsageStore.allTotals.costCNY),
-                                    showsChevron: true,
-                                    tint: AppTheme.accent)
+                    if let openPane {
+                        Button { openPane(.aiUsage) } label: {
+                            SettingsRow(symbol: "chart.bar.xaxis",
+                                        title: "用量统计",
+                                        detail: AIUsageStore.costText(AIUsageStore.allTotals.costCNY),
+                                        showsChevron: true,
+                                        tint: AppTheme.accent)
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        NavigationLink {
+                            AIUsageView()
+                        } label: {
+                            SettingsRow(symbol: "chart.bar.xaxis",
+                                        title: "用量统计",
+                                        detail: AIUsageStore.costText(AIUsageStore.allTotals.costCNY),
+                                        showsChevron: true,
+                                        tint: AppTheme.accent)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
                 .settingsCard()
 
