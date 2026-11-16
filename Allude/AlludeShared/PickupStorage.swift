@@ -1060,10 +1060,14 @@ enum CodeAppearanceSettings {
         notifyChange()
     }
 
-    /// 「一张卡片多个取件码」：默认关 = 升级前一码一卡；开 = 同一条短信的多个码合成一张卡。
-    /// 🔴 只影响**显示层**，数据仍是一码一 `PickupRecord`（件数、去重、勾选、iCloud 同步全不动）。
+    /// 🔴 「一张卡片多个取件码」**默认关闭**（2026-11-16 主人明确）：
+    ///    升级后仍是一码一卡，只有用户主动拨开关才合并。
+    ///    这是唯一的默认值来源 —— 别在别处偷偷写 true，也别做「首次启动自动开」。
+    static let defaultGroupsMultipleCodes = false
+
+    /// 只影响**显示层**，数据仍是一码一 `PickupRecord`（件数、去重、勾选、iCloud 同步全不动）。
     static var groupsMultipleCodes: Bool {
-        store.object(forKey: groupMultipleKey) as? Bool ?? false
+        store.object(forKey: groupMultipleKey) as? Bool ?? defaultGroupsMultipleCodes
     }
 
     static func setGroupsMultipleCodes(_ on: Bool) {

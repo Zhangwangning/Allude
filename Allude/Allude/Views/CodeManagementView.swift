@@ -277,7 +277,7 @@ struct CodeManagementView: View {
 
     private var groupingSection: some View {
         SettingsGroup(title: "卡片",
-                      note: "一条短信里有两个取件码时，开启后回到同一张卡；关闭则立刻拆回一码一张卡，对全部历史同时生效。件数统计与记录本身不受影响。") {
+                      note: "默认关闭，仍是一码一张卡。一条短信里有两个取件码时，开启后回到同一张卡；关闭则立刻拆回，对全部历史同时生效。件数统计与记录本身不受影响。") {
             SettingsPlainRow(title: "一张卡片多个取件码") {
                 Toggle("", isOn: $groupMultiple)
                     .labelsHidden()
