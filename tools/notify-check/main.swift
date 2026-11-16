@@ -47,6 +47,12 @@ enum PickupStorage {
     static func load() -> [PickupRecord] { [] }
 }
 
+/// 提醒排期会读权益档位（超时提醒、重复提醒都是 Allude Pro）。
+/// 自检只测文案映射，恒按 Pro 跑即可，不牵进真正的权益验签链路。
+enum EntitlementSnapshot {
+    static var licensedPro: Bool { true }
+}
+
 var failures = 0
 func expect(_ condition: Bool, _ message: String) {
     print("\(condition ? "✓" : "✗") \(message)")
