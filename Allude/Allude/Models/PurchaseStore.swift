@@ -99,6 +99,14 @@ final class PurchaseStore: ObservableObject {
     @Published private(set) var message: String?
 
     private var updatesTask: Task<Void, Never>?
+    /// 监听商店地区变化（2026-11-16）。
+    ///
+    /// 🔴 `Product.displayPrice` 是 StoreKit **按当前 Storefront 格式化好的字符串**，
+    ///    App 这边一个字符都没拼。TestFlight 刚装好时系统还没把沙盒账号的
+    ///    中国区 storefront 同步过来，StoreKit 会先回落到内购创建时的美元基准价
+    ///    （`$0.99`）；等地区就绪才变人民币。以前商品一旦取到就不再重拉，
+    ///    用户只能干等系统自己切，所以这里监听 `Storefront.updates` 主动刷新。
+    private var storefrontTask: Task<Void, Never>?
     private var started = false
 
     private init() {}
@@ -128,6 +136,15 @@ final class PurchaseStore: ObservableObject {
             }
         }
 
+        // 商店地区一变就重拉商品：这是「先显示 $0.99、过一会儿变 ¥」能立刻
+        // 收敛的关键。只在 `start()` 里挂一次，页面开关不会重复注册。
+        storefrontTask = Task { [weak self] in
+            for await _ in Storefront.updates {
+                guard let self else { return }
+                await self.loadProducts()
+            }
+        }
+
         Task {
             await loadProducts()
             await refreshEntitlement()
@@ -140,6 +157,16 @@ final class PurchaseStore: ObservableObject {
         do {
             let list = try await Product.products(for: Self.allProductIDs)
             products = Dictionary(uniqueKeysWithValues: list.map { ($0.id, $0) })
+            #if DEBUG
+            // 排查「价格显示成美元」时，一条日志就能分清是 storefront 没就绪、
+            // 商品没生效，还是代码格式化错了（答案是前两者，App 只显示原串）。
+            // ⚠️ `Storefront.current` 是 async 属性，必须单独 await 后再取值。
+            let front = await Storefront.current
+            print("[allude-iap] storefront=\(front?.countryCode ?? "nil") "
+                  + (list.isEmpty
+                     ? "products=(empty)"
+                     : list.map { "\($0.id)=\($0.displayPrice)" }.joined(separator: " ")))
+            #endif
             if products.isEmpty {
                 message = "暂时取不到商品信息，请稍后再试"
             } else {

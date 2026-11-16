@@ -1137,7 +1137,13 @@ struct FullVersionView: View {
         .navigationBarTitleDisplayMode(.inline)
         .cloaksTabBar()
         .onAppear {
-            if purchase.canPurchase == false { Task { await purchase.loadProducts() } }
+            // 🔴 2026-11-16：以前只在「商品完全取不到」时才重试。StoreKit 若先
+            //    给了美元基准价，`canPurchase` 已是 true，就再也不会重拉 ——
+            //    用户只能干等系统自己把 storefront 切成中国区才看到人民币。
+            //    改成每次进页面都刷新一次（正在购买时不打扰），配合
+            //    `PurchaseStore` 的 `Storefront.updates` 监听，价格能及时收敛。
+            guard purchase.purchasingPlan == nil else { return }
+            Task { await purchase.loadProducts() }
         }
         .sheet(item: $legalSheet) { document in
             LegalDocumentView(document: document)
