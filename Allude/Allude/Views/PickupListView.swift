@@ -73,7 +73,7 @@ final class PickupListModel: ObservableObject {
     @Published var undoAction: PickupUndoAction = .completed
     @Published var showUndo = false
 
-    // 添加入口（手动粘贴 / 扫描识别）
+    // 添加入口（手动粘贴 / 拍照·相册识别）
     @Published var showAdd = false
     @Published var showScan = false
     @Published var addedToast: String?
@@ -281,12 +281,20 @@ struct PickupListView: View {
     }
 
     /// 按免费版上限裁剪后的待办
+    /// 搜索底稿：**不含条数上限**。
+    ///
+    /// 免费版上限只限制"屏幕上显示几条"，不限制"能搜到哪条"（2026-11-16 主人：
+    /// 「可以搜索所有已完成取件的快递信息」，待取页同口径）。
+    /// 代价是搜索时能搜到被折叠的记录，但**详情在非 Pro 搜索态是锁的**（见 `detailLocked`），
+    /// 所以免费用户能看到"有这么一条"、看不到详情。
+    private var searchBase: [PickupRecord] {
+        // 排序时刻与卡面显示的时间同源（lastNotifiedAt）：
+        // 刚被驿站催过的那件应当跳到最前，而不是按首次入库时间排在下面
+        scopedPending.sorted { $0.lastNotifiedAt > $1.lastNotifiedAt }
+    }
+
     private var scopedList: [PickupRecord] {
-        Array(scopedPending
-            // 排序时刻与卡面显示的时间同源（lastNotifiedAt）：
-            // 刚被驿站催过的那件应当跳到最前，而不是按首次入库时间排在下面
-            .sorted { $0.lastNotifiedAt > $1.lastNotifiedAt }
-            .prefix(store.visibleLimit))
+        Array(searchBase.prefix(store.visibleLimit))
     }
 
     private var scopedHiddenCount: Int {
@@ -307,7 +315,10 @@ struct PickupListView: View {
 
     /// 先按分类、范围与免费上限裁剪，再套用搜索与排序
     private var displayed: [PickupRecord] {
-        let base = store.filtered(scopedList, query: model.query)
+        // 有搜索词就在**全量**里搜（免费用户也能搜到全部，只是详情锁着），
+        // 没有搜索词才是裁过条数的可见集。两者的排序逻辑完全一致。
+        let hasQuery = !model.query.trimmingCharacters(in: .whitespaces).isEmpty
+        let base = store.filtered(hasQuery ? searchBase : scopedList, query: model.query)
         switch model.sort {
         case .newest:
             return base.sorted { $0.lastNotifiedAt > $1.lastNotifiedAt }
@@ -428,9 +439,25 @@ struct PickupListView: View {
         return displayed.first
     }
 
+    /// 非 Pro 在**搜索态**下只给结果、不给详情（2026-11-16 主人：
+    /// 「待取页面也是同样的只可以搜到，不能点击查看详情」）。
+    /// 不含搜索词时行为不变。
+    private var detailLocked: Bool {
+        guard !EntitlementSnapshot.licensedPro else { return false }
+        return !model.query.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// 订阅页呈现态：搜索结果被拦下、或分栏右栏处于锁定态时打开。
+    @State private var showPaywall = false
+
     /// 打开详情：宽屏只切换右栏内容（不 push），窄屏照旧推进导航栈。
-    /// 卡片点击 / 侧滑「详情」/ 长按菜单「详情」三处共用这一个入口。
+    /// 卡片点击 / 侧滑「详情」/ 长按菜单「详情」三处共用这一个入口 ——
+    /// 所以门禁只需写在这里（🔴 非 Pro 搜索态一律拦下，见 `detailLocked`）。
     private func openDetail(_ record: PickupRecord) {
+        if detailLocked {
+            showPaywall = true
+            return
+        }
         if PadLayout.usesSplit, horizontalSizeClass == .regular {
             splitSelection = record.id
         } else {
@@ -582,7 +609,10 @@ struct PickupListView: View {
             ZStack {
                 // 右栏整列铺浅灰：详情限宽 760 居中，两侧不能露出系统白
                 Color(.systemGroupedBackground).ignoresSafeArea()
-            if let record = splitDetailRecord {
+            if detailLocked {
+                // 分栏右栏是常驻区域，没有"点击"可拦 —— 不换成占位就等于白送详情
+                ProLockedSplitPlaceholder { showPaywall = true }
+            } else if let record = splitDetailRecord {
                 // 🔴 `.id(record.id)` 必须加（2026-10-25 审查修）：
                 // 右栏是同一个视图标识，换记录只是换入参，而 `draft` / `edit`
                 // 都是 `@StateObject`（只认第一次 init 的值，不会随新记录重建）。
@@ -636,24 +666,28 @@ struct PickupListView: View {
     private var listBody: some View {
         List {
                 // 顶部统计卡：待取 / 今日新增 / 今日已取 三格一组，只报数不切页。
-                Section {
-                    HeroStatsCard(primary: scopedPending.count,
-                                  primaryUnit: "件待取",
-                                  primaryTint: AppTheme.accent,
-                                  primaryTintLight: AppTheme.accentLight,
-                                  stats: [
-                                      .init(title: "今日新增", value: scopedTodayNewCount,
-                                            tint: AppTheme.todayTint, symbol: "arrow.down.circle.fill"),
-                                      .init(title: "今日已取", value: scopedTodayPickedCount,
-                                            tint: AppTheme.doneTint, symbol: "checkmark.circle.fill"),
-                                  ])
-                    .listRowInsets(EdgeInsets(top: 2, leading: AppTheme.hInset,
-                                              bottom: 12, trailing: AppTheme.hInset))
-                    .listRowBackground(Color(.systemGroupedBackground))
-                    .listRowSeparator(.hidden)
+                // 搜索态不显示：它统计的是**全部**待取件，跟筛出来的结果无关，
+                // 与已取页 `HeroStatsCard` 同一口径（2026-11-16）。
+                if model.query.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Section {
+                        HeroStatsCard(primary: scopedPending.count,
+                                      primaryUnit: "件待取",
+                                      primaryTint: AppTheme.accent,
+                                      primaryTintLight: AppTheme.accentLight,
+                                      stats: [
+                                          .init(title: "今日新增", value: scopedTodayNewCount,
+                                                tint: AppTheme.todayTint, symbol: "arrow.down.circle.fill"),
+                                          .init(title: "今日已取", value: scopedTodayPickedCount,
+                                                tint: AppTheme.doneTint, symbol: "checkmark.circle.fill"),
+                                      ])
+                        .listRowInsets(EdgeInsets(top: 2, leading: AppTheme.hInset,
+                                                  bottom: 12, trailing: AppTheme.hInset))
+                        .listRowBackground(Color(.systemGroupedBackground))
+                        .listRowSeparator(.hidden)
 
-                    // 列表头不放任何分段/切换控件：分组方式固定为时间流，
-                    // 「按驿站」已于 2026-10-27 移除，筛选收在顶栏的漏斗菜单里。
+                        // 列表头不放任何分段/切换控件：分组方式固定为时间流，
+                        // 「按驿站」已于 2026-10-27 移除，筛选收在顶栏的漏斗菜单里。
+                    }
                 }
 
                 content
@@ -708,6 +742,11 @@ struct PickupListView: View {
             .overlay(alignment: .bottom) { bottomOverlay }
             // 🔴 2026-11-16：「清空已取件记录」的确认弹窗随按钮一起搬到已取页
             //    （`PickedUpView`）。本页不再有任何清空入口，弹窗一并移走。
+            // 非 Pro 搜索态点详情被拦下 / 分栏右栏锁定时，打开订阅页
+            .sheet(isPresented: $showPaywall) {
+                NavigationStack { FullVersionView() }
+                    .modifier(PaywallSheetSizing())
+            }
             .sheet(isPresented: $model.showAdd) {
                 AddPickupSheet(onClose: { model.showAdd = false },
                                onAdded: handleAdded)
@@ -736,6 +775,16 @@ struct PickupListView: View {
                     PickupNotifier.requestAuthorizationIfNeeded()
                 }
                 openMenuFromScaffold()
+                // 截图脚手架：`SIMCTL_CHILD_SEARCH=<关键词>` 启动即灌入搜索词。
+                // `.searchable` 的输入框命令行点不到，搜索态（含非 Pro 锁定）只能这样取证。
+                if let q = ProcessInfo.processInfo.environment["SEARCH"], !q.isEmpty {
+                    model.query = q
+                }
+                // 截图脚手架：`SIMCTL_CHILD_SEARCH_PAYWALL=1` 直接亮起订阅页 ——
+                // 「非 Pro 搜索态点卡片」这一步命令行点不到，但呈现路径必须验。
+                if ProcessInfo.processInfo.environment["SEARCH_PAYWALL"] == "1" {
+                    showPaywall = true
+                }
                 // 分栏验证脚手架：`SIMCTL_CHILD_SPLIT_DETAIL=<码子串>` 启动即选中一条，
                 // 让命令行也能拍到「左列表 / 右详情」的联动 —— 点卡片的手势无法脚本化。
                 // 宽屏下走的就是 `openDetail` 的同一条路径（只切右栏，不 push）。
@@ -965,6 +1014,9 @@ struct PickupListView: View {
     }
 
     /// 添加菜单的**内容**（同上，横排/竖排共用）
+    ///
+    /// 🔴 2026-11-16 主人：删掉「扫描识别添加」（扫码在离线 App 里兑换不出任何东西），
+    ///    换成「拍照 / 相册识别添加」—— 与相册选图同一条端侧 OCR 链路。
     @ViewBuilder
     private var addMenuItems: some View {
         Button {
@@ -976,7 +1028,7 @@ struct PickupListView: View {
         Button {
             model.showScan = true
         } label: {
-            Label("扫描识别添加", systemImage: "viewfinder")
+            Label("拍照 / 相册识别添加", systemImage: "text.viewfinder")
         }
     }
 

@@ -5,25 +5,27 @@ import Vision
 import AVFoundation
 
 // MARK: ============================================================================
-// 扫描添加
+// 识别添加（拍照 / 相册）
 //
 // 两条入口，同一个出口：
-//   · 扫一扫  —— 相机识别二维码 / 一维码（驿站小票、快递柜屏幕、面单条码）
-//   · 相册识别 —— 对图片做中文 OCR（短信截图、取件小票照片）
+//   · 拍照识别 —— 现拍一张（朋友转发的聊天截图、驿站小票、面单）
+//   · 相册识别 —— 从相册里挑图（截图一般先存在相册里）
 //
-// 无论哪条路径，拿到的都是「一段文本」，随后统一交给 PickupParser —— 与快捷指令
-// 自动化、手动粘贴完全同一条链路。扫描出来的内容若本身就是一串取件码
-// （柜机二维码常如此），解析必然落空，此时降级为「直接当作取件码」。
+// 🔴 2026-11-16 主人：「扫码添加就不要了，软件本身不联网，扫码添加根本就无法使用，
+//    到时候可以拍照识别添加，这样就和从相册选择图片是一样的原理了」——
+//    原来的「扫一扫」走的是条码识别，二维码内容多半是需要联网兑换的链接，
+//    离线状态下等于废的。现在两个入口都只做**端侧 OCR**，拿到一段文本后
+//    统一交给 PickupParser —— 与快捷指令自动化、手动粘贴完全同一条链路。
 // ============================================================================
 
 enum ScanMode: String, CaseIterable, Identifiable {
-    case camera = "扫一扫"
+    case capture = "拍照识别"
     case photo = "相册识别"
 
     var id: String { rawValue }
     var symbol: String {
         switch self {
-        case .camera: "qrcode.viewfinder"
+        case .capture: "camera.fill"
         case .photo: "photo.on.rectangle.angled"
         }
     }
@@ -44,7 +46,7 @@ struct ScanDraft: Identifiable, Equatable {
 }
 
 final class ScanPickupModel: ObservableObject {
-    @Published var mode: ScanMode = .camera
+    @Published var mode: ScanMode = .capture
 
     /// 识别到的原始文本（非空即进入「确认」态）
     @Published var captured: String?
@@ -56,14 +58,18 @@ final class ScanPickupModel: ObservableObject {
     /// 本轮识别一共处理了几张图（用于文案「已识别 N 张图」；1 张时不显示）
     @Published var photoCount = 0
     @Published var addedMessage: String?
-    /// 强制重建相机控制器，用于「重新扫描」
-    @Published var scannerToken = UUID()
+    /// 快门信号：每自增一次，取景控制器就拍一张（见 `CameraPhotoView`）
+    @Published var shutterToken = UUID()
+    /// 拍照/识别失败的中性提示（与 `errorMessage` 同一条展示位）
+    @Published var captureFailed = false
 
     /// 确认页的可编辑草稿（每个字段都能当场改）
     @Published var drafts: [ScanDraft] = []
+    /// 草稿来自「没识别到 → 手动核对」，不是机器识别出来的（表头文案要用）
+    @Published var isManualDraft = false
 
     /// 预置状态（仅供命令行截图验证注入，生产路径不传）
-    init(seed: String = "", mode: ScanMode = .camera) {
+    init(seed: String = "", mode: ScanMode = .capture) {
         self.mode = mode
         if !seed.isEmpty {
             captured = seed
@@ -116,13 +122,51 @@ final class ScanPickupModel: ObservableObject {
         return t.rangeOfCharacter(from: punctuation) == nil
     }
 
+    /// 识别不到任何凭证时，给一条**手动核对**的出路。
+    ///
+    /// 聊天截图常只有「8-4-2019 菜鸟驿站」这种没有标签的一行 —— 正则无从下手，
+    /// 而原来的确认页在 `parsedList` 为空时只给「重新识别」，用户在这个 sheet 里
+    /// 没有补救路径，只能退出去换「粘贴解析添加」。这里改成：把文字里**唯一一个**
+    /// 像取件码的片段预填进可编辑草稿，用户改对了再添加。
+    ///
+    /// 保守规则：只认「含数字、4–24 字符」的独立片段；11 位手机号、日期形态不算；
+    /// 片段多于一个（分不清哪个是码）就留空让用户自己填 —— 宁可不猜，绝不静默写错码。
+    func startManualDraft() {
+        let text = captured ?? ""
+        drafts = [ScanDraft(kind: .code,
+                            value: Self.guessBareCode(in: text),
+                            company: "",
+                            address: "",
+                            rawText: text)]
+        isManualDraft = true
+    }
+
+    private static func guessBareCode(in text: String) -> String {
+        let tokens = text.split(whereSeparator: { $0.isWhitespace || "，,。.；;：:！!？?（）()「」【】".contains($0) })
+            .map(String.init)
+        let candidates = tokens.filter { token in
+            guard (4...24).contains(token.count),
+                  token.contains(where: \.isNumber) else { return false }
+            // 手机号 / 纯日期 / 纯数字长串（更可能是运单号或订单号）都不预填
+            if token.count == 11, token.allSatisfy(\.isNumber) { return false }
+            if token.filter({ $0 == "-" || $0 == "—" }).count >= 2,
+               token.allSatisfy({ $0.isNumber || $0 == "-" || $0 == "—" }) { return true }
+            return token.contains(where: { $0 == "-" || $0 == "—" })
+                || (token.contains(where: \.isLetter) && token.contains(where: \.isNumber))
+                || (5...8).contains(token.count) && token.allSatisfy(\.isNumber)
+        }
+        return candidates.count == 1 ? candidates[0] : ""
+    }
+
     func reset() {
         captured = nil
         errorMessage = nil
         addedMessage = nil
         photoCount = 0
         drafts = []
-        scannerToken = UUID()
+        isManualDraft = false
+        captureFailed = false
+        shutterToken = UUID()
     }
 }
 
@@ -133,9 +177,9 @@ struct ScanPickupSheet: View {
 
     /// 相机可用性**缓存成状态**，不再每次 body 求值现算（2026-10-25 审查修）。
     /// 现算的写法不监听权限变化：首次进入弹「允许使用相机？」→ 点不允许后，
-    /// 界面会停在黑屏 + 取景框 + 「对准取件码二维码」，既没有提示也没有去设置的入口；
+    /// 界面会停在黑屏取景 + 「把短信放进取景框」，既没有提示也没有去设置的入口；
     /// 反过来在系统设置里打开相机再回来，界面也还是「没有相机权限」，只能退出重进。
-    @State private var availability = ScannerAvailability.current()
+    @State private var availability = CameraAvailability.current()
 
     let onClose: () -> Void
     let onAdded: (IngestOutcome) -> Void
@@ -145,7 +189,7 @@ struct ScanPickupSheet: View {
     static let photoLimit = 9
 
     init(initialCaptured: String = "",
-         initialMode: ScanMode = .camera,
+         initialMode: ScanMode = .capture,
          onClose: @escaping () -> Void,
          onAdded: @escaping (IngestOutcome) -> Void) {
         _model = StateObject(wrappedValue: ScanPickupModel(seed: initialCaptured,
@@ -169,14 +213,14 @@ struct ScanPickupSheet: View {
 
                     Group {
                         switch model.mode {
-                        case .camera: cameraPane
+                        case .capture: capturePane
                         case .photo: photoPane
                         }
                     }
                 }
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("扫描添加")
+            .navigationTitle("识别添加")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -191,7 +235,15 @@ struct ScanPickupSheet: View {
             }
             // 首次进入主动请求相机权限；请求一结束就刷新可用性，
             // 否则「拒绝」之后界面会一直停在黑屏取景框（2026-10-25 审查修）
-            .task { await refreshAvailability() }
+            .task {
+                await refreshAvailability()
+                // 截图脚手架：`SIMCTL_CHILD_MANUAL_DRAFT=1` 直接走一次
+                // 「没识别到 → 手动核对后添加」的兜底，验可编辑草稿卡能正常出来。
+                if ProcessInfo.processInfo.environment["MANUAL_DRAFT"] == "1",
+                   model.captured != nil, model.drafts.isEmpty {
+                    model.startManualDraft()
+                }
+            }
             // 从系统设置授权后回到 App → 立刻刷新，不用退出重进
             .onChange(of: scenePhase) { _, phase in
                 guard phase == .active else { return }
@@ -203,10 +255,16 @@ struct ScanPickupSheet: View {
     /// 读相机权限并落到 `availability`（必要时先触发系统授权弹窗）
     @MainActor
     private func refreshAvailability() async {
+        // 截图脚手架下不必真去要权限：那个系统弹窗会盖住整块取景区，
+        // 弹窗本身又点不掉（simctl 没有点击通道），拍出来什么也看不到。
+        if ProcessInfo.processInfo.environment["FAKE_CAMERA"] == "1" {
+            availability = .ready
+            return
+        }
         if AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined {
             _ = await AVCaptureDevice.requestAccess(for: .video)
         }
-        availability = ScannerAvailability.current()
+        availability = CameraAvailability.current()
     }
 
     // MARK: 模式切换
@@ -220,33 +278,48 @@ struct ScanPickupSheet: View {
         .pickerStyle(.segmented)
     }
 
-    // MARK: 扫一扫
+    // MARK: 拍照识别
+
+    /// 生效中的相机可用性。
+    ///
+    /// 截图脚手架：`SIMCTL_CHILD_FAKE_CAMERA=1` 让取景页在**没有摄像头**的模拟器上
+    /// 也渲染出来（黑底 + 快门条 + 提示）。模拟器压根没有相机设备，快门条那套布局
+    /// 没有别的取证手段 —— 这个开关只改这一处判定，不伪造拍摄结果。
+    private var effectiveAvailability: CameraAvailability {
+        ProcessInfo.processInfo.environment["FAKE_CAMERA"] == "1" ? .ready : availability
+    }
 
     @ViewBuilder
-    private var cameraPane: some View {
-        switch availability {
+    private var capturePane: some View {
+        switch effectiveAvailability {
         case .ready:
-            ZStack {
-                CameraScannerView(onScan: handleCaptured)
-                    .id(model.scannerToken)
+            VStack(spacing: 0) {
+                ZStack {
+                    CameraPhotoView(captureToken: model.shutterToken,
+                                    onCaptured: handleCapturedImage,
+                                    onFailed: { model.captureFailed = true })
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
 
-                ScannerReticle()
+                    // 取景提示：拍的是「有字的东西」，不是二维码 ——
+                    // 文案要直接讲清对什么、拍什么。
+                    VStack {
+                        Spacer()
+                        Text("把取件短信、聊天截图或面单放进取景框")
+                            .font(.footnote)
+                            .foregroundStyle(.white)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 9)
+                            .background(.black.opacity(0.5), in: .capsule)
+                            .padding(.bottom, 14)
+                    }
                     .allowsHitTesting(false)
-
-                VStack {
-                    Spacer()
-                    Text("对准取件码二维码或快递面单条码")
-                        .font(.footnote)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 9)
-                        .background(.black.opacity(0.5), in: .capsule)
-                        .padding(.bottom, 26)
                 }
-                .allowsHitTesting(false)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                shutterBar
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipped()
 
         case .denied:
             fallbackCard(
@@ -261,11 +334,60 @@ struct ScanPickupSheet: View {
             fallbackCard(
                 symbol: "iphone.slash",
                 tint: AppTheme.sky,
-                title: "当前设备不支持相机扫码",
-                detail: "模拟器没有摄像头。可以改用「相册识别」，或在真机上扫码。",
+                title: "当前设备没有可用相机",
+                detail: "模拟器没有摄像头。可以改用「相册识别」，效果与拍照完全一样。",
                 primary: ("改用相册识别", { withAnimation(.snappy) { model.mode = .photo } })
             )
         }
+    }
+
+    /// 快门条 —— 大圆钮，与系统相机同一个位置感（拇指够得到）。
+    private var shutterBar: some View {
+        VStack(spacing: 8) {
+            Button {
+                model.captureFailed = false
+                model.shutterToken = UUID()
+            } label: {
+                ZStack {
+                    Circle()
+                        .strokeBorder(.white.opacity(0.9), lineWidth: 4)
+                        .frame(width: 68, height: 68)
+                    Circle()
+                        .fill(.white)
+                        .frame(width: 56, height: 56)
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(model.isRecognizing)
+            .opacity(model.isRecognizing ? 0.5 : 1)
+
+            if model.isRecognizing {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small).tint(.white)
+                    Text("正在识别…").font(.footnote).foregroundStyle(.white)
+                }
+            } else if model.captureFailed {
+                // 拍失败 / OCR 没读出文字是两回事，提示要分清（相册页有独立文案，
+                // 这里只有这一行，所以把 `errorMessage` 也带出来）。
+                Text(model.errorMessage ?? "这一张没拍成，再按一次试试")
+                    .font(.footnote)
+                    .foregroundStyle(AppTheme.amber)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 28)
+            } else {
+                Text("识别在本机完成，照片不出设备")
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.65))
+                // 开了 AI 增强就得说清楚：照片不上传，但**识别出的文字**会发给你自己
+                // 接入的模型复核一次。含糊其辞比不写更糟。
+                AIEnhanceHint(compact: true)
+                    .padding(.horizontal, 28)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 16)
+        .padding(.bottom, 22)
+        .background(Color.black)
     }
 
     private func fallbackCard(symbol: String, tint: Color, title: String,
@@ -330,6 +452,9 @@ struct ScanPickupSheet: View {
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
 
+            AIEnhanceHint(compact: true)
+                .padding(.horizontal, 34)
+
             if model.isRecognizing {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
@@ -392,7 +517,7 @@ struct ScanPickupSheet: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("识别到的是一个单独的码")
                                     .font(.subheadline.weight(.semibold))
-                                Text("扫出来的内容本身就是取件码，直接加进待取件列表即可。")
+                                Text("读到的内容本身就是取件码，直接加进待取件列表即可。")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                     .fixedSize(horizontal: false, vertical: true)
@@ -408,21 +533,29 @@ struct ScanPickupSheet: View {
                         }
                     }
                 } else {
-                    HStack(alignment: .top, spacing: 12) {
-                        IconBadge(symbol: "exclamationmark.triangle.fill", tint: AppTheme.amber, size: 34)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("没识别到取件信息")
-                                .font(.subheadline.weight(.semibold))
-                            Text("这段内容里没有取件码、运单号或尾号。可以换个角度重扫，或用「添加」手动粘贴短信全文。")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(alignment: .top, spacing: 12) {
+                            IconBadge(symbol: "exclamationmark.triangle.fill", tint: AppTheme.amber, size: 34)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("没识别到取件信息")
+                                    .font(.subheadline.weight(.semibold))
+                                Text("这段内容里没有取件码、运单号或尾号。可以拍得清楚些再试，或用「添加」手动粘贴短信全文。")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer(minLength: 0)
                         }
-                        Spacer(minLength: 0)
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .cardSurface()
+
+                        // OCR 读到了字、但没带任何「取件码」标签时（朋友聊天截图常见），
+                        // 让用户当场核对/补一个码，不必退出本页重来。
+                        primaryButton(title: "手动核对后添加", tint: AppTheme.accent) {
+                            withAnimation(.snappy) { model.startManualDraft() }
+                        }
                     }
-                    .padding(14)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .cardSurface()
                 }
 
                 if model.hasResult {
@@ -431,7 +564,10 @@ struct ScanPickupSheet: View {
                     primaryButton(title: model.drafts.count > 1
                                   ? "全部添加 · \(model.drafts.count) 条"
                                   : "添加",
-                                  tint: AppTheme.accent) {
+                                  tint: AppTheme.accent,
+                                  enabled: model.drafts.allSatisfy {
+                                      !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                  }) {
                         finish(with: store.commitEdited(model.editedResults))
                     }
                 }
@@ -457,6 +593,8 @@ struct ScanPickupSheet: View {
     /// 确认区标题。多图时把「几张图」也讲清楚 —— 否则用户看到一长串条目，
     /// 不知道它们是从几张图里来的，也无从判断是不是漏识别了某一张。
     private var resultSummary: String {
+        // 手动核对的草稿不是「识别」出来的，别让人以为机器已经确认过了
+        if model.isManualDraft { return "请核对取件码" }
         let count = model.drafts.count
         if model.photoCount > 1 { return "已识别 \(count) 条 · 来自 \(model.photoCount) 张图" }
         return count > 1 ? "已识别 \(count) 条" : "已识别"
@@ -465,10 +603,10 @@ struct ScanPickupSheet: View {
     private var rawCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Image(systemName: model.mode == .camera ? "qrcode" : "doc.text.magnifyingglass")
+                Image(systemName: model.mode == .capture ? "camera.fill" : "doc.text.magnifyingglass")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(AppTheme.accent)
-                Text(model.mode == .camera ? "扫描到的内容" : "识别出的文字")
+                Text(model.mode == .capture ? "拍到的文字" : "识别出的文字")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 0)
@@ -487,16 +625,18 @@ struct ScanPickupSheet: View {
     }
 
     private func primaryButton(title: String, tint: Color,
+                               enabled: Bool = true,
                                action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title.L)
                 .font(.system(size: 16, weight: .semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .background(tint, in: .capsule)
+                .background(enabled ? tint : Color(.systemGray4), in: .capsule)
                 .foregroundStyle(.white)
         }
         .buttonStyle(.plain)
+        .disabled(!enabled)
     }
 
     private var successBanner: some View {
@@ -517,13 +657,31 @@ struct ScanPickupSheet: View {
 
     // MARK: 动作
 
-    private func handleCaptured(_ value: String) {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        withAnimation(.snappy) {
-            model.captured = trimmed
-            model.errorMessage = trimmed.isEmpty ? "没有读到内容，请再试一次" : nil
-            model.photoCount = 1
-            if !trimmed.isEmpty { model.rebuildDrafts() }
+    /// 拍照 → 端侧 OCR → 与相册选图**完全同一条链路**。
+    ///
+    /// 不做「拍完先给你看一眼原图再确认」的两步：取件场景下多一步就是多一次等待，
+    /// 而确认页本来就把识别出的文字原样摊开（`rawCard`），看错了当场能改。
+    private func handleCapturedImage(_ image: UIImage) {
+        model.isRecognizing = true
+        model.errorMessage = nil
+
+        Task { @MainActor in
+            let text = await Task.detached(priority: .userInitiated) {
+                PickupOCR.recognize(image)
+            }.value
+            model.isRecognizing = false
+
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else {
+                model.captureFailed = true
+                model.errorMessage = "这张图里没读出文字，把字拍清楚一点再试"
+                return
+            }
+            withAnimation(.snappy) {
+                model.photoCount = 1
+                model.captured = trimmed
+                model.rebuildDrafts()
+            }
         }
     }
 
@@ -578,7 +736,7 @@ struct ScanPickupSheet: View {
     private func finish(with outcome: IngestOutcome) {
         onAdded(outcome)
 
-        // 文案统一取 `outcome.dialog` —— App 内所有入口（粘贴 / 扫码 / 相册）
+        // 文案统一取 `outcome.dialog` —— App 内所有入口（粘贴 / 拍照 / 相册）
         // 共用同一口径，不会出现"这个入口说 3 条、那个入口说 5 条"这种两套说法。
         withAnimation(.snappy) { model.addedMessage = outcome.dialog }
 
@@ -700,42 +858,6 @@ struct EditableParseCard: View {
             .font(.system(size: 12))
             .foregroundStyle(.tertiary)
             .frame(width: 40, alignment: .leading)
-    }
-}
-
-// MARK: - 取景框
-
-/// 四角取景框。不做「扫描线动画」——那类装饰会持续重绘，
-/// 而扫码本身是秒级动作，视觉噪音大于信息量。
-struct ScannerReticle: View {
-    private let side: CGFloat = 232
-    private let corner: CGFloat = 34
-    private let lineWidth: CGFloat = 3.5
-
-    var body: some View {
-        ZStack {
-            ForEach(0..<4, id: \.self) { index in
-                Corner()
-                    .stroke(Color.white, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
-                    .frame(width: corner, height: corner)
-                    .rotationEffect(.degrees(Double(index) * 90))
-                    .offset(x: index == 0 || index == 3 ? -(side - corner) / 2 : (side - corner) / 2,
-                            y: index == 0 || index == 1 ? -(side - corner) / 2 : (side - corner) / 2)
-            }
-        }
-        .frame(width: side, height: side)
-        .shadow(color: .black.opacity(0.35), radius: 6)
-    }
-
-    /// 左上角直角的两条边
-    private struct Corner: Shape {
-        func path(in rect: CGRect) -> Path {
-            var path = Path()
-            path.move(to: CGPoint(x: rect.minX, y: rect.maxY))
-            path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
-            path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-            return path
-        }
     }
 }
 

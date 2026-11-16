@@ -201,7 +201,7 @@
 	<key>NSAccentColorName</key>
 	<string>AccentColor</string>
 	<key>NSCameraUsageDescription</key>
-	<string>用于扫描取件码二维码与快递面单条码，识别后自动填入待取件列表。</string>
+	<string>用于拍摄取件短信、聊天截图或快递面单，在本机识别取件码与地址后填入待取件列表。</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>保存分享图到相册时使用。</string>
 	<key>NSSupportsLiveActivities</key>

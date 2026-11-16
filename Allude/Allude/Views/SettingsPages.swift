@@ -477,7 +477,7 @@ struct PrivacySimpleView: View {
                     SettingsDivider()
 
                     SettingsRow(symbol: "camera.fill", title: "权限只在本机用",
-                                subtitle: "通知提醒、相册选图、相机扫码，处理全在设备上。",
+                                subtitle: "通知提醒、相册选图、拍照识别，处理全在设备上。",
                                 showsChevron: false, tint: AppTheme.violet)
 
                     SettingsDivider()

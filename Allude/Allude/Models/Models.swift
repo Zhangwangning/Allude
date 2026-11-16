@@ -524,7 +524,7 @@ final class PickupStore: ObservableObject {
         return commitAll(results)
     }
 
-    /// OCR 来源的写入（相册识别 / 扫码 / 手动粘贴）。
+    /// OCR 来源的写入（拍照 / 相册 / 手动粘贴）。
     ///
     /// 与 `ingest` 的差别只在**段内**要不要走多假设归一：短信原文的换行是语义
     /// 换行，直接解析即可；OCR 的换行多来自视觉折行，会切断定长 lookbehind 锚点，
@@ -662,7 +662,7 @@ final class PickupStore: ObservableObject {
         recordTombstones(dropped)
     }
 
-    /// 手动 / 扫码添加一个「裸码」—— 手上只有一串取件码、没有短信原文时的入口。
+    /// 手动 / 拍照识别兜底添加一个「裸码」—— 手上只有一串取件码、没有短信原文时的入口。
     ///
     /// 复用 `commitAll`，因此与自动收件共用同一套归一与去重指纹：
     /// 自动收过的码再手动加一次会被正确拦下，不会因为走了不同入口就重复。

@@ -763,9 +763,41 @@ enum OCRTextNormalizer {
         out.append(unwrapped)
         out.append(spaced)
 
+        // 🔴 2026-11-16 主人转来的用户反馈：「有时候会帮别人取快递，会发一张截图」——
+        //    朋友在聊天里手打的是口语标签「取件号：Y1234」「地点：妈妈驿站（建设路店）」，
+        //    正则只认「取件码 / 取货码 / 地址:」，整段直接解析为空。
+        //    这里把**标签同义词**换成正则认得的写法，作为**最后一个候选**：
+        //      · 不动数字、不动地址内容，只换标签词；
+        //      · 原有候选全部落空才轮到它 → OCR 既有语料结果逐字不变；
+        //      · 短信原文（ocrSource: false）根本不经过 `candidates`，零回归风险。
+        if let normalized = chatLabelNormalized(unwrapped),
+           let spacedNormalized = chatLabelNormalized(spaced) {
+            out.append(normalized)
+            out.append(spacedNormalized)
+        }
+
         // 保序去重
         var seen = Set<String>()
         return out.filter { !$0.isEmpty && seen.insert($0).inserted }
+    }
+
+    /// 聊天 / 截图里的口语标签 → 短信公式认得的标签。
+    ///
+    /// 顺序有讲究：长词必须先替换，否则「取件地点」被「地点」先吃掉，
+    /// 会留下半截「取件地址」没人管。
+    private static func chatLabelNormalized(_ text: String) -> String? {
+        let synonyms: [(String, String)] = [
+            ("取件号", "取件码"), ("取货号", "取货码"), ("提货号", "提货码"),
+            ("提件码", "取件码"), ("提件号", "取件码"),
+            ("取件地址", "地址"), ("取货地址", "地址"),
+            ("取件地点", "地址"), ("取货地点", "地址"),
+            ("地点", "地址"), ("位置", "地址"),
+        ]
+        var out = text
+        for (spoken, canonical) in synonyms {
+            out = out.replacingOccurrences(of: spoken, with: canonical)
+        }
+        return out == text ? nil : out
     }
 
     /// 按「【」切段。

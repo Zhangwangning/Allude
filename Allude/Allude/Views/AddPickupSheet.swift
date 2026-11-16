@@ -183,6 +183,10 @@ struct AddPickupSheet: View {
                 .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            // 2026-11-16 主人：手动添加也要走 AI 增强（链路本来就走 `commitAll`，
+            // 这里把"已经在用"这件事说出来，否则用户以为只有快捷指令才吃 AI）。
+            AIEnhanceHint()
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -326,7 +330,7 @@ struct AddPickupSheet: View {
     private func finish(with outcome: IngestOutcome) {
         onAdded(outcome)
 
-        // 文案统一取 `outcome.dialog` —— App 内所有入口（粘贴 / 扫码 / 相册）
+        // 文案统一取 `outcome.dialog` —— App 内所有入口（粘贴 / 拍照 / 相册）
         // 共用同一口径，不会出现"这个入口说 3 条、那个入口说 5 条"这种两套说法。
         withAnimation(.snappy) { model.addedMessage = outcome.dialog }
 

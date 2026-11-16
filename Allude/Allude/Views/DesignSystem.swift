@@ -756,8 +756,73 @@ struct SplitDetailPlaceholder: View {
     }
 }
 
-// MARK: - 动效（2026-11-14 主人：把 0.3s ease 换成苹果那种"有肉感"的弹簧）
+/// 分栏右栏的「非 Pro · 搜索态」占位（2026-11-16 主人）。
+///
+/// 背景：非 Pro 用户可以用搜索查到任意一条已取 / 待取记录，但**点不开详情**
+/// （详情是 Allude Pro 的权益）。窄屏下点击会被拦下来弹订阅页；分栏右栏这块
+/// 常驻区域没有"点击"这个动作可拦 —— 它会自动渲染第一/选中那条，
+/// 所以必须在这里换成锁定说明，否则一搜就把详情白送了。
+struct ProLockedSplitPlaceholder: View {
+    var onUnlock: () -> Void
 
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 30, weight: .regular))
+                .foregroundStyle(.tertiary)
+
+            Text("详情需要 Allude Pro")
+                .font(AppTheme.TypeScale.rowTitleMedium)
+
+            Text("免费版可以搜索并看到记录，打开详情需要解锁。")
+                .font(AppTheme.TypeScale.rowSubtitle)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+
+            Button(action: onUnlock) {
+                Text("了解 Allude Pro")
+                    .font(AppTheme.TypeScale.bodyMedium)
+            }
+            .buttonStyle(.borderedProminent)
+            .padding(.top, 4)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemGroupedBackground))
+    }
+}
+
+// MARK: - AI 增强状态提示（2026-11-16 主人）
+
+/// 「AI 增强已开启」的一行提示。
+///
+/// 为什么需要它：第三方模型增强挂在 `commitAll` 末尾，**四条入口全部覆盖**
+/// （手动粘贴 / 拍照 / 相册 / 快捷指令）—— 主人以为只有快捷指令那条路在用 AI，
+/// 就是因为这条链路没有任何可见痕迹。提示只讲**事实**：开了哪个服务商、
+/// 请求在本机直连、App 不参与，不承诺"一定改对"。
+struct AIEnhanceHint: View {
+    var compact = false
+
+    var body: some View {
+        if let provider = AIProviderSettings.anyReadyProvider {
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AppTheme.violet)
+
+                Text(compact
+                     ? "AI 增强已开启，添加后会由 \(provider.title) 复核一遍"
+                     : "已开启 AI 增强（\(provider.title)）：添加后会再复核一遍取件码与地址，请求从本机直连，App 不参与。")
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+// MARK: - 动效（2026-11-14 主人：把 0.3s ease 换成苹果那种"有肉感"的弹簧）
 /// 全 App 动效统一出口。
 ///
 /// 为什么不用 `.easeInOut(duration: 0.3)`：

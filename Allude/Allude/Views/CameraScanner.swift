@@ -3,23 +3,32 @@ import SwiftUI
 import UIKit
 
 // MARK: ============================================================================
-// 相机扫码（二维码 + 常见一维码）
+// 拍照识别（2026-11-16 主人）
 //
-// 用 AVFoundation 的 metadata output 而不是 VisionKit 的 DataScannerViewController：
-// 后者要求 A12 及以上且不支持模拟器，而元数据输出在真机上的兼容面更宽、
-// 且「识别到什么就回调什么」这一行为完全可控。
+// 主人原话：「扫码添加就不要了，软件本身不联网，扫码添加根本就无法使用，到时候
+// 可以拍照识别添加，这样就和从相册选择图片是一样的原理了」。
+//
+// 为什么删掉扫码：二维码里那串内容通常是一个跳转链接（需要联网才能兑换成取件信息），
+// 而 Allude 刻意不联网 —— 扫出来的东西在离线状态下没有任何价值，入口留着只会让人
+// 白试一次。改成「拍一张照片 → 端侧 OCR → 同一套解析」之后，拍照与相册选图
+// 走的是**完全同一条链路**（`PickupOCR` → `PickupParser.parseAll(ocrSource:)`），
+// 一套逻辑两种图片来源。
+//
+// 相机实现用 AVFoundation 而不是 `UIImagePickerController`：后者的系统相机页
+// 无法定制，快门、提示、降级界面都得跟 App 自己的视觉走；而且它一旦弹出就
+// 盖住整个 sheet，取景时看不到「这张照片会识别成什么」的说明。
 //
 // ⚠️ 必须在 Info.plist 提供 NSCameraUsageDescription，否则进程会被系统直接终止。
 // ============================================================================
 
-/// 扫码能力的可用性三态 —— 用于在模拟器 / 拒绝授权时给出正确降级界面，
+/// 相机能力的可用性三态 —— 用于在模拟器 / 拒绝授权时给出正确降级界面，
 /// 而不是丢给用户一块黑屏。
-enum ScannerAvailability {
+enum CameraAvailability {
     case ready
     case denied
     case unsupported
 
-    static func current() -> ScannerAvailability {
+    static func current() -> CameraAvailability {
         guard AVCaptureDevice.default(for: .video) != nil else { return .unsupported }
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized: return .ready
@@ -29,36 +38,44 @@ enum ScannerAvailability {
     }
 }
 
-struct CameraScannerView: UIViewControllerRepresentable {
-    /// 每次成功识别到一个 code 内容时回调（已做同一次进入内的去重）
-    let onScan: (String) -> Void
+/// 实时取景 + 单张拍照。快门由 SwiftUI 侧驱动（`captureToken` 变化即拍一张），
+/// 这样快门按钮能长成 App 自己的样子，而不用把整套 UI 搬进 UIKit。
+struct CameraPhotoView: UIViewControllerRepresentable {
+    /// 每次「按快门」父视图换一个新值，这里据此触发一次拍摄
+    var captureToken: UUID
+    var onCaptured: (UIImage) -> Void
+    var onFailed: () -> Void
 
-    func makeUIViewController(context: Context) -> ScannerHostController {
-        let controller = ScannerHostController()
-        controller.onScan = onScan
+    func makeUIViewController(context: Context) -> CameraPhotoController {
+        let controller = CameraPhotoController()
+        controller.onCaptured = onCaptured
+        controller.onFailed = onFailed
+        // 🔴 首帧的 token 是「初始值」，不是用户按了快门。不预置的话
+        //    `updateUIViewController` 第一次调用就会误拍一张 —— 真机上表现为
+        //    刚进页面就自动跳到识别结果，用户还没来得及按快门。
+        controller.handledToken = captureToken
         return controller
     }
 
-    func updateUIViewController(_ controller: ScannerHostController, context: Context) {
-        controller.onScan = onScan
+    func updateUIViewController(_ controller: CameraPhotoController, context: Context) {
+        controller.onCaptured = onCaptured
+        controller.onFailed = onFailed
+        controller.captureIfNeeded(token: captureToken)
     }
 }
 
-final class ScannerHostController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
+final class CameraPhotoController: UIViewController, AVCapturePhotoCaptureDelegate {
 
-    var onScan: ((String) -> Void)?
+    var onCaptured: ((UIImage) -> Void)?
+    var onFailed: (() -> Void)?
 
     private let session = AVCaptureSession()
+    private let output = AVCapturePhotoOutput()
     private var previewLayer: AVCaptureVideoPreviewLayer?
-    /// 一次进入只上报一次结果：扫码是「秒级」动作，连续回调只会造成重复写入
-    private var hasReported = false
     private var isConfigured = false
-
-    /// 扫码类型：二维码 + 取件凭证最常见的几种一维码
-    private static let wantedTypes: [AVMetadataObject.ObjectType] = [
-        .qr, .aztec, .dataMatrix, .pdf417,
-        .ean13, .ean8, .upce, .code128, .code39, .code93, .itf14,
-    ]
+    /// 上一次已经响应过的快门 token —— 只认变化，避免每次 body 求值都拍一张。
+    /// `makeUIViewController` 会把它预置成首帧值，因此初次进页面不会自动拍。
+    var handledToken: UUID?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -68,6 +85,9 @@ final class ScannerHostController: UIViewController, AVCaptureMetadataOutputObje
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        // 没有摄像头设备时**不要**去要权限：系统弹窗会盖住整个取景页，
+        // 而用户点了「允许」也照样拍不了（模拟器就是这种情况）。
+        guard AVCaptureDevice.default(for: .video) != nil else { return }
         if AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined {
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
                 guard granted else { return }
@@ -98,15 +118,15 @@ final class ScannerHostController: UIViewController, AVCaptureMetadataOutputObje
               session.canAddInput(input) else { return }
 
         session.addInput(input)
-
-        let output = AVCaptureMetadataOutput()
         guard session.canAddOutput(output) else { return }
         session.addOutput(output)
 
-        // 类型必须在 addOutput 之后设置，且只能取交集 —— 直接赋本机不支持的类型会崩
-        let available = Set(output.availableMetadataObjectTypes)
-        output.metadataObjectTypes = Self.wantedTypes.filter { available.contains($0) }
-        output.setMetadataObjectsDelegate(self, queue: .main)
+        // 竖屏拍照：不设这一项，拍出来的 buffer 是横向的，
+        // OCR 拿到一张躺倒的照片，识别率会明显掉（Vision 不做自动旋转）。
+        if let connection = output.connection(with: .video),
+           connection.isVideoRotationAngleSupported(90) {
+            connection.videoRotationAngle = 90
+        }
 
         let layer = AVCaptureVideoPreviewLayer(session: session)
         layer.videoGravity = .resizeAspectFill
@@ -133,27 +153,59 @@ final class ScannerHostController: UIViewController, AVCaptureMetadataOutputObje
         }
     }
 
-    // MARK: 回调
+    // MARK: 快门
 
-    func metadataOutput(_ output: AVCaptureMetadataOutput,
-                        didOutput metadataObjects: [AVMetadataObject],
-                        from connection: AVCaptureConnection) {
-        guard !hasReported else { return }
-        guard let object = metadataObjects.compactMap({ $0 as? AVMetadataMachineReadableCodeObject })
-            .first(where: { ($0.stringValue ?? "").isEmpty == false }),
-              let value = object.stringValue else { return }
-
-        hasReported = true
-        stopSession()
-
-        // 轻微触觉反馈：让「扫到了」这件事有实感，不用盯着屏幕
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        onScan?(value)
+    func captureIfNeeded(token: UUID) {
+        guard token != handledToken else { return }
+        handledToken = token
+        capture()
     }
 
-    /// 允许外部重置，供「重新扫描」使用
-    func reset() {
-        hasReported = false
-        startSession()
+    private func capture() {
+        guard isConfigured else { onFailed?(); return }
+        // 刚进页面就按快门时 session 可能还在起，等它跑起来再拍一次
+        guard session.isRunning else {
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                self?.session.startRunning()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { self?.shoot() }
+            }
+            return
+        }
+        shoot()
+    }
+
+    private func shoot() {
+        let settings = AVCapturePhotoSettings()
+        settings.flashMode = .off            // 拍纸面/屏幕用闪光只会反光糊字
+        output.capturePhoto(with: settings, delegate: self)
+    }
+
+    func photoOutput(_ output: AVCapturePhotoOutput,
+                     didFinishProcessingPhoto photo: AVCapturePhoto,
+                     error: Error?) {
+        guard error == nil,
+              let data = photo.fileDataRepresentation(),
+              let image = UIImage(data: data) else {
+            DispatchQueue.main.async { self.onFailed?() }
+            return
+        }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        let upright = Self.flatten(image)
+        DispatchQueue.main.async { self.onCaptured?(upright) }
+    }
+
+    /// 把 `UIImage` 压平到 `.up` 方向。
+    ///
+    /// 为什么必须做：`PickupOCR` 走的是 `image.cgImage` + `VNImageRequestHandler`，
+    /// 这条路**不读** `imageOrientation` —— 带旋转标记的图在 Vision 眼里就是躺倒的，
+    /// 竖排文字会整段识别不出来，且不报错。
+    private static func flatten(_ image: UIImage) -> UIImage {
+        guard image.imageOrientation != .up else { return image }
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = image.scale
+        let renderer = UIGraphicsImageRenderer(size: image.size, format: format)
+        return renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: image.size))
+        }
     }
 }

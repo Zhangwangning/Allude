@@ -1251,8 +1251,13 @@ struct FullVersionView: View {
             SectionHeader(title: "解锁什么")
 
             VStack(spacing: 0) {
-                featureRow(symbol: "tray.full.fill", title: "不限条数",
-                           note: "Allude同屏 \(PickupStore.freeVisibleLimit) 条、最多存 \(PickupStore.freeStorageLimit) 条；Allude Pro 全部放开")
+                // 🔴 2026-11-16 主人：非 Pro 搜索态「只给结果、不给详情」——
+                //    门加上了，清单也得写上（同 2026-11-15 iCloud 那次的口径）。
+                //    但**不能新增一行**：本页「一屏放得下、不要翻页」是 2026-10-31 的硬要求，
+                //    系统 form sheet 高度上限 890pt，多一行就会把「恢复购买」顶出屏幕。
+                //    所以并进这一行的标题与说明里，行数不变。
+                featureRow(symbol: "tray.full.fill", title: "不限条数与详情",
+                           note: "免费版同屏 \(PickupStore.freeVisibleLimit) 条、最多存 \(PickupStore.freeStorageLimit) 条，搜索到的记录也打不开详情；Allude Pro 全部放开")
                 SettingsDivider()
                 featureRow(symbol: "square.grid.2x2.fill", title: "桌面小组件全尺寸",
                            note: "Allude 只有小、中两种尺寸；Allude Pro 大尺寸与大号竖版一并可用")

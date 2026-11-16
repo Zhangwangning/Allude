@@ -22,6 +22,11 @@ final class HistoryModel: ObservableObject {
     @Published var isEditing = false
     @Published var selection: Set<UUID> = []
 
+    /// 搜索词（2026-11-16 主人：已取页也要能搜，与待取页同一套）。
+    /// 搜的是**全部已取记录**，不受免费版条数上限影响 —— 上限只裁"显示多少条"，
+    /// 不裁"能搜到哪条"（主人原话：「可以搜索所有已完成取件的快递信息」）。
+    @Published var query = ""
+
     /// 分组 / 排序方式（2026-11-16 主人：分组按钮从待取页也搬到本页）。
     ///
     /// 🔴 独立存一个键 —— 与待取页**各记各的**。两页的记录集合不同，
@@ -138,24 +143,30 @@ struct PickedUpView: View {
         store.pickedUpRecords
     }
 
+    /// 搜索命中后的全表。**先搜再裁条数** —— 免费版上限只限制"屏幕上显示几条"，
+    /// 不能限制"能搜到哪条"（主人：可以搜索所有已完成取件的快递信息）。
+    private var searchedList: [PickupRecord] {
+        store.filtered(list, query: model.query)
+    }
+
     /// 按分组方式排好的整表（2026-11-16 与待取页 `displayed` 同一套口径）。
     /// 注意先排再裁条数：选「最早收到」时该显示最旧的那 N 条，而不是最新的 N 条。
     private var orderedList: [PickupRecord] {
         switch model.sort {
         case .newest:
             // `store.pickedUpRecords` 本身就是收到时间倒序，直接用
-            return list
+            return searchedList
         case .oldest:
-            return list.sorted { $0.receivedAt < $1.receivedAt }
+            return searchedList.sorted { $0.receivedAt < $1.receivedAt }
         case .company:
             // 只负责把同一家聚到一起；组头由 `companyGroups` 出
-            return list.sorted {
+            return searchedList.sorted {
                 groupingName(for: $0) == groupingName(for: $1)
                     ? $0.receivedAt > $1.receivedAt
                     : groupingName(for: $0) < groupingName(for: $1)
             }
         case .station:
-            return list.sorted {
+            return searchedList.sorted {
                 stationName(for: $0) == stationName(for: $1)
                     ? $0.receivedAt > $1.receivedAt
                     : stationName(for: $0) < stationName(for: $1)
@@ -163,12 +174,18 @@ struct PickedUpView: View {
         }
     }
 
+    /// 搜索态**不裁条数**：主人 2026-11-16「可以搜索所有已完成取件的快递信息」。
+    /// 免费版 4 条上限只管常规列表显示几条；搜索时全部命中都列出来，
+    /// 详情另由 `detailLocked` 锁住 —— 与待取页 `displayed` 同一套口径。
     private var visibleList: [PickupRecord] {
-        Array(orderedList.prefix(store.visibleLimit))
+        guard model.query.trimmingCharacters(in: .whitespaces).isEmpty else { return orderedList }
+        return Array(orderedList.prefix(store.visibleLimit))
     }
 
     private var hiddenCount: Int {
-        max(0, list.count - store.visibleLimit)
+        // 搜索态本来就把命中结果全铺开了，再说「还有 N 条」是自相矛盾
+        guard model.query.trimmingCharacters(in: .whitespaces).isEmpty else { return 0 }
+        return max(0, searchedList.count - store.visibleLimit)
     }
 
     private var groups: [(group: DayGroup, items: [PickupRecord])] {
@@ -364,7 +381,10 @@ struct PickedUpView: View {
                 // 左右等分（与待取页同口径；主人已否掉中轴方案）
                 .navigationSplitViewColumnWidth(min: 400, ideal: PadLayout.splitColumnIdeal, max: 600)
         } detail: {
-            if let record = splitDetailRecord {
+            if detailLocked {
+                // 分栏右栏是常驻区域，没有"点击"可拦 —— 不换成占位就等于白送详情
+                ProLockedSplitPlaceholder { showPaywall = true }
+            } else if let record = splitDetailRecord {
                 // 与待取页同口径：绑定 id，避免编辑草稿串到下一条（2026-10-25 审查修）
                 RecordDetailView(record: record)
                     .id(record.id)
@@ -380,14 +400,30 @@ struct PickedUpView: View {
     /// 分栏右栏要显示的记录：选中的那条优先，没选中就显示第一条（同待取页口径）。
     private var splitDetailRecord: PickupRecord? {
         if let id = splitSelection,
-           let hit = list.first(where: { $0.id == id }) {
+           let hit = visibleList.first(where: { $0.id == id }) {
             return hit
         }
-        return list.first
+        return visibleList.first
     }
 
+    /// 非 Pro 在**搜索态**下只给结果、不给详情（2026-11-16 主人：
+    /// 「非Pro版本用户就只有搜到，无法点击查看详情」）。
+    /// 不含搜索词时行为不变 —— 免费版本来就能看列表和详情。
+    private var detailLocked: Bool {
+        guard !EntitlementSnapshot.licensedPro else { return false }
+        return !model.query.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// 订阅页呈现态：搜索结果被拦下、或分栏右栏处于锁定态时打开。
+    @State private var showPaywall = false
+
     /// 打开详情：宽屏只切右栏（不 push），窄屏照旧推栈。
+    /// 🔴 非 Pro 搜索态一律拦在门外（见 `detailLocked`）。
     private func openDetail(_ record: PickupRecord) {
+        if detailLocked {
+            showPaywall = true
+            return
+        }
         if PadLayout.usesSplit, horizontalSizeClass == .regular {
             splitSelection = record.id
         } else {
@@ -423,12 +459,22 @@ struct PickedUpView: View {
                             .listRowBackground(Color(.systemGroupedBackground))
                             .listRowSeparator(.hidden)
                     }
+                } else if searchedList.isEmpty {
+                    // 有记录但被搜索词筛空了（2026-11-16 与待取页同款提示）
+                    Section {
+                        NoResultView(query: model.query)
+                            .listRowInsets(EdgeInsets(top: 36, leading: AppTheme.hInset,
+                                                      bottom: 0, trailing: AppTheme.hInset))
+                            .listRowBackground(Color(.systemGroupedBackground))
+                            .listRowSeparator(.hidden)
+                    }
                 } else {
                     // 顶部统计摘要卡 —— **只在关掉「显示「统计」」时出现**。
                     // 版式与待取页那张是同一份实现（`HeroStatsCard`），
                     // 内边距也取待取页同一档（top 2 / bottom 12），两页卡片落位、高度一致。
                     // 空态不显示：一条已取都没有时，「0 件已取」与上面的空态提示会互相打架。
-                    if showsStatsCard {
+                    // 搜索时也不显示：统计的是全部记录，跟筛选出的结果无关（2026-11-16）。
+                    if showsStatsCard, model.query.isEmpty {
                         Section {
                             HeroStatsCard(primary: pickedTotal,
                                           primaryUnit: "件已取",
@@ -557,6 +603,10 @@ struct PickedUpView: View {
             .frame(maxWidth: splitPane ? .infinity : AppTheme.contentMaxWidth)
             .frame(maxWidth: .infinity)
             .background(Color(.systemGroupedBackground))
+            // 搜索（2026-11-16 主人：已取页也要能搜，与待取页同款抽屉搜索）
+            .modifier(SidebarSearchable(text: $model.query,
+                                        enabled: !splitPane,
+                                        prompt: "取件码 / 快递公司 / 地址"))
             // 与待取页同口径（三页统一）：导航栏常显、标题进导航栏、底色与列表同为浅灰。
             .toolbar(.visible, for: .navigationBar)
             .toolbarBackground(.hidden, for: .navigationBar)
@@ -632,9 +682,23 @@ struct PickedUpView: View {
                 DiagnosticsLog.record("records", "clear-picked \(list.count)")
                 withAnimation(.snappy) { store.clearPickedUp() }
             }
+            // 非 Pro 搜索态点详情被拦下 / 分栏右栏锁定时，打开订阅页
+            .sheet(isPresented: $showPaywall) {
+                NavigationStack { FullVersionView() }
+                    .modifier(PaywallSheetSizing())
+            }
             // 分享预览面板（单条）：与待取页共用同一个 `SharePreviewSheet`。
             .onAppear {
                 openMenuFromScaffold()
+                // 截图脚手架：`SIMCTL_CHILD_SEARCH=<关键词>` 启动即灌入搜索词。
+                // `.searchable` 的输入框命令行点不到，搜索态（含非 Pro 锁定）只能这样取证。
+                if let q = ProcessInfo.processInfo.environment["SEARCH"], !q.isEmpty {
+                    model.query = q
+                }
+                // 截图脚手架：`SIMCTL_CHILD_SEARCH_PAYWALL=1` 直接亮起订阅页。
+                if ProcessInfo.processInfo.environment["SEARCH_PAYWALL"] == "1" {
+                    showPaywall = true
+                }
                 // 截图脚手架：`SIMCTL_CHILD_CONFIRM_DEMO=1` 打开页面就把确认弹窗亮起来
                 // （2026-11-16 随清空入口从待取页迁来；纯色底拍不出"列表 + 弹窗"的叠放）
                 if ProcessInfo.processInfo.environment["CONFIRM_DEMO"] == "1" {

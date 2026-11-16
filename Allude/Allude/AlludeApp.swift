@@ -834,6 +834,10 @@ struct AlludeApp: App {
                 case "scan":
                     ScanPickupSheet(initialCaptured: ProcessInfo.processInfo.environment["SEED"] ?? "",
                                     onClose: {}, onAdded: { _ in })
+                case "scanCapture":
+                    ScanPickupSheet(initialCaptured: ProcessInfo.processInfo.environment["SEED"] ?? "",
+                                    initialMode: .capture,
+                                    onClose: {}, onAdded: { _ in })
                 case "scanPhoto":
                     ScanPickupSheet(initialCaptured: ProcessInfo.processInfo.environment["SEED"] ?? "",
                                     initialMode: .photo,
