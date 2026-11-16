@@ -471,7 +471,7 @@ struct PrivacySimpleView: View {
                     SettingsDivider()
 
                     SettingsRow(symbol: "internaldrive.fill", title: "取件记录默认只在本机",
-                                subtitle: "存在这台设备的 App Group 里，主 App 与小组件共用；开启 iCloud 同步后才另存一份到你自己的 iCloud。",
+                                subtitle: "存在这台设备的 App Group 里，主 App 与小组件共用；驿站组、驿站编号、取件码样式等偏好同样只在本机。开启 iCloud 同步后才另存一份到你自己的 iCloud。",
                                 showsChevron: false, tint: AppTheme.todayTint)
 
                     SettingsDivider()
@@ -499,7 +499,7 @@ struct PrivacySimpleView: View {
                 //    简明版再挂一个等于同一个东西两个入口，纯冗余。
                 //    （原 NavigationLink + settingsCard 已删，别再加回来。）
 
-                Text("最后更新：2026-11-12")
+                Text("最后更新：2026-11-17")
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity)

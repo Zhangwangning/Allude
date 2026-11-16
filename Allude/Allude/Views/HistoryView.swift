@@ -196,10 +196,11 @@ struct PickedUpView: View {
                     : groupingName(for: $0) < groupingName(for: $1)
             }
         case .station:
+            let inner = StationInnerOrder.current
             return searchedList.sorted {
-                stationName(for: $0) == stationName(for: $1)
-                    ? $0.receivedAt > $1.receivedAt
-                    : stationName(for: $0) < stationName(for: $1)
+                let a = stationName(for: $0), b = stationName(for: $1)
+                if a != b { return a < b }
+                return inner.isOrderedBefore($0, $1)
             }
         }
     }
@@ -266,8 +267,9 @@ struct PickedUpView: View {
                 buckets.append((name, [record]))
             }
         }
+        let inner = StationInnerOrder.current
         for index in buckets.indices {
-            buckets[index].items.sort { $0.receivedAt > $1.receivedAt }
+            buckets[index].items.sort { inner.isOrderedBefore($0, $1) }
         }
         buckets.sort {
             $0.station == "未标注驿站" ? false
@@ -281,7 +283,8 @@ struct PickedUpView: View {
 
     private func stationName(for record: PickupRecord) -> String {
         let name = record.station.trimmingCharacters(in: .whitespacesAndNewlines)
-        return name.isEmpty ? "未标注驿站" : name
+        guard !name.isEmpty else { return "未标注驿站" }
+        return StationGroupStore.displayName(for: name)
     }
 
     /// 归类名 —— 与待取页、卡片主名三方同源，组头与卡片不会打架。
@@ -1262,7 +1265,7 @@ struct HistoryRow: View {
         record.naming(station: stationDirectory.matchedName(in: [record.rawMessage]))
     }
     private var titlePrimary: String { naming.primary }
-    private var titleSecondary: String? { naming.secondary }
+    private var titleSecondary: String? { naming.secondaryLabel }
     /// 行 1 图标匹配串随主名走 —— 与「图标 = 第一行第一个字段」同源
     private var titleIconSource: String { naming.iconSource }
     /// 快递柜格口（与待取卡同口径）：有值就跟在快递驿站后面做胶囊标签

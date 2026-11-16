@@ -100,7 +100,12 @@ final class StationLocationService: NSObject, ObservableObject, CLLocationManage
     // MARK: 围栏重排
 
     /// 按「开关 + 权益 + 权限 + 已启用驿站位置」重排监控区域。
-    /// iOS 同时最多 20 个区域；超出按名称排序取前 20（界面会提示上限）。
+    /// iOS 同时最多 20 个区域；超出按「组优先、其余按名字」取前 20（界面会提示上限）。
+    ///
+    /// 🔴 2026-11-17 主人定的三段优先级：
+    ///   ① 组驿站 —— 用组自己（或它继承的成员）的位置，**只监一个围栏**；
+    ///   ② 未归组驿站 —— 各自的位置各自监控；
+    ///   ③ 已归组成员 —— 位置保留但不单独监控，否则同一个地点会被推三次。
     func syncRegions() {
         for region in manager.monitoredRegions where region.identifier.hasPrefix(Self.regionPrefix) {
             manager.stopMonitoring(for: region)
@@ -112,13 +117,40 @@ final class StationLocationService: NSObject, ObservableObject, CLLocationManage
               manager.authorizationStatus == .authorizedAlways else { return }
 
         let store = StationLocationStore.shared
-        for name in store.enabledNames.prefix(20) {
+        let groups = StationGroupStore.all()
+        let groupNames = Set(groups.map(\.name))
+        let memberNames = Set(StationGroupStore.memberIndex().keys)
+
+        var targets: [(name: String, location: StationLocation)] = []
+
+        // ① 组：有效位置 key 可能是组名（自己的位置），也可能是某个成员名（继承）
+        for group in groups {
+            let key = StationGroupStore.locationSourceName(for: group)
+            guard let loc = store.location(for: key), loc.enabled else { continue }
+            targets.append((group.name, loc))
+        }
+
+        // ② 未归组驿站（组名不是驿站，跳过；已归组成员不单独监控）
+        for name in store.enabledNames {
+            guard !groupNames.contains(name), !memberNames.contains(name) else { continue }
             guard let loc = store.location(for: name) else { continue }
+            targets.append((name, loc))
+        }
+
+        // 组名与驿站名互斥（创建时校验过），这里只做一次保险去重
+        var unique: [(name: String, location: StationLocation)] = []
+        var seen = Set<String>()
+        for target in targets where seen.insert(target.name).inserted {
+            unique.append(target)
+        }
+
+        for target in unique.prefix(20) {
             let maxRadius = manager.maximumRegionMonitoringDistance
-            let radius = min(max(loc.radius, 100), maxRadius > 0 ? maxRadius : loc.radius)
-            let region = CLCircularRegion(center: loc.coordinate,
+            let radius = min(max(target.location.radius, 100),
+                             maxRadius > 0 ? maxRadius : target.location.radius)
+            let region = CLCircularRegion(center: target.location.coordinate,
                                           radius: radius,
-                                          identifier: Self.regionPrefix + name)
+                                          identifier: Self.regionPrefix + target.name)
             region.notifyOnEntry = true
             region.notifyOnExit = false
             manager.startMonitoring(for: region)
@@ -205,12 +237,20 @@ final class StationLocationService: NSObject, ObservableObject, CLLocationManage
                                   trigger: nil))
     }
 
-    /// 一条记录是否属于这个驿站。
-    /// 模型复核的覆盖值优先，其次走驿站名匹配（含用户自定义名），
-    /// 最后用平台 / 地址做包含兜底 —— 有些短信只在地址里写了驿站名。
+    /// 一条记录是否属于这个驿站（`stationName` 可能是组名）。
+    ///
+    /// 2026-11-17：组驿站也要能收到到达提醒 —— 所以匹配前先把记录的驿站名
+    /// **resolve 成组名**再比。否则站在「恒大御府」这个组里，
+    /// 只有写着「菜鸟驿站」的那几条算命中，写着「妈妈驿站」的会被漏掉。
     private static func matches(_ record: PickupRecord, stationName: String) -> Bool {
         if record.stationOverride == stationName { return true }
-        if StationDirectory.shared.matchedName(in: [record.rawMessage]) == stationName { return true }
+
+        if let matched = StationDirectory.shared.matchedName(in: [record.rawMessage]) {
+            if matched == stationName { return true }
+            if StationGroupStore.displayName(for: matched) == stationName { return true }
+        }
+        if StationGroupStore.displayName(for: record.station) == stationName { return true }
+
         return record.company.localizedCaseInsensitiveContains(stationName)
             || record.address.localizedCaseInsensitiveContains(stationName)
     }

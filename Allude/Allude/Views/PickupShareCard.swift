@@ -107,7 +107,7 @@ struct PickupShareCard: View {
             station: StationDirectory.shared.matchedName(in: [record.rawMessage]))
         let iconSource = naming.iconSource
         let titlePrimary = naming.primary
-        let titleSecondary: String? = naming.secondary
+        let titleSecondary: String? = naming.secondaryLabel
 
         VStack(alignment: .leading, spacing: 0) {
             // 顶部：品牌身份行

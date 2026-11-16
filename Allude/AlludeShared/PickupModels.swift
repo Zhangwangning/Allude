@@ -368,6 +368,9 @@ struct PickupNaming: Equatable {
     let secondary: String?
     /// 传入的驿站名（保留下来供「主名本身就是驿站」判定用）
     let station: String?
+    /// 这个驿站若已归入某个**驿站组**，这里是组名（2026-11-17 主人）。
+    /// `station` 仍是原始匹配到的成员驿站名 —— 两者都要，卡面才写得出「新组/原名」。
+    let stationGroup: String?
 
     /// 图标与主题色的匹配串 —— **恒等于第一段**
     var iconSource: String { primary }
@@ -377,6 +380,19 @@ struct PickupNaming: Equatable {
     var isStationPrimary: Bool {
         guard let station, !station.isEmpty else { return false }
         return station == primary
+    }
+
+    /// 卡面第二段**实际要显示**的字符串。
+    ///
+    /// 归组后是「新组/原始匹配驿站」（老大 2026-11-17 定稿），没归组就是原来的驿站名。
+    /// 分组键用组名（`PickupSortLogic.stationName`），显示层用这个 —— 两者刻意分开：
+    /// 组名短、能一眼认出是哪个取件点；原始成员名留在斜杠后面，用户仍知道是哪家。
+    var secondaryLabel: String? {
+        guard let secondary else { return nil }
+        guard let stationGroup, !stationGroup.isEmpty, stationGroup != secondary else {
+            return secondary
+        }
+        return "\(stationGroup)/\(secondary)"
     }
 
     init(courier: String?, platform: String, station: String?) {
@@ -393,6 +409,11 @@ struct PickupNaming: Equatable {
         if main.isEmpty { main = stationName }
         self.primary = main
         self.station = stationName.isEmpty ? nil : stationName
+        // 组关系统一在这里解析：App / 小组件 / 分享卡都走同一个 init，
+        // 不必让每个调用方各传一次（漏一处就会出现「这页显示组名、那页显示成员名」）。
+        self.stationGroup = stationName.isEmpty
+            ? nil
+            : StationGroupStore.memberGroupName(for: stationName)
 
         // 第二段：驿站 → 短信平台，取第一个「非空且不等于第一段」的
         var suffix: String?

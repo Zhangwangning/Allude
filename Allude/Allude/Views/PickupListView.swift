@@ -368,11 +368,13 @@ struct PickupListView: View {
                                           : $0.company < $1.company
             }
         case .station:
-            // 同一驿站聚在一起，站内按时间倒序；分组由 `stationGroups` 做（组头 = 驿站名）
+            // 同一驿站聚在一起；**站内**顺序由「驿站内排序」决定（2026-11-17 主人），
+            // 分组由 `stationGroups` 做（组头 = 驿站名 / 组名）。
+            let inner = StationInnerOrder.current
             return base.sorted {
-                stationName(for: $0) == stationName(for: $1)
-                    ? $0.lastNotifiedAt > $1.lastNotifiedAt
-                    : stationName(for: $0) < stationName(for: $1)
+                let a = stationName(for: $0), b = stationName(for: $1)
+                if a != b { return a < b }
+                return inner.isOrderedBefore($0, $1)
             }
         }
     }
@@ -435,8 +437,11 @@ struct PickupListView: View {
                 buckets.append((name, [record]))
             }
         }
+        // 🔴 桶内顺序必须走「驿站内排序」—— 以前这里又按时间重排了一次，
+        //    会把用户选的「按取件码」整个覆盖掉（2026-11-17）。
+        let inner = StationInnerOrder.current
         for index in buckets.indices {
-            buckets[index].items.sort { $0.lastNotifiedAt > $1.lastNotifiedAt }
+            buckets[index].items.sort { inner.isOrderedBefore($0, $1, moment: { $0.lastNotifiedAt }) }
         }
         buckets.sort {
             $0.station == "未标注驿站" ? false
@@ -449,9 +454,11 @@ struct PickupListView: View {
     }
 
     /// 驿站名：`station` 是派生值（词表命中 / AI 修正后的 stationOverride），空则归到「未标注驿站」。
+    /// 2026-11-17：已归组的驿站返回**组名** —— 待取页只显示组，不再把成员拆成几个分组。
     private func stationName(for record: PickupRecord) -> String {
         let name = record.station.trimmingCharacters(in: .whitespacesAndNewlines)
-        return name.isEmpty ? "未标注驿站" : name
+        guard !name.isEmpty else { return "未标注驿站" }
+        return StationGroupStore.displayName(for: name)
     }
 
     /// 归类用的名字：快递公司 > 驿站名（名称库命中）> 短信平台，
@@ -1570,7 +1577,7 @@ struct PickupCard: View {
         record.naming(station: stationDirectory.matchedName(in: [record.rawMessage]))
     }
     private var titlePrimary: String { naming.primary }
-    private var titleSecondary: String? { naming.secondary }
+    private var titleSecondary: String? { naming.secondaryLabel }
     /// 行 1 图标匹配串随主名走 —— 与「图标 = 第一行第一个字段」同源
     private var titleIconSource: String { naming.iconSource }
     /// 快递柜格口（解析器已补全单位：「2号柜」「12-34格口」「柜A12」）。

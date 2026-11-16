@@ -74,7 +74,15 @@ final class StationDirectory: ObservableObject {
             self.customNames = defaults.stringArray(forKey: Self.storeKey) ?? []
             self.iconFiles = defaults.dictionary(forKey: Self.iconKey) as? [String: String] ?? [:]
         }
+
+        // 2026-11-17 全驿站 ID 化：首次启动把内置 / 自定义清单发号**落盘固化**，
+        // 之后只往末尾追加 —— 中间新增品牌不会让已有 ID 后移（组关系挂 ID，
+        // 一旦后移就会「组里悄悄换成了别的驿站」）。
+        StationIdentity.sync(builtins: Self.builtinNames, customs: self.customNames)
     }
+
+    /// 内置 + 自定义的完整名单（组名唯一性校验要用）
+    var allNames: [String] { Self.builtinNames + customNames }
 
     /// 添加自定义驿站名（去重、去空白；与内置重名也无意义 → 一并拦下）
     func add(_ raw: String) -> Bool {
@@ -84,6 +92,7 @@ final class StationDirectory: ObservableObject {
               !Self.builtinNames.contains(name) else { return false }
         customNames.append(name)
         persist()
+        StationIdentity.sync(builtins: Self.builtinNames, customs: customNames)
         return true
     }
 
@@ -101,6 +110,9 @@ final class StationDirectory: ObservableObject {
             if let cached = iconCache.removeValue(forKey: from) { iconCache[to] = cached }
         }
         persist()
+        // 2026-11-17：ID 跟着名字走。组关系挂的是 ID，所以改名**不会**断链
+        // （老实现靠名字做迁移，任何一处漏掉就会「组里少了一个驿站」）。
+        StationIdentity.rename(from, to: to)
         // 位置表以名字为 key，改名要一起搬（2026-11-16 到达提醒）
         StationLocationStore.shared.rename(from: from, to: to)
         return true
@@ -113,6 +125,10 @@ final class StationDirectory: ObservableObject {
         }
         iconCache.removeValue(forKey: named)
         persist()
+        // 删之前先拿到 ID：把它从所在的组里摘掉，别留一个反查不到名字的幽灵 ID
+        let id = StationIdentity.id(for: named)
+        StationIdentity.remove(named)
+        if let id { StationGroupStore.dropMember(stationID: id) }
         // 别留一条指向已删除驿站的孤儿围栏
         StationLocationStore.shared.remove(named: named)
     }
@@ -121,8 +137,12 @@ final class StationDirectory: ObservableObject {
 
     /// 存入自定义图标：任意来源图片统一缩放 216px（54pt @4x）、居中裁方、JPEG 0.85。
     /// 显示层负责按圆角矩形裁切 —— 这里不碰形状。
+    ///
+    /// 挂在两类 key 上：自定义驿站**名**、分组驿站**ID**（`FZYD…`）。
+    /// 组用 ID 当 key —— 组可以随时改名，图不该跟着名字走。
     func setIcon(_ data: Data, for name: String) {
-        guard customNames.contains(name) else { return }
+        guard customNames.contains(name)
+                || name.hasPrefix(StationIdentity.Kind.group.rawValue) else { return }
         guard let image = UIImage(data: data),
               let scaled = Self.scaledSquare(image),
               let jpeg = scaled.jpegData(compressionQuality: 0.85) else { return }
@@ -158,6 +178,24 @@ final class StationDirectory: ObservableObject {
     func iconData(for name: String) -> Data? {
         guard let file = iconFiles[name] else { return nil }
         return try? Data(contentsOf: iconDirectory.appendingPathComponent(file))
+    }
+
+    /// 清掉某个 key（自定义驿站名 / 组 ID）上的自定义图标，回落首字兜底
+    func clearIcon(for key: String) {
+        guard customNames.contains(key)
+                || key.hasPrefix(StationIdentity.Kind.group.rawValue) else { return }
+        if let file = iconFiles.removeValue(forKey: key) {
+            try? FileManager.default.removeItem(at: iconDirectory.appendingPathComponent(file))
+        }
+        iconCache.removeValue(forKey: key)
+        persist()
+    }
+
+    /// 解散驿站组后清掉它自己的产物：自定义图标（key = 组 ID）与位置（key = 组名）。
+    /// 成员的位置与图标**不动** —— 它们恢复独立显示后还要用。
+    func removeGroupArtifacts(_ group: StationGroup) {
+        clearIcon(for: group.id)
+        StationLocationStore.shared.remove(named: group.name)
     }
 
     /// 居中裁方 + 缩放到 216×216（等比 cover，不拉伸变形）

@@ -66,6 +66,13 @@ enum PickupStorage {
     }
 
     static func load() -> [PickupRecord] {
+        // 🔴 2026-11-17 驿站组：App / 桌面小组件 / 灵动岛是三个进程，
+        //    组关系与驿站 ID 表由主 App 写、扩展进程只读。读盘时一并让缓存失效，
+        //    扩展下一次 resolve 就能拿到最新映射 —— 否则会出现
+        //    「App 里把两个驿站归成一组了，桌面小组件还按老驿站分成两坨」。
+        StationGroupStore.invalidateCache()
+        StationIdentity.invalidate()
+
         guard let data = try? Data(contentsOf: fileURL) else {
             // 文件都还没有（首启）时，日志里也不可能有有效条目
             return []
@@ -958,8 +965,11 @@ enum PickupSortLogic {
     static let noStation = "未标注驿站"
 
     static func stationName(of record: PickupRecord) -> String {
-        let name = record.station.trimmingCharacters(in: .whitespacesAndNewlines)
-        return name.isEmpty ? noStation : name
+        let raw = record.station.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else { return noStation }
+        // 2026-11-17 主人：组驿站是一个全新的驿站 —— 归组后分组键用组名，
+        // 成员原名只留在卡面副名的「组名/原名」里。
+        return StationGroupStore.displayName(for: raw)
     }
 
     static func companyName(of record: PickupRecord) -> String {
@@ -983,12 +993,15 @@ enum PickupSortLogic {
                 return $0.receivedAt > $1.receivedAt
             }
         case .station:
+            // 老大 2026-11-17：驿站**内**部的先后由「驿站内排序」决定，
+            // 组与组之间仍按名字排（未标注驿站永远置底）。
+            let inner = StationInnerOrder.current
             return records.sorted {
                 let a = stationName(of: $0), b = stationName(of: $1)
                 let aIsNone = (a == noStation), bIsNone = (b == noStation)
                 if aIsNone != bIsNone { return bIsNone }   // 未标注驿站永远置底
                 if a != b { return a < b }
-                return $0.receivedAt > $1.receivedAt
+                return inner.isOrderedBefore($0, $1)
             }
         }
     }

@@ -281,6 +281,11 @@ struct CourierGalleryView: View {
     @ObservedObject private var station = StationDirectory.shared
     /// 驿站位置库（2026-11-16 到达提醒）：设过位置的格子要即时显示角标
     @ObservedObject private var locationStore = StationLocationStore.shared
+    /// 驿站组（2026-11-17）。刻意不是 `ObservableObject`：组的读写都走共享文件，
+    /// 页面在 `onAppear` / 从编辑页返回时重读一次即可，多一层观察者反而容易出现
+    /// 「两份内存状态谁覆盖谁」的回滚问题（小组件勾选那次踩过）。
+    @State private var groups: [StationGroup] = []
+    @State private var innerOrder: StationInnerOrder = .newest
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -307,6 +312,9 @@ struct CourierGalleryView: View {
             if ProcessInfo.processInfo.environment["STATION_ADD_DEMO"] == "1" {
                 showAddStation = true
             }
+            // 组与排序都在这里重读：从编辑页 pop 回来也会触发，建组 / 改组立刻可见
+            groups = StationGroupStore.all()
+            innerOrder = StationInnerOrder.current
         }
     }
 
@@ -314,64 +322,29 @@ struct CourierGalleryView: View {
         VStack(alignment: .leading, spacing: 24) {
             summary
 
-            ForEach(scope.categories) { category in
-                let items = CourierBrand.items(in: category)
-                if !items.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(spacing: 6) {
-                            Image(systemName: category.symbol)
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(AppTheme.accent)
-                            Text(category.rawValue.L)
-                                .font(.footnote.weight(.semibold))
-                            // 驿站分类把自定义格子数并进去（网格里实际有多少格就显示多少）
-                            Text(category == .station
-                                 ? "\(items.count + station.customNames.count)"
-                                 : "\(items.count)")
-                                .font(.caption)
-                                .monospacedDigit()
-                                .foregroundStyle(.tertiary)
-                            Spacer(minLength: 0)
-                        }
-                        .padding(.leading, 4)
+            // 2026-11-17 主人：「驿站管理里面再添加一个驿站内排序」。
+            // 放在最上面 —— 它是常用设置，不该埋在几十个格子的下面。
+            if scope == .station {
+                innerOrderCard
+                groupSection
+            }
 
-                        LazyVGrid(columns: columns, spacing: 14) {
-                            // 驿站分类第一格 = 添加入口（驿站图标 + 加号）；
-                            // 其后跟用户自定义的驿站，最后才是内置品牌。
-                            // （2026-10-14 主人定稿：驿站管理融进网格，不要顶部列表）
-                            if category == .station {
-                                addStationCell
-                                ForEach(station.customNames, id: \.self) { name in
-                                    customStationCell(name)
-                                }
-                            }
-                            ForEach(items) { item in
-                                if scope == .station {
-                                    // 内置驿站：名称 / 图标只读，但**位置可以自己设**
-                                    // （2026-11-16 主人：「我们内置的也要支持这个功能」）
-                                    NavigationLink {
-                                        StationLocationEditor(stationName: item.name)
-                                    } label: {
-                                        brandCell(item)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .accessibilityLabel("\(item.name)，轻点设置位置")
-                                } else {
-                                    brandCell(item)
-                                }
-                            }
-                        }
-                        .padding(14)
-                        .settingsCard()
-                    }
-                    .id(category.rawValue)
+            ForEach(scope.categories) { category in
+                let items = visibleItems(in: category)
+                // 驿站分类即使全部被归组也要保留 —— 里面有「添加驿站」格子和空态引导；
+                // 快递公司分类空了就整段不渲染。
+                if !items.isEmpty || (scope == .station && category == .station) {
+                    categoryGrid(category, items: items)
                 }
             }
 
-            // 版权说明只对「品牌图标」有意义；驿站页那句换成自定义入口的提示
+            if scope == .station, !groupedMembers.isEmpty {
+                groupedMemberSection
+            }
+
             Text(scope == .courier
                  ? "品牌图标版权归各公司所有，此处仅用于标识取件来源；未收录的品牌按名称自绘色块兜底，不会出现空白。"
-                 : "点网格里的「添加驿站」可新增自定义名称与图标；点任意驿站（含内置）可设置位置与到达提醒，匹配时按名称最长命中。")
+                 : "点「新建驿站组」可把同一个小区的几家驿站并成一个新驿站；点任意驿站（含内置）可设置位置与到达提醒。匹配时按名称最长命中。")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 4)
@@ -380,6 +353,244 @@ struct CourierGalleryView: View {
         .padding(.horizontal, AppTheme.hInset)
         .padding(.top, 8)
         .padding(.bottom, 110)
+    }
+
+    /// 一个分类的网格。驿站分类里已被归组的格子会被过滤掉（移到页面底部的
+    /// 「已归入驿站组」段），快递公司分类不过滤。
+    @ViewBuilder
+    private func categoryGrid(_ category: CourierBrand.Category,
+                              items: [CourierBrand.Info]) -> some View {
+        let ungroupedCustoms = scope == .station
+            ? StationGroupStore.ungroupedNames(in: station.customNames)
+            : []
+
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 6) {
+                Image(systemName: category.symbol)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AppTheme.accent)
+                Text(category.rawValue.L)
+                    .font(.footnote.weight(.semibold))
+                // 驿站分类把「还没归组」的自定义格子数并进去（网格里实际有几格就显示几）
+                Text(category == .station
+                     ? "\(items.count + ungroupedCustoms.count)"
+                     : "\(items.count)")
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.tertiary)
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, 4)
+
+            LazyVGrid(columns: columns, spacing: 14) {
+                // 驿站分类第一格 = 添加入口（驿站图标 + 加号）；
+                // 其后跟用户自定义的驿站，最后才是内置品牌。
+                // （2026-10-14 主人定稿：驿站管理融进网格，不要顶部列表）
+                if category == .station {
+                    addStationCell
+                    ForEach(ungroupedCustoms, id: \.self) { name in
+                        customStationCell(name)
+                    }
+                }
+                ForEach(items) { item in
+                    if scope == .station {
+                        // 内置驿站：名称 / 图标只读，但**位置可以自己设**
+                        // （2026-11-16 主人：「我们内置的也要支持这个功能」）
+                        NavigationLink {
+                            StationLocationEditor(stationName: item.name)
+                        } label: {
+                            brandCell(item)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(item.name)，轻点设置位置")
+                    } else {
+                        brandCell(item)
+                    }
+                }
+            }
+            .padding(14)
+            .settingsCard()
+        }
+        .id(category.rawValue)
+    }
+
+    // MARK: 驿站内排序（2026-11-17 主人）
+
+    private var innerOrderCard: some View {
+        SettingsGroup(
+            title: "驿站内排序",
+            note: "只在「按快递驿站」分组时生效：先把同一个驿站的件聚到一起，再按这里选的方式排。取件码按从左到右逐位比较，所以「8-4-1005」会排在「8-4-999」前面。"
+        ) {
+            SettingsPlainRow(title: "排序方式") {
+                Menu {
+                    Picker("", selection: $innerOrder) {
+                        ForEach(StationInnerOrder.allCases) { order in
+                            Text(order.title.L).tag(order)
+                        }
+                    }
+                } label: {
+                    SettingsValueLabel(text: innerOrder.title)
+                }
+            }
+        }
+        .onChange(of: innerOrder) { _, newValue in
+            StationInnerOrder.set(newValue)
+        }
+    }
+
+    // MARK: 驿站组（2026-11-17 主人）
+    //
+    // 老大定的三段优先级：**组驿站 > 未归组驿站 > 组内成员**。
+    // 页面上就按这个顺序平铺：组段在最前，原有分类网格居中（已归组的格子被剔掉），
+    // 已归组成员灰显在最末 —— 不折叠，折叠会让成员看起来像被删了。
+
+    private var groupSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 6) {
+                Image(systemName: "square.stack.3d.up.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AppTheme.violet)
+                Text("驿站组")
+                    .font(.footnote.weight(.semibold))
+                Text("\(groups.count)")
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.tertiary)
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, 4)
+
+            LazyVGrid(columns: columns, spacing: 14) {
+                addGroupCell
+                ForEach(groups) { group in
+                    groupCell(group)
+                }
+            }
+            .padding(14)
+            .settingsCard()
+
+            Text("组是一个全新驿站：有自己的名称、图标和位置。归组后，待取 / 已取页只显示组，不再单独列成员。")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 4)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var addGroupCell: some View {
+        NavigationLink {
+            StationGroupEditView(mode: .create)
+        } label: {
+            VStack(spacing: 7) {
+                RoundedRectangle(cornerRadius: 54 * 0.29, style: .continuous)
+                    .fill(AppTheme.violet.opacity(0.12))
+                    .frame(width: 54, height: 54)
+                    .overlay {
+                        Image(systemName: "plus")
+                            .font(.system(size: 26, weight: .semibold))
+                            .foregroundStyle(AppTheme.violet)
+                    }
+
+                Text("新建驿站组")
+                    .font(.system(size: 10))
+                    .foregroundStyle(AppTheme.violet)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .frame(height: 26, alignment: .top)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("新建驿站组")
+    }
+
+    private func groupCell(_ group: StationGroup) -> some View {
+        NavigationLink {
+            StationGroupEditView(mode: .edit(group.id))
+        } label: {
+            VStack(spacing: 7) {
+                StationLogo(name: group.name, size: 54, showsShadow: false)
+                    .overlay(alignment: .topTrailing) {
+                        if groupArrivalEnabled(group) { locationBadge }
+                    }
+                Text(group.name.L)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .frame(height: 26, alignment: .top)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(group.name)，轻点编辑驿站组")
+    }
+
+    private func groupArrivalEnabled(_ group: StationGroup) -> Bool {
+        let key = StationGroupStore.locationSourceName(for: group)
+        return locationStore.location(for: key)?.enabled == true
+    }
+
+    /// 已被归组的成员（含内置与自定义），带所属组 ID 供点击回组
+    private var groupedMembers: [(name: String, groupID: String)] {
+        let candidates = CourierBrand.items(in: .station).map(\.name)
+            + CourierBrand.items(in: .locker).map(\.name)
+            + station.customNames
+        let index = StationGroupStore.memberIndex()
+        let groups = StationGroupStore.all()
+        return candidates.compactMap { name in
+            guard let groupName = index[name],
+                  let group = groups.first(where: { $0.name == groupName }) else { return nil }
+            return (name, group.id)
+        }
+    }
+
+    private var groupedMemberSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.turn.down.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                Text("已归入驿站组")
+                    .font(.footnote.weight(.semibold))
+                Text("\(groupedMembers.count)")
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.tertiary)
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, 4)
+
+            LazyVGrid(columns: columns, spacing: 14) {
+                ForEach(groupedMembers, id: \.name) { item in
+                    NavigationLink {
+                        StationGroupEditView(mode: .edit(item.groupID))
+                    } label: {
+                        VStack(spacing: 7) {
+                            StationLogo(name: item.name, size: 54, showsShadow: false)
+                            Text(item.name.L)
+                                .font(.system(size: 10))
+                                .foregroundStyle(.tertiary)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.center)
+                                .frame(height: 26, alignment: .top)
+                        }
+                        // 灰显：成员还在，但已经不单独出现在待取 / 已取页
+                        .opacity(0.55)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(item.name)，已归入驿站组，轻点回到组")
+                }
+            }
+            .padding(14)
+            .settingsCard()
+        }
+    }
+
+    /// 某一分类下**还没归组**的驿站。快递公司分类不过滤。
+    private func visibleItems(in category: CourierBrand.Category) -> [CourierBrand.Info] {
+        let items = CourierBrand.items(in: category)
+        guard scope == .station else { return items }
+        let grouped = Set(StationGroupStore.groupedNames(in: items.map(\.name)))
+        return items.filter { !grouped.contains($0.name) }
     }
 
     private var summary: some View {
@@ -542,29 +753,54 @@ struct StationLogo: View {
 
     private var corner: CGFloat { size * 0.29 }
 
+    /// 组驿站的图标：**继承成员**优先 → 组自己的图（key = 组 ID）→ 名称首字兜底。
+    ///
+    /// ⚠️ 继承成员时要分两路取图：成员可能是**内置品牌**（图标在 `CourierBrand`
+    /// 资源里，走 `CourierLogo`），也可能是**自定义驿站**（图标在 `iconFiles` 里）。
+    /// 只查 `iconImage` 会让「继承菜鸟驿站」落空、最后按组名首字画出来
+    /// （第一次截图就踩到了：「恒大御府驿站」显示成「恒」）。
     @ViewBuilder
     var body: some View {
-        if let image = station.iconImage(for: name) {
-            let base = Image(uiImage: image)
-                .resizable()
-                .scaledToFill()
-                .frame(width: size, height: size)
-                .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: corner, style: .continuous)
-                        .stroke(.primary.opacity(0.10), lineWidth: 0.5)
+        if let group = StationGroupStore.group(named: name) {
+            if let memberID = group.iconInheritMemberID,
+               let memberName = StationIdentity.name(for: memberID) {
+                if let image = station.iconImage(for: memberName) {
+                    iconView(Image(uiImage: image))
+                } else {
+                    CourierLogo(company: memberName, size: size, showsShadow: showsShadow)
                 }
-            // 与 CourierLogo 的投影同规格，有图无图观感一致；
-            // 网格里传 false —— 几十个离屏阴影就是滚动掉帧的元凶。
-            if showsShadow {
-                base.shadow(color: .black.opacity(0.28),
-                            radius: size * 0.14, x: 0, y: size * 0.06)
-                    .accessibilityLabel("\(name) 的自定义图标")
+            } else if let image = station.iconImage(for: group.id) {
+                iconView(Image(uiImage: image))
             } else {
-                base.accessibilityLabel("\(name) 的自定义图标")
+                CourierLogo(company: group.name, size: size, showsShadow: showsShadow)
             }
+        } else if let image = station.iconImage(for: name) {
+            iconView(Image(uiImage: image))
         } else {
             CourierLogo(company: name, size: size, showsShadow: showsShadow)
+        }
+    }
+
+    /// 自定义图片的统一外壳：圆角矩形 + 细描边 +（可选）投影
+    @ViewBuilder
+    private func iconView(_ image: Image) -> some View {
+        let base = image
+            .resizable()
+            .scaledToFill()
+            .frame(width: size, height: size)
+            .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: corner, style: .continuous)
+                    .stroke(.primary.opacity(0.10), lineWidth: 0.5)
+            }
+        // 与 CourierLogo 的投影同规格，有图无图观感一致；
+        // 网格里传 false —— 几十个离屏阴影就是滚动掉帧的元凶。
+        if showsShadow {
+            base.shadow(color: .black.opacity(0.28),
+                        radius: size * 0.14, x: 0, y: size * 0.06)
+                .accessibilityLabel("\(name) 的自定义图标")
+        } else {
+            base.accessibilityLabel("\(name) 的自定义图标")
         }
     }
 }

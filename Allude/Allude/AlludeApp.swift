@@ -109,6 +109,19 @@ struct AlludeApp: App {
             }
         }
 
+        // 2026-11-17 驿站组：
+        // ① 先把身份登记表对齐 —— 内置 / 自定义清单一次性发号落盘（之后只追加末尾），
+        //    组关系挂的是这些 ID，晚一步初始化会让刚建的组指向不存在的成员。
+        // ② 再把 App 层的「清理解散产物」「重排围栏」两个动作接进共享层：
+        //    `StationGroups.swift` 要给桌面小组件一起编译，不能直接引用 App target 的类型。
+        _ = StationDirectory.shared
+        StationGroupAppearanceBridge.cleanUp = { group in
+            StationDirectory.shared.removeGroupArtifacts(group)
+        }
+        StationGroupLocationBridge.syncRegions = {
+            StationLocationService.shared.syncRegions()
+        }
+
         // 内购（StoreKit 2）：拉起交易监听并取商品。冷启动最早期挂上，
         // 否则「购买待批准 / 跨设备购买」这类更新要等下一次冷启才反映出来。
         PurchaseStore.shared.start()
@@ -227,6 +240,13 @@ struct AlludeApp: App {
             CodeAppearanceSettings.setGroupsMultipleCodes(raw == "1")
         }
 
+        // 2026-11-17 驿站内排序：命令行点不到菜单，用 INNER_ORDER=codeAsc|codeDesc|oldest 直接写。
+        if let raw = environment["INNER_ORDER"],
+           let order = StationInnerOrder(rawValue: raw) {
+            StationInnerOrder.set(order)
+            print("[allude-verify] innerOrder=\(order.rawValue)")
+        }
+
         switch environment["SCREEN"] {
         case "ingest":
             let outcome = PickupStore.shared.ingest(environment["SEED"] ?? "")
@@ -242,6 +262,37 @@ struct AlludeApp: App {
             store.markPicked(done)
             store.ingest("【中通快递】您有 2 个包裹到站，取件码 7-3-8812、7-3-8813，幸福里小区3号楼东侧门店")
             print("[allude-verify] codeGroupSeed done=\(done.count) pending=\(store.pending.count)")
+
+        case "stationGroupSeed":
+            // 2026-11-17 驿站组验收种子：把三家不同驿站归成「恒大御府驿站」，
+            // 再写三条短信 —— 待取页只应出现**一个**组分组，卡面副名写「组名/原名」。
+            // 配合 `SCREEN=stationGroups`（管理页）/ `TAB=pending`（待取页）分别取证。
+            let memberNames = ["菜鸟驿站", "妈妈驿站", "丰巢"]
+            let memberIDs = memberNames.compactMap { StationIdentity.id(for: $0) }
+            if StationGroupStore.all().isEmpty {
+                _ = StationGroupStore.create(name: "恒大御府驿站",
+                                             memberIDs: memberIDs,
+                                             iconInheritMemberID: memberIDs.first)
+            }
+            let groupStore = PickupStore.shared
+            groupStore.ingest("【圆通速递】取件码 8-4-3019，菜鸟驿站")
+            groupStore.ingest("【中通快递】取件码 8-4-3020，妈妈驿站")
+            groupStore.ingest("【丰巢】取件码 7-3-8812，丰巢智能柜")
+            // 解析器对驿站的命中依赖词表，这里显式补一次 stationOverride，
+            // 保证截图取的是「归组后的显示效果」而不是「有没有识别出驿站」。
+            for name in memberNames {
+                if let record = groupStore.pending.first(where: { $0.rawMessage.contains(name) }) {
+                    var copy = record
+                    copy.stationOverride = name
+                    groupStore.update(copy)
+                }
+            }
+            // 顺手取走一件，让「已取页」也有组数据可验（副名同样是 组名/原名）
+            if let done = groupStore.pending.first(where: { $0.rawMessage.contains("妈妈驿站") }) {
+                groupStore.markPicked(done)
+            }
+            print("[allude-verify] stationGroupSeed groups=\(StationGroupStore.all().count) "
+                  + "pending=\(groupStore.pending.count)")
 
         case "ingestDelayed":
             // 验证脚手架：延迟 DELAY 秒（默认 8）再写入。
@@ -799,6 +850,19 @@ struct AlludeApp: App {
                     // 驿站定位编辑页（2026-11-16 到达提醒；内置 / 自定义共用）
                     NavigationStack {
                         StationLocationEditor(stationName: "菜鸟驿站")
+                    }
+                case "stationGroups":
+                    // 驿站管理页（2026-11-17 改成三段平铺：组 / 未归组 / 已归组成员）
+                    NavigationStack {
+                        CourierGalleryView(scope: .station,
+                                           anchor: ProcessInfo.processInfo.environment["GALLERY_ANCHOR"])
+                    }
+                case "stationGroupEdit":
+                    // 驿站组编辑页：给 `GROUP_ID` 进编辑态，不给则新建
+                    if let gid = ProcessInfo.processInfo.environment["GROUP_ID"], !gid.isEmpty {
+                        NavigationStack { StationGroupEditView(mode: .edit(gid)) }
+                    } else {
+                        NavigationStack { StationGroupEditView(mode: .create) }
                     }
                 case "codeManagement":
                     // 取件码管理（2026-11-16；桌面小组件下面那一行）

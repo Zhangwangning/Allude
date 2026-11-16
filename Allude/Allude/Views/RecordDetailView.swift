@@ -103,7 +103,7 @@ struct RecordDetailView: View {
         record.naming(station: stationDirectory.matchedName(in: [record.rawMessage]))
     }
     private var titlePrimary: String { naming.primary }
-    private var titleSecondary: String? { naming.secondary }
+    private var titleSecondary: String? { naming.secondaryLabel }
     /// 图标匹配串随主名走 —— 与「图标 = 第一行第一个字段」同源
     private var titleIconSource: String { naming.iconSource }
 
