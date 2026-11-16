@@ -150,10 +150,37 @@ xcodebuild -project Allude.xcodeproj -scheme Allude -destination "$DEST" \
   `python3 tools/testflight-publish.py --build 313 --notes-file tools/testflight-notes/1.0.0-313.md`
   （自动：挂「Allude公测」+ 写测试内容 + 提交 Beta 审核）
 
-## 现状（2026-11-15）
-- 1.0.0 已提交审核（WAITING_FOR_REVIEW），**绑构建 309**。
-- **313 已上传、VALID、已挂「Allude公测」群组、Beta 审核已提交**（312 未挂、已被 313 取代）。
+## 现状（2026-11-17）
 
-- 两个内购仍 `READY_TO_SUBMIT`，**未随版本提交** → 必须先补内购审核，否则上线买不了。
-- git `main` 领先 `origin/main` 7 个提交（305–312 未推）。
-- Gitee Pages 法务镜像 404；GitHub Pages 正常。
+- 1.0.0 已提交审核（WAITING_FOR_REVIEW），**绑构建 309**。
+- **320 已上传、VALID、已挂「Allude公测」、Beta 审核已提交**（319 于 11-15 上传，已被 320 取代）。
+- 320 打包链路已跑通（本机无 GUI，`-exportArchive` 不可用）：
+  1. `mv .mlmodel → .bak` → `xcodebuild archive -destination 'generic/platform=iOS' -allowProvisioningUpdates`
+  2. `rm` 掉打进包的 `.bak`，`xcrun coremlc compile` 生成 `.mlmodelc` 拷进 `Allude.app/`
+  3. 从 ASC 下载 App Store profile（`GET /v1/profiles/7H29P7MJ8Q`、`4F62FDJ8K2`），
+     用 **清洗后的 entitlements**（`/tmp/dist-app|widget.entitlements`）重签：先 appex 再 App
+  4. `cd /tmp && ditto -c -k --norsrc --keepParent Payload /tmp/Allude.ipa`
+     🔴 必须传 **`Payload` 目录**（不是 `Allude.app`），否则报「does not include a Payload directory」；
+     `--norsrc` 防 `._*` / `__MACOSX` 混进包
+  5. `xcrun altool --validate-app` / `--upload-app`（apiKey 34Z43R5SGY）
+- 两个内购仍 `CREATED`（未随版本提交审核），中国区价格没生效 → TestFlight 沙盒会回落 USD 基准价。
+- 法务线上仓库 `Zhangwangning/allude-legal`（public，GitHub Pages）最新 `2d0fdc9`；
+  App 内文本在 `Allude/Allude/Legal/{privacy,terms}.html`，两边要一起改。
+
+## 驿站组 / 驿站 ID / 驿站内排序（2026-11-17 落地，构建 320）
+
+- 共享层新文件 `AlludeShared/StationGroups.swift`（App + Widget 两个 target，须手动进 pbxproj 三处）。
+- ID 前缀：内置 `NZYZ`、自定义 `DZYYZ`、组 `FZYD`，各 5 位补零。
+  **首次发号落盘固化**（`station-identity.json`），之后只追加 —— 不能按 `CourierBrand.table` 下标实时算。
+- 组数据 `station-groups.json`：`id/name/memberIDs/iconInheritMemberID/locationInheritMemberID`。
+  关系挂**成员 ID**，成员改名走 `StationIdentity.rename`，不会留幽灵成员。
+- 三段优先级：组驿站 > 未归组驿站 > 组内成员。⚠️ 这不是 ID 前缀能直接分辨的
+  （②③ 前缀相同），要靠 `memberIndex()` 算。
+- 渲染：`PickupSortLogic.stationName` → 组名；`PickupNaming.secondaryLabel` → 「组名/原名」；
+  待取卡 / 已取卡 / 详情 / 分享卡四处 `titleSecondary` 都改成了 `secondaryLabel`。
+- 性能坑：`StationGroupStore.all()` 必须缓存 —— `StationLogo` 每画一个格子都会问「这是不是组」。
+- 图标继承要分两路：内置成员走 `CourierLogo`，自定义成员走 `iconFiles`；只查 `iconFiles`
+  会把内置驿站当成「没图标」，最后按组名首字画（踩过：恒大御府驿站显示成「恒」）。
+- `stationGroups` 建桶后**又按时间重排一次**的老逻辑会把「驿站内排序」整个覆盖，已删。
+- 围栏：组优先、组内成员不单独监控；`matches` 先把记录驿站 resolve 成组名再比。
+
