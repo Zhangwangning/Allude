@@ -31,6 +31,11 @@ struct BetaBuild: Identifiable {
 enum BetaBuildLog {
     /// 全部内测构建，**新的在上**。
     static let all: [BetaBuild] = [
+        BetaBuild(build: "319", date: "2026-11-16", points: [
+            "新增第 17 套 App 图标「皮革卡包」，可在 设置 › 外观与个性化 › 自定义 App 图标 里切换。",
+            "修复 iPhone Duo 内屏横屏（分栏）时「Apple 智能与扩展」两个入口、扩展列表里的服务商与用量统计点不进去；竖屏 / 外屏 / 直板机原本正常。",
+            "AI 相关页面的跳转改成 value-based 路由，目标统一注册在导航栈根部，不再依赖被条件分支包裹的注册。",
+        ]),
         BetaBuild(build: "318", date: "2026-11-16", points: [
             "修复 iPhone Duo 内屏竖屏时「外观与个性化」「关于 Allude」两个页面里的子项全部点不动（自定义 App 图标 / 外观 / 字体大小 / 语言，以及关于页五项）。",
             "根因是「是否分栏」的判定只看了屏幕宽度：Duo 内屏竖屏宽度同样是 regular，被误判成分栏，子项渲染成切换右栏的按钮，而单列布局里没有右栏可切。",

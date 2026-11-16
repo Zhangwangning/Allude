@@ -31,6 +31,23 @@ struct AlludeApp: App {
         // 列表 / 小组件」整条链路。只在注入 SCREEN=ingest 时执行一次，正式运行零影响。
         let environment = ProcessInfo.processInfo.environment
 
+        // 图标切换的验真脚手架（仅调试）：`ICON_TRY=Icon17` 直接在启动时切一次并打结果。
+        // 为什么不走上面那段「启动对齐」：模拟器里 `CODE_SIGNING_ALLOWED=NO` 的包
+        // **没有 App Group**，AppGroup 偏好读不到 → `AppIconStore.current` 回落到默认图标，
+        // 那条分支根本不会触发。这里直接调系统 API，验的是「声明与文件是否齐备」。
+        #if DEBUG
+        if let raw = environment["ICON_TRY"] {
+            print("[allude-icon] ICON_TRY=\(raw)")
+            UIApplication.shared.setAlternateIconName(raw) { error in
+                if let error {
+                    print("[allude-icon] 失败: \(error.localizedDescription)")
+                } else {
+                    print("[allude-icon] 成功切换到 \(raw)，当前=\(UIApplication.shared.alternateIconName ?? "nil")")
+                }
+            }
+        }
+        #endif
+
         // 通知的前台抑制策略必须尽早挂上：自动化触发时 App 是被系统**静默拉起**的，
         // delegate 没就位就收不到 willPresent，前台抑制会失效。
         PickupNotificationPresenter.shared.install()
@@ -110,7 +127,17 @@ struct AlludeApp: App {
         if UIApplication.shared.supportsAlternateIcons,
            UIApplication.shared.alternateIconName != AppIconStore.current.alternateName {
             let name = AppIconStore.current.alternateName
-            UIApplication.shared.setAlternateIconName(name) { _ in }
+            UIApplication.shared.setAlternateIconName(name) { error in
+                // 切换结果打出来：命令行环境没有点击通道，验「新加的一套图标能不能真的切过去」
+                // 只能靠预置偏好 + 冷启动走这条对齐分支（2026-11-16 加第 17 套时补）。
+                #if DEBUG
+                if let error {
+                    print("[allude-icon] 切换失败 name=\(name ?? "主图标") err=\(error.localizedDescription)")
+                } else {
+                    print("[allude-icon] 已切到 \(name ?? "主图标")")
+                }
+                #endif
+            }
         }
 
         // 通知点击的验证脚手架：PUSH_TEST=1 → 5 秒后发一条带 recordID 的本地通知，

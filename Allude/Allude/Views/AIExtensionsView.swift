@@ -15,9 +15,53 @@ import SwiftUI
 
 /// 二级页内部的路由（2026-11-14：分栏里 `NavigationLink(destination:)` 偶发不落地，
 /// 改成 value-based push，目标注册在同一个栈上，稳定得多）。
-enum AIHubRoute: Hashable {
+enum AIHubRoute: Hashable, Identifiable {
+    var id: Self { self }
+
     case appleIntelligence
     case extensions
+}
+
+/// 「扩展」列表里的下级路由。
+enum AIProviderRoute: Hashable {
+    case detail(AIProvider)
+    case usage
+}
+
+/// 🔴 路由 → 视图的映射，**由外层的栈根注册**，不放在页面内部。
+///
+/// 2026-11-16 实测记录：把 `navigationDestination` 写在 `AIExtensionsHomeView` 里
+/// （哪怕是 `item:` / `isPresented:` 形式）在 Duo 内屏**横屏分栏**下完全不落地 ——
+/// 日志能证明 push 已被调用，界面纹丝不动。原因是这个页面处在
+/// `paneContent(pane)` 的 `_ConditionalContent` 分支内部，注册会随分支丢失。
+/// 修法：改成 value-based push，把 `navigationDestination(for:)` 挂在两个栈的
+/// **根内容**上（分栏右栏栈、单列 `SettingsTabRoot` 栈各注册一次）。
+struct AIHubDestination: View {
+    let route: AIHubRoute
+
+    var body: some View {
+        switch route {
+        case .appleIntelligence:
+            if #available(iOS 26.0, *) {
+                AICapabilityView()
+            } else {
+                AICapabilityUnsupportedView()
+            }
+        case .extensions:
+            AIExtensionsListView()
+        }
+    }
+}
+
+struct AIProviderDestination: View {
+    let route: AIProviderRoute
+
+    var body: some View {
+        switch route {
+        case .detail(let provider): AIProviderDetailView(provider: provider)
+        case .usage:                AIUsageView()
+        }
+    }
 }
 
 /// 二级页：Apple 智能 + 扩展 两个入口。
@@ -30,16 +74,9 @@ enum AIHubRoute: Hashable {
 struct AIExtensionsHomeView: View {
     @ViewBuilder
     private func hubRow(_ route: AIHubRoute, symbol: String, title: String, tint: Color) -> some View {
-        // 回到 294 那套「destination 型」写法 —— 那时能点开；value-based 在本工程的
-        // 设置栈里反而失效（外层是 destination push，内层再 value push 不落地）。
-        NavigationLink {
-            switch route {
-            case .appleIntelligence:
-                if #available(iOS 26.0, *) { AICapabilityView() } else { AICapabilityUnsupportedView() }
-            case .extensions:
-                AIExtensionsListView()
-            }
-        } label: {
+        // 🔴 2026-11-16 改回 value-based：destination 型在本工程的设置栈里
+        //    （尤其横屏分栏的右栏）推不动，见 `AIHubDestination` 上方那段记录。
+        NavigationLink(value: route) {
             SettingsRow(symbol: symbol, title: title, showsChevron: true, tint: tint)
                 .contentShape(.rect)
         }
@@ -108,9 +145,7 @@ struct AIExtensionsListView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(AIProvider.allCases.enumerated()), id: \.element.id) { index, provider in
                         if index > 0 { SettingsDivider() }
-                        NavigationLink {
-                            AIProviderDetailView(provider: provider)
-                        } label: {
+                        NavigationLink(value: AIProviderRoute.detail(provider)) {
                             SettingsRow(symbol: provider.symbol,
                                         imageAsset: provider.iconAsset,
                                         title: provider.title,
@@ -124,9 +159,7 @@ struct AIExtensionsListView: View {
                 .settingsCard()
 
                 VStack(spacing: 0) {
-                    NavigationLink {
-                        AIUsageView()
-                    } label: {
+                    NavigationLink(value: AIProviderRoute.usage) {
                         SettingsRow(symbol: "chart.bar.xaxis",
                                     title: "用量统计",
                                     detail: AIUsageStore.costText(AIUsageStore.allTotals.costCNY),

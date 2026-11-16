@@ -3,7 +3,7 @@ import Foundation
 // MARK: ============================================================================
 // App 图标切换（2026-11-01 主人）
 //
-// 十六套内置图标，**第 4 套（C 标）为默认主图标**。
+// 十七套内置图标，**第 4 套（C 标）为默认主图标**。
 //
 // 🔴 2026-11-15 大整理（主人连着几轮删改之后定的最终形态）：
 //    · 先删掉 1 号码牌 / 4 扫码件 / 6 手提袋 / 8 卡包 / 11 牛皮纸 / 13 快递箱 / 23 玻璃白盒；
@@ -33,9 +33,9 @@ import Foundation
 // ============================================================================
 
 enum AppIconChoice: String, CaseIterable, Identifiable {
-    /// 编号与界面网格**严格一致**：从上到下、从左到右 = 01…16。
+    /// 编号与界面网格**严格一致**：从上到下、从左到右 = 01…17。
     case icon01, icon02, icon03, icon04, icon05, icon06, icon07, icon08
-    case icon09, icon10, icon11, icon12, icon13, icon14, icon15, icon16
+    case icon09, icon10, icon11, icon12, icon13, icon14, icon15, icon16, icon17
 
     /// 默认图标 = 第 4 套（C 标）。
     ///
@@ -46,7 +46,7 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    /// 序号（1–16），与网格顺序一致。用于文案与文件名。
+    /// 序号（1–17），与网格顺序一致。用于文案与文件名。
     var number: Int {
         switch self {
         case .icon01: 1
@@ -65,6 +65,7 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
         case .icon14: 14
         case .icon15: 15
         case .icon16: 16
+        case .icon17: 17
         }
     }
 
@@ -87,6 +88,7 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
         case .icon14: "光泽黑标"
         case .icon15: "白盒平涂"
         case .icon16: "线框白盒"
+        case .icon17: "皮革卡包"
         }
     }
 

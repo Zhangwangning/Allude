@@ -1062,6 +1062,14 @@ struct SettingsTabRoot: View {
     var body: some View {
         NavigationStack {
             SettingsView()
+                // AI 子树是 value-based push（见 `AIHubDestination` 的注释）。
+                // 单列布局也必须有这份注册，否则竖屏 / 直板机上那两项点不动。
+                .navigationDestination(for: AIHubRoute.self) {
+                    AIHubDestination(route: $0)
+                }
+                .navigationDestination(for: AIProviderRoute.self) {
+                    AIProviderDestination(route: $0)
+                }
         }
         .modifier(PaywallSheetDemo())
     }

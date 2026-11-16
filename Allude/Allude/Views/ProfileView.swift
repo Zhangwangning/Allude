@@ -238,8 +238,16 @@ struct SettingsView: View {
         }
     }
 
-    /// 设置详情列的显式导航路径（分栏里 destination 型 push 会被吞，见 2026-11-14 记录）
-    @State private var detailPath = NavigationPath()
+    /// 🔴 2026-11-16 删掉了这里原有的 `@State private var detailPath = NavigationPath()`。
+    ///
+    /// 它当时是 2026-11-14 为「分栏里 destination 型 push 会被吞」加的，但**加了 path
+    /// 反而正是 push 失效的原因**：右栏的 `NavigationStack(path:)` 里再放
+    /// destination 型 `NavigationLink`，在常驻 pane（内容还挂着 `.id(pane)`）这套组合下
+    /// 推不动。主人实测：Duo 内屏**横屏**（分栏）时「Apple 智能与扩展」的两个下级页、
+    /// 以及扩展列表里的服务商行、用量统计全都点不进去；**竖屏 / 外屏 / 直板机
+    /// （单列，栈上没有 path）全部正常** —— 差别就只有这个 path。
+    /// 去掉后 `NavigationStack` 自己管栈，destination 型 push 恢复；切面板重置由
+    /// 内容上的 `.id(pane)` 负责。
 
     /// **是否真的在分栏**（左列目录 + 右栏内容）。
     ///
@@ -466,12 +474,26 @@ struct SettingsView: View {
                 Color(.systemGroupedBackground)
                     .ignoresSafeArea()
 
-                NavigationStack(path: $detailPath) {
+                // 🔴 不带 `path:` —— 见 `isSplitLayout` 上方那段注释，path 会让
+                //    destination 型 NavigationLink 在常驻 pane 里推不动。
+                NavigationStack {
                     // 照 iPad 设置的内容列：左右留白更大、内容限宽居中
                     paneContent(pane ?? .notification)
-                        // 每个 pane 一份独立栈：切面板后旧栈的路径会残留，
-                        // 表现为「点了二级页没反应」（2026-11-14 修）。
-                        .id(pane)
+                        // 🔴 2026-11-16 去掉了这里的 `.id(pane)`。
+                        //    它原本是「切面板后旧栈路径残留」的修法，但 `.id` 会让整棵内容树
+                        //    在每次切 pane 时重建，挂在这棵树上的 `navigationDestination`
+                        //    也跟着重建 —— 实测 push 被调用（有日志）却推不动。
+                        //    现在栈上没有 path、也没有 `.id`，SwiftUI 按正常语义管理栈：
+                        //    切 pane 时 `paneContent` 返回的是不同视图，栈自然重置。
+                        // 🔴 2026-11-16：AI 子树的路由目标必须注册在**栈根**这一层。
+                        //    写在 `AIExtensionsHomeView` 内部（`paneContent` 的条件分支里）
+                        //    横屏分栏下完全不落地，日志显示 push 被调用、界面纹丝不动。
+                        .navigationDestination(for: AIHubRoute.self) {
+                            AIHubDestination(route: $0)
+                        }
+                        .navigationDestination(for: AIProviderRoute.self) {
+                            AIProviderDestination(route: $0)
+                        }
                         // 🔴 2026-11-07：帮助页里那两个入口是「切详情列」打开的
                         //    （push 在这层不落地），所以补一个返回按钮回到帮助与反馈。
                         .toolbar {
