@@ -62,6 +62,9 @@ struct AlludeApp: App {
         // 只有主 App 进程能起 / 重建实时活动；扩展进程只 update（2026-11-16）
         PickupActivityController.isAppProcess = true
         PickupActivityController.pendingProvider = { PickupStore.shared.pending }
+        // 到达提醒：启动即把定位 manager / delegate 挂起来，否则系统围栏事件
+        // 把被杀的 App 拉起来时收不到（2026-11-16）
+        StationLocationService.shared.bootstrap()
 
         PickupActivityController.stationResolver = { record in
             StationDirectory.shared.matchedName(in: [record.rawMessage])
@@ -765,6 +768,11 @@ struct AlludeApp: App {
                 case "stationEdit":
                     // 自定义驿站编辑页（添加模式，2026-10-15 名称+图标同页）
                     NavigationStack { StationEditView(mode: .add) }
+                case "stationLocation":
+                    // 驿站定位编辑页（2026-11-16 到达提醒；内置 / 自定义共用）
+                    NavigationStack {
+                        StationLocationEditor(stationName: "菜鸟驿站")
+                    }
 
                 case "automationShare":
                     // 🔍 2026-11-11：验证「一键导入自动化」的分享面板（内测反馈过打不开）。
@@ -866,6 +874,11 @@ struct AlludeApp: App {
             .task {
                 store.reloadFromStorage()
                 PickupActivityController.sync(pending: store.pending)
+                // 冷启动同样要对齐重复提醒：从灵动岛进来时 scenePhase 一上来就是 .active，
+                // 上面那条回前台链路根本不会跑（2026-11-16 状态回滚专项的同一处坑）。
+                PickupNotifier.rescheduleRepeatReminder()
+                // 冷启动也要按最新权益 / 位置重排围栏（回前台链路不覆盖初始 .active）
+                StationLocationService.shared.syncRegions()
                 #if DEBUG
                 // 回归脚手架：SIMCTL_CHILD_ROLLBACK_PROBE=1
                 // 模拟「小组件在别的进程写盘 + App 内存仍是旧副本」的完整竞态，
@@ -897,6 +910,10 @@ struct AlludeApp: App {
                     // 定期提醒的文案带「还有 N 件」快照 —— 回前台时重排，
                     // 避免隔了几天数据变了、提醒还在报旧数字。
                     PickupNotifier.rescheduleDailyReminder()
+                    // 重复提醒的「还有 N 件」也是快照，回前台一并对齐
+                    PickupNotifier.rescheduleRepeatReminder()
+                    // 权益刚刷新过，按最新档位重排到达提醒围栏（降级即全撤）
+                    StationLocationService.shared.syncRegions()
                     // 通知中心里超过 10 分钟的旧通知顺手清掉（2026-11-11 主人：
                     // 通知要过一会就消失，不能一直挂着）。iOS 没有自动过期 API，
                     // 只能把握「回前台」这个时机；更早的清理由取件/删除触发。

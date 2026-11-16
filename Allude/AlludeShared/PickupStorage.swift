@@ -559,8 +559,11 @@ struct EntitlementSnapshot: Codable, Equatable {
     static var licensedPro: Bool {
         // 🧪 调试脚手架（仅 Debug）：`FORCE_FREE=1` 强制按免费档跑，
         // 方便真机上验收付费墙 —— 不必删凭证、也不用重装。
+        // `FORCE_PRO=1` 反过来强制按 Pro 跑：模拟器里凭证不可控，
+        // 验 Pro 才可见的设置项（如到达提醒实验室分组）靠这个入口直渲。
         #if DEBUG
         if ProcessInfo.processInfo.environment["FORCE_FREE"] == "1" { return false }
+        if ProcessInfo.processInfo.environment["FORCE_PRO"] == "1" { return true }
         #endif
         let snapshot = load()
         let backed = !(snapshot.license ?? "")

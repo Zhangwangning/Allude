@@ -233,6 +233,11 @@ enum PickupNotifier {
     private static let dailyMinuteKey = "allude.reminderDailyMinute"
     private static let pendingEnabledKey = "allude.reminderPendingEnabled"
     private static let pendingHoursKey = "allude.reminderPendingHours"
+    private static let repeatEnabledKey = "allude.reminderRepeatEnabled"
+    private static let repeatHoursKey = "allude.reminderRepeatHours"
+    private static let repeatSignatureKey = "allude.reminderRepeatSignature"
+    /// 重复提醒**全局只有一条**（不是每条记录一条）；同 identifier 重排即覆盖。
+    private static let repeatReminderID = "com.jikezhang.allude.reminder.repeat"
 
     /// 是否开启每天固定时间的取件提醒。默认关 —— 提醒是打扰性功能，让用户主动要。
     static var isDailyReminderEnabled: Bool {
@@ -261,6 +266,22 @@ enum PickupNotifier {
     static var pendingReminderHours: Int {
         get { UserDefaults.standard.object(forKey: pendingHoursKey) as? Int ?? 24 }
         set { UserDefaults.standard.set(newValue, forKey: pendingHoursKey) }
+    }
+
+    /// 重复提醒（2026-11-16 主人新增）：开启后按「重复间隔」持续催，
+    /// **直到所有待取件都取完自动停**。
+    ///
+    /// 与「超时未取」相互独立：超时那条只催一次，这条是周期性汇总提醒。
+    /// 放在同一分组里只是位置上的从属，逻辑上不依赖超时开关是否打开。
+    static var isRepeatReminderEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: repeatEnabledKey) as? Bool ?? false }
+        set { UserDefaults.standard.set(newValue, forKey: repeatEnabledKey) }
+    }
+
+    /// 重复间隔（小时）。默认 4；可选档位见 `NotificationSettingsView.repeatHourOptions`。
+    static var repeatReminderHours: Int {
+        get { UserDefaults.standard.object(forKey: repeatHoursKey) as? Int ?? 4 }
+        set { UserDefaults.standard.set(newValue, forKey: repeatHoursKey) }
     }
 
     /// 重排（或撤销）每天固定时间的提醒。
@@ -306,6 +327,58 @@ enum PickupNotifier {
         center.add(UNNotificationRequest(identifier: dailyReminderID,
                                          content: content,
                                          trigger: trigger))
+    }
+
+    // MARK: - 重复提醒（全局一条，直到全部取完）
+
+    /// 重排「重复提醒」——全局一条 `repeats: true` 通知，按间隔催「还有 N 件待取」。
+    ///
+    /// 🔴 老大 2026-11-16 定的口径：**全局一条，直到全部取完自动停**，
+    ///    不是每条记录各排一条（那样后台续排容易漏、取件后也撤不干净）。
+    ///    数据变化 / 回前台都会调到这里，但只有「内容签名变了」才真的重排 ——
+    ///    `repeats: true` 的 trigger 每次 add 都会重置计时，无脑重排会让提醒永远不触发。
+    static func rescheduleRepeatReminder() {
+        let center = UNUserNotificationCenter.current()
+        let defaults = UserDefaults.standard
+        // 与超时提醒同属 Allude Pro；降级后下一次数据变化/回前台就撤干净
+        guard isRepeatReminderEnabled, EntitlementSnapshot.licensedPro else {
+            center.removePendingNotificationRequests(withIdentifiers: [repeatReminderID])
+            defaults.removeObject(forKey: repeatSignatureKey)
+            return
+        }
+
+        let pending = PickupStorage.load().filter { !$0.isPickedUp }
+        guard !pending.isEmpty else {
+            // 全部取完 = 自动停，不再排下一次
+            center.removePendingNotificationRequests(withIdentifiers: [repeatReminderID])
+            defaults.removeObject(forKey: repeatSignatureKey)
+            return
+        }
+
+        let hours = repeatReminderHours
+        let newest = pending.max { $0.receivedAt < $1.receivedAt }
+        // 签名只含会改变通知内容/节奏的量：间隔、件数、最新一条的身份。
+        // 单纯回前台时签名不变 → 不重置计时器。
+        let signature = "\(hours)|\(pending.count)|\(newest?.id.uuidString ?? "")"
+        guard defaults.string(forKey: repeatSignatureKey) != signature else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = "还有 \(pending.count) 件待取件"
+        let where_ = [newest?.company ?? "", newest?.address ?? ""]
+            .filter { !$0.isEmpty }
+            .joined(separator: fieldSeparator)
+        content.body = where_.isEmpty ? "打开Allude查看取件码" : "最新：\(where_)"
+        content.sound = .default
+        content.threadIdentifier = threadID
+        content.userInfo = ["kind": "repeatReminder"]
+
+        // repeats:true 最小间隔 60 秒；档位最小 1 小时，不会踩线
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: TimeInterval(hours * 3600),
+                                                        repeats: true)
+        center.add(UNNotificationRequest(identifier: repeatReminderID,
+                                         content: content,
+                                         trigger: trigger))
+        defaults.set(signature, forKey: repeatSignatureKey)
     }
 
     /// 给待取记录排（或重排）「N 小时未取」的提醒。
@@ -357,10 +430,12 @@ enum PickupNotifier {
                 let ids = requests.map(\.identifier).filter { $0.hasPrefix(pickupReminderPrefix) }
                 center.removePendingNotificationRequests(withIdentifiers: ids)
             }
+            rescheduleRepeatReminder()
             return
         }
         for record in PickupStorage.load().filter({ !$0.isPickedUp }) {
             schedulePendingReminder(for: record)
         }
+        rescheduleRepeatReminder()
     }
 }

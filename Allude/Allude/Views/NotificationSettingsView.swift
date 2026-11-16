@@ -1,5 +1,6 @@
 import SwiftUI
 import UserNotifications
+import CoreLocation
 
 // MARK: ============================================================================
 // 通知提醒（我的 › 设置 › 二级页）
@@ -24,6 +25,13 @@ final class ReminderSettingsModel: ObservableObject {
     @Published var dailyTime: Date
     @Published var pendingEnabled = PickupNotifier.isPendingReminderEnabled
     @Published var pendingHours = PickupNotifier.pendingReminderHours
+    /// 重复提醒（2026-11-16 新增）：全局一条按间隔催，全部取完自动停
+    @Published var repeatEnabled = PickupNotifier.isRepeatReminderEnabled
+    @Published var repeatHours = PickupNotifier.repeatReminderHours
+    /// 到达提醒（实验室 + Allude Pro）
+    @Published var arrivalEnabled = StationLocationService.isArrivalReminderEnabled
+    /// 系统定位权限：界面要如实显示，避免「开关开着但系统没给权限」静默失效
+    @Published var locationStatus: CLAuthorizationStatus = CLLocationManager().authorizationStatus
 
     init() {
         dailyTime = Self.bridge(hour: PickupNotifier.dailyReminderHour,
@@ -38,9 +46,18 @@ final class ReminderSettingsModel: ObservableObject {
         isEnabled = PickupNotifier.isEnabled
         dailyEnabled = PickupNotifier.isDailyReminderEnabled
         pendingEnabled = PickupNotifier.isPendingReminderEnabled
+        // 权益降级后界面必须落回关闭态，否则会出现「开关是关的、展开项还挂着」
+        repeatEnabled = PickupNotifier.isRepeatReminderEnabled && EntitlementSnapshot.licensedPro
+        repeatHours = PickupNotifier.repeatReminderHours
+        arrivalEnabled = StationLocationService.isArrivalReminderEnabled && EntitlementSnapshot.licensedPro
+        locationStatus = CLLocationManager().authorizationStatus
         PickupNotifier.queryAuthorizationStatus { [weak self] status in
             self?.authStatus = status
         }
+    }
+
+    func refreshLocationStatus() {
+        locationStatus = CLLocationManager().authorizationStatus
     }
 
     func setEnabled(_ value: Bool) {
@@ -76,6 +93,29 @@ final class ReminderSettingsModel: ObservableObject {
         pendingHours = value
         PickupNotifier.rescheduleAllPendingReminders()
     }
+
+    func setRepeatEnabled(_ value: Bool) {
+        // 重复提醒与超时提醒同属 Allude Pro：非 Pro 一律落回关闭态
+        let allowed = value && EntitlementSnapshot.licensedPro
+        PickupNotifier.isRepeatReminderEnabled = allowed
+        repeatEnabled = allowed
+        PickupNotifier.rescheduleRepeatReminder()
+    }
+
+    func setRepeatHours(_ value: Int) {
+        PickupNotifier.repeatReminderHours = value
+        repeatHours = value
+        PickupNotifier.rescheduleRepeatReminder()
+    }
+
+    func setArrivalEnabled(_ value: Bool) {
+        // 🔴 老大 2026-11-16 补充：到达提醒也是 Allude Pro 功能。
+        //    非 Pro 一律落回关闭态，并把围栏全撤（service 内部按权益校验）。
+        let allowed = value && EntitlementSnapshot.licensedPro
+        StationLocationService.shared.setArrivalEnabled(allowed)
+        arrivalEnabled = allowed
+        refreshLocationStatus()
+    }
 }
 
 // MARK: - 页面
@@ -83,11 +123,16 @@ final class ReminderSettingsModel: ObservableObject {
 struct NotificationSettingsView: View {
     @EnvironmentObject private var store: PickupStore
     @StateObject private var model = ReminderSettingsModel()
+    /// 已设位置的驿站清单（含内置）要跟着驿站管理页的改动即时刷新
+    @ObservedObject private var locationStore = StationLocationStore.shared
     /// 非 Pro 点「超时未取提醒」时直接弹订阅页（不显示任何加锁标志）
     @State private var showPaywall = false
 
     /// 不定期提醒的可选等待时长（小时）。
     private let hourOptions = [3, 6, 12, 24, 48]
+    /// 重复提醒的间隔档位（小时）。最小 1 小时：`UNTimeIntervalNotificationTrigger`
+    /// 的 `repeats: true` 要求 ≥ 60 秒，且更密的间隔对用户就是骚扰。
+    private let repeatHourOptions = [1, 2, 4, 6, 12, 24]
 
     var body: some View {
         ScrollView {
@@ -97,6 +142,7 @@ struct NotificationSettingsView: View {
                 toggleSection
                 dailySection
                 pendingSection
+                labSection
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 14)
@@ -112,6 +158,13 @@ struct NotificationSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             model.refresh()
+            // 截图脚手架 `ARRIVAL_LAB=1`：展开全部提醒项（含实验室分组）。
+            // 需配合 `FORCE_PRO=1` —— 超时 / 重复 / 到达三项都是 Allude Pro。
+            if ProcessInfo.processInfo.environment["ARRIVAL_LAB"] == "1" {
+                model.setPendingEnabled(true)
+                model.setRepeatEnabled(true)
+                model.setArrivalEnabled(true)
+            }
             // 截图脚手架 `HOURS_MENU=1`：把「等待时长」选单直接打开。
             // 命令行点不出 popover，没有这个入口就只能靠肉眼在真机上验。
             guard ProcessInfo.processInfo.environment["HOURS_MENU"] == "1" else { return }
@@ -120,6 +173,13 @@ struct NotificationSettingsView: View {
                 try? await Task.sleep(nanoseconds: 1_200_000_000)
                 showHoursMenu = true
             }
+        }
+        // 从系统设置改完权限回来 / 系统授权弹窗被点掉，都要把状态刷新到脸上
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            model.refreshLocationStatus()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .stationLocationAuthDidChange)) { _ in
+            model.refreshLocationStatus()
         }
     }
 
@@ -202,20 +262,21 @@ struct NotificationSettingsView: View {
         }
     }
 
-    /// 等待时长的自绘菜单是否展开
+    /// 等待时长 / 重复间隔的自绘菜单是否展开
     @State private var showHoursMenu = false
+    @State private var showRepeatMenu = false
 
-    /// 等待时长选单（自绘，替代系统 `Menu`）。
+    /// 小时数选单（自绘，替代系统 `Menu`）。
     ///
     /// 布局刻意与系统菜单区分开：**勾号贴最右端**、颜色用系统蓝
     /// （`Color(.systemBlue)` = Apple 蓝 #007AFF，不是 App 主色那个偏深的蓝）。
     /// 未选中行不放占位图形 —— `Spacer` 已经把文字顶到左边，勾的有无不影响对齐。
-    private var hoursMenu: some View {
+    private func hourMenu(options: [Int], current: Int,
+                          onSelect: @escaping (Int) -> Void) -> some View {
         VStack(spacing: 0) {
-            ForEach(hourOptions, id: \.self) { hours in
+            ForEach(options, id: \.self) { hours in
                 Button {
-                    model.setPendingHours(hours)
-                    showHoursMenu = false
+                    onSelect(hours)
                 } label: {
                     HStack(spacing: 12) {
                         Text("\(hours) 小时")
@@ -224,7 +285,7 @@ struct NotificationSettingsView: View {
 
                         Spacer(minLength: 20)
 
-                        if hours == model.pendingHours {
+                        if hours == current {
                             Image(systemName: "checkmark")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(Color(.systemBlue))
@@ -240,33 +301,55 @@ struct NotificationSettingsView: View {
         .padding(.vertical, 6)
     }
 
+    private var hoursMenu: some View {
+        hourMenu(options: hourOptions, current: model.pendingHours) { value in
+            model.setPendingHours(value)
+            showHoursMenu = false
+        }
+    }
+
+    private var repeatHoursMenu: some View {
+        hourMenu(options: repeatHourOptions, current: model.repeatHours) { value in
+            model.setRepeatHours(value)
+            showRepeatMenu = false
+        }
+    }
+
+    /// 带 Allude Pro 门禁的开关（2026-11-16 到达提醒也用这一套）。
+    ///
+    /// 🔴 主人 2026-11-08 定：**界面上不显示任何加锁标志**；
+    ///    非 Pro 点一下开关 = 直接弹订阅页（不先翻转开关再回弹）。
+    ///    overlay 里用 `Color.clear` 而不是 ZStack 撑宽，否则开关会被挤到行中间。
+    @ViewBuilder
+    private func gatedToggle(isOn: Bool, label: String,
+                             onChange: @escaping (Bool) -> Void) -> some View {
+        if EntitlementSnapshot.licensedPro {
+            Toggle("", isOn: Binding(get: { isOn }, set: onChange))
+                .labelsHidden()
+                .tint(AppTheme.accent)
+        } else {
+            Toggle("", isOn: .constant(false))
+                .labelsHidden()
+                .tint(AppTheme.accent)
+                .allowsHitTesting(false)
+                .overlay {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { showPaywall = true }
+                        .accessibilityLabel(label)
+                        .accessibilityHint("需要Allude Pro")
+                }
+        }
+    }
+
     // MARK: 不定期提醒
 
     private var pendingSection: some View {
         SettingsGroup(title: "提醒 · 超时未取",
-                      note: "超过设定时长还没取就催一次，取走后自动撤回。") {
+                      note: "超过设定时长催一次；开启重复后按间隔继续催，所有件取完自动停。") {
             SettingsPlainRow(title: "超时未取提醒") {
-                // 🔴 2026-11-08 主人：**不显示任何加锁标志**；
-                //    非 Pro 点一下开关 = 直接弹订阅页（不先翻转开关再回弹）。
-                if EntitlementSnapshot.licensedPro {
-                    Toggle("", isOn: Binding(get: { model.pendingEnabled },
-                                             set: { model.setPendingEnabled($0) }))
-                        .labelsHidden()
-                        .tint(AppTheme.accent)
-                } else {
-                    // 用 overlay 接管点击：ZStack 里放 `Color.clear` 会撑宽，
-                    // 把开关挤到行中间（2026-11-08 主人：开关怎么乱跑）。
-                    Toggle("", isOn: .constant(false))
-                        .labelsHidden()
-                        .tint(AppTheme.accent)
-                        .allowsHitTesting(false)
-                        .overlay {
-                            Color.clear
-                                .contentShape(Rectangle())
-                                .onTapGesture { showPaywall = true }
-                                .accessibilityLabel("超时未取提醒")
-                                .accessibilityHint("需要Allude Pro")
-                        }
+                gatedToggle(isOn: model.pendingEnabled, label: "超时未取提醒") {
+                    model.setPendingEnabled($0)
                 }
             }
 
@@ -298,6 +381,143 @@ struct NotificationSettingsView: View {
                     }
                 }
             }
+
+            SettingsDivider(style: .plain)
+
+            // 重复提醒（2026-11-16 主人新增）：与超时开关相互独立，
+            // 逻辑上是「全局一条按间隔催」，放在同组只是位置上的从属。
+            SettingsPlainRow(title: "重复提醒") {
+                gatedToggle(isOn: model.repeatEnabled, label: "重复提醒") {
+                    model.setRepeatEnabled($0)
+                }
+            }
+
+            if model.repeatEnabled {
+                SettingsDivider(style: .plain)
+
+                SettingsPlainRow(title: "提醒间隔") {
+                    Button {
+                        showRepeatMenu = true
+                    } label: {
+                        SettingsValueLabel(text: "\(model.repeatHours) 小时")
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showRepeatMenu, arrowEdge: .top) {
+                        repeatHoursMenu
+                            .presentationCompactAdaptation(.popover)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: 实验室 · 到达提醒
+
+    /// 到达提醒是**实验性 + Allude Pro** 功能（老大 2026-11-16 定）：
+    ///   · 系统地理围栏有延迟，离线 / 低电量 / 定位精度差时可能不触发；
+    ///   · 只有该驿站还存在待取件时才推通知，没件不打扰；
+    ///   · 位置只存本机，不上传、不记录轨迹。
+    private var labSection: some View {
+        SettingsGroup(
+            title: "实验室 · 到达提醒",
+            note: "实验性：系统定位可能有几分钟延迟，离线、低电量或定位精度差时可能不触发。位置只存本机、不上传、不记录轨迹；需「始终允许」定位权限，最多同时监控 20 个驿站。"
+        ) {
+            SettingsPlainRow(title: "到达提醒") {
+                // 🔴 老大 2026-11-16 补充：到达提醒也是 Allude Pro；
+                //    非 Pro 点开关直接弹订阅页，不显示加锁标志（同一套 gatedToggle）。
+                gatedToggle(isOn: model.arrivalEnabled, label: "到达提醒") {
+                    model.setArrivalEnabled($0)
+                }
+            }
+
+            if model.arrivalEnabled {
+                SettingsDivider(style: .plain)
+                locationPermissionRow
+
+                SettingsDivider(style: .plain)
+
+                NavigationLink {
+                    CourierGalleryView(scope: .station)
+                } label: {
+                    SettingsPlainRow(title: "驿站位置") {
+                        // NavigationLink 用自定义 label 不会自动补箭头，
+                        // 这里保留 chevron，否则整行看不出能点进去管理。
+                        SettingsValueLabel(text: "\(locationStore.configuredNames.count) 个已设置")
+                    }
+                }
+                .buttonStyle(.plain)
+
+                ForEach(locationStore.configuredNames, id: \.self) { name in
+                    SettingsDivider(style: .plain)
+                    SettingsPlainRow(title: name) {
+                        Toggle("", isOn: Binding(
+                            get: { locationStore.location(for: name)?.enabled ?? false },
+                            set: { locationStore.setEnabled($0, for: name) }
+                        ))
+                        .labelsHidden()
+                        .tint(AppTheme.accent)
+                    }
+                }
+
+                if locationStore.configuredNames.isEmpty {
+                    SettingsDivider(style: .plain)
+                    emptyStationHint
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var locationPermissionRow: some View {
+        switch model.locationStatus {
+        case .authorizedAlways:
+            SettingsPlainRow(title: "定位权限") {
+                SettingsValueLabel(text: "始终允许", showsChevron: false)
+            }
+        case .authorizedWhenInUse:
+            SettingsPlainRow(title: "定位权限") {
+                permissionButton("改为始终") {
+                    StationLocationService.shared.requestAlwaysAuthorization()
+                }
+            }
+        case .denied, .restricted:
+            SettingsPlainRow(title: "定位权限") {
+                permissionButton("去开启") { openSystemSettings() }
+            }
+        default:
+            SettingsPlainRow(title: "定位权限") {
+                permissionButton("开启") {
+                    StationLocationService.shared.requestAlwaysAuthorization()
+                }
+            }
+        }
+    }
+
+    private func permissionButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .font(AppTheme.TypeScale.bodyMedium)
+            .foregroundStyle(AppTheme.accent)
+            .buttonStyle(.plain)
+    }
+
+    private var emptyStationHint: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "mappin.slash.circle.fill")
+                .font(.system(size: 13))
+                .foregroundStyle(.tertiary)
+            Text("还没有驿站设置位置。到「驿站管理」点任意驿站（含内置）标记位置，回来就能在这里启用。")
+                .font(AppTheme.TypeScale.note)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 4)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+
+    private func openSystemSettings() {
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
         }
     }
 }

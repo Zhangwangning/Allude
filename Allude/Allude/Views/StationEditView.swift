@@ -19,6 +19,8 @@ struct StationEditView: View {
 
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var station = StationDirectory.shared
+    /// 位置摘要要跟着设置页的改动即时刷新（2026-11-16 到达提醒）
+    @ObservedObject private var locationStore = StationLocationStore.shared
 
     @State private var name: String
     /// 图标原始数据：编辑态预填当前图标；添加态为 nil（未选）
@@ -66,6 +68,12 @@ struct StationEditView: View {
             VStack(spacing: 16) {
                 iconCard
                 nameCard
+
+                // 自定义驿站：添加完点格子进来，就能设位置；
+                // 内置驿站走网格里的同一个编辑页，不必经过这里。
+                if isEdit {
+                    locationCard
+                }
 
                 Text(isEdit
                      ? "改名后，卡片会自动按新名称从短信里识别。留空图标则显示名称首字。"
@@ -192,6 +200,50 @@ struct StationEditView: View {
         .padding(14)
         .frame(maxWidth: .infinity)
         .cardSurface()
+    }
+
+    // MARK: 位置与到达提醒（仅编辑态）
+
+    /// 内置 / 自定义共用 `StationLocationEditor`；这里只做入口与状态摘要。
+    private var locationCard: some View {
+        NavigationLink {
+            StationLocationEditor(stationName: originalName ?? "")
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "mappin.circle.fill")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(AppTheme.violet)
+                    .frame(width: 28)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("位置与到达提醒")
+                        .font(AppTheme.TypeScale.bodyMedium)
+                        .foregroundStyle(.primary)
+                    Text(locationSummary)
+                        .font(AppTheme.TypeScale.note)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "chevron.right")
+                    .font(AppTheme.TypeScale.rowSubtitle.weight(.semibold))
+                    .foregroundStyle(.quaternary)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .cardSurface()
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var locationSummary: String {
+        guard let original = originalName,
+              let loc = locationStore.location(for: original) else {
+            return "未设置。设好后，到店时若有该驿站的待取件会提醒你。"
+        }
+        return loc.enabled ? "已设置并启用到达提醒" : "已设置位置，未启用到达提醒"
     }
 
     // MARK: 删除（仅编辑态）

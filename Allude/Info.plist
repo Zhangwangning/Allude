@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>用于在你为驿站标记位置时，定位当前所在地点。</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>仅在你开启「到达提醒」后使用：到达已标记的驿站时，系统用地理围栏提醒你取件。位置只在本机用于围栏判断，不上传、不记录轨迹。</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>zh-Hans</string>
 	<key>CFBundleDisplayName</key>

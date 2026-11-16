@@ -279,6 +279,8 @@ struct CourierGalleryView: View {
 
     /// 驿站名称库（2026-10-14 集成进本页）：自定义增删后页面即时刷新
     @ObservedObject private var station = StationDirectory.shared
+    /// 驿站位置库（2026-11-16 到达提醒）：设过位置的格子要即时显示角标
+    @ObservedObject private var locationStore = StationLocationStore.shared
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -344,7 +346,19 @@ struct CourierGalleryView: View {
                                 }
                             }
                             ForEach(items) { item in
-                                brandCell(item)
+                                if scope == .station {
+                                    // 内置驿站：名称 / 图标只读，但**位置可以自己设**
+                                    // （2026-11-16 主人：「我们内置的也要支持这个功能」）
+                                    NavigationLink {
+                                        StationLocationEditor(stationName: item.name)
+                                    } label: {
+                                        brandCell(item)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("\(item.name)，轻点设置位置")
+                                } else {
+                                    brandCell(item)
+                                }
                             }
                         }
                         .padding(14)
@@ -357,7 +371,7 @@ struct CourierGalleryView: View {
             // 版权说明只对「品牌图标」有意义；驿站页那句换成自定义入口的提示
             Text(scope == .courier
                  ? "品牌图标版权归各公司所有，此处仅用于标识取件来源；未收录的品牌按名称自绘色块兜底，不会出现空白。"
-                 : "点网格里的「添加驿站」可新增自定义名称与图标，匹配时按名称最长命中。")
+                 : "点网格里的「添加驿站」可新增自定义名称与图标；点任意驿站（含内置）可设置位置与到达提醒，匹配时按名称最长命中。")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 4)
@@ -410,6 +424,15 @@ struct CourierGalleryView: View {
 
     // MARK: 品牌网格格子
 
+    /// 已启用到达提醒的驿站，右上角挂一枚紫色定位角标（54pt 图标不额外占位）
+    private var locationBadge: some View {
+        Image(systemName: "mappin.circle.fill")
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(AppTheme.violet)
+            .background(Color(.systemBackground), in: .circle)
+            .offset(x: 5, y: -5)
+    }
+
     /// 内置品牌格子（全分类通用）
     ///
     /// 🔴 网格里 **53+ 个图标全部关掉投影**（`showsShadow: false`）：
@@ -419,6 +442,11 @@ struct CourierGalleryView: View {
     private func brandCell(_ item: CourierBrand.Info) -> some View {
         VStack(spacing: 7) {
             CourierLogo(info: item, size: 54, showsShadow: false)
+                .overlay(alignment: .topTrailing) {
+                    if scope == .station, locationStore.location(for: item.name)?.enabled == true {
+                        locationBadge
+                    }
+                }
             Text(item.name.L)
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)
@@ -478,6 +506,11 @@ struct CourierGalleryView: View {
         } label: {
             VStack(spacing: 7) {
                 StationLogo(name: name, size: 54, showsShadow: false)
+                    .overlay(alignment: .topTrailing) {
+                        if locationStore.location(for: name)?.enabled == true {
+                            locationBadge
+                        }
+                    }
                 Text(name.L)
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)

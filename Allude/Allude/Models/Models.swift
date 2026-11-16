@@ -246,6 +246,9 @@ final class PickupStore: ObservableObject {
     /// 同标识的重复 `add` 会被系统覆盖，所以这里的排是幂等的。
     private func syncReminders(from oldValue: [PickupRecord]) {
         PickupNotifier.rescheduleDailyReminder()
+        // 重复提醒是全局一条「还有 N 件」快照：数据一变就要对齐
+        // （全部取完时由它自己撤销），否则会一直按旧件数催下去。
+        PickupNotifier.rescheduleRepeatReminder()
 
         let nowPending = Set(records.filter { !$0.isPickedUp }.map(\.id))
         let beforePending = Set(oldValue.filter { !$0.isPickedUp }.map(\.id))

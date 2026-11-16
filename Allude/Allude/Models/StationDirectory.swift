@@ -101,6 +101,8 @@ final class StationDirectory: ObservableObject {
             if let cached = iconCache.removeValue(forKey: from) { iconCache[to] = cached }
         }
         persist()
+        // 位置表以名字为 key，改名要一起搬（2026-11-16 到达提醒）
+        StationLocationStore.shared.rename(from: from, to: to)
         return true
     }
 
@@ -111,6 +113,8 @@ final class StationDirectory: ObservableObject {
         }
         iconCache.removeValue(forKey: named)
         persist()
+        // 别留一条指向已删除驿站的孤儿围栏
+        StationLocationStore.shared.remove(named: named)
     }
 
     // MARK: 自定义图标
