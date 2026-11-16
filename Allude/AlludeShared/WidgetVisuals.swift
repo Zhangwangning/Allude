@@ -236,7 +236,9 @@ struct WidgetPagedContent: View {
                 let rowHeight = max(rawRowHeight, 28)
                 VStack(spacing: 0) {
                     ForEach(rows) { record in
-                        WidgetPickupRow(record: record, options: options)
+                        WidgetPickupRow(record: record,
+                                        options: options,
+                                        extraCodes: snapshot.extraCodes[record.id.uuidString] ?? [])
                             .frame(height: rowHeight, alignment: .top)
                             .clipped()
                     }
@@ -384,6 +386,17 @@ struct WidgetSmallContent: View {
                             .lineLimit(1)
                             .truncationMode(.tail)
 
+                        // 🔴 2026-11-16「一张卡片多个取件码」：小尺寸按主人此前定稿
+                        //    仍只画一行一码（不塞第二个大字，行高 21pt 塞不下），
+                        //    但不能把同伴码**静默吃掉** —— 补一个「+N」角标提示。
+                        if let extra = snapshot.extraCodes[record.id.uuidString],
+                           !extra.isEmpty {
+                            Text("+\(extra.count)")
+                                .font(.system(size: 10, weight: .semibold))
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                        }
+
                         Spacer(minLength: 0)
                     }
                     .frame(height: 21)
@@ -403,6 +416,8 @@ struct WidgetPickupRow: View {
     let record: PickupRecord
     /// 二级信息行的显示项。`.full` = 平台｜地址（改版前版式）。
     var options: WidgetDisplayOptions = .full
+    /// 同一条短信里的其它取件码（2026-11-16）。空 = 一行一码，版式零变化。
+    var extraCodes: [String] = []
 
     var body: some View {
         HStack(spacing: 8) {
@@ -429,6 +444,16 @@ struct WidgetPickupRow: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                             .fixedSize(horizontal: true, vertical: false)
+                    }
+
+                    // 🔴 2026-11-16「一张卡片多个取件码」：中尺寸一行高度固定，
+                    //    多出来的码用 12pt 跟在主码后面，不另起一行（会把行高撑破）。
+                    //    仍走 `PickupCodeEmphasis.text`，颜色 / 透明度与 App 全端统一。
+                    ForEach(extraCodes, id: \.self) { code in
+                        PickupCodeEmphasis.text(code, tint: record.codeColor)
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .monospaced()
+                            .lineLimit(1)
                     }
 
                     // 🔴 类型标签全部去掉（2026-10-27 主人：「运单号、尾号、特殊码也不要了，
@@ -582,18 +607,33 @@ struct TogglePickupIntent: AppIntent {
         //    时间戳的对齐都把这次改动判成「旧数据」，桌面刚点的完成被抹回去。
         let stamp = Date()
         let picked = !all[index].isPickedUp
-        all[index].isPickedUp = picked
-        // 时间戳与状态成对改（口径同 App 侧 `PickupStore.setPicked`）：
-        // 桌面上点的这一下同样是真实的取件时刻，统计页要认它。
-        all[index].pickedUpAt = picked ? (all[index].pickedUpAt ?? stamp) : nil
-        all[index].updatedAt = stamp
+
+        // 🔴 2026-11-16「一张卡片多个取件码」：桌面上勾一行 = 勾这一整张卡。
+        //    App 里 `rowChrome` 也是整组动作，两边必须一致；否则小组件勾掉一个码，
+        //    App 里那张卡还挂着两个码，其中一个已经「已取」，状态看着自相矛盾。
+        var targets: [Int] = [index]
+        if CodeAppearanceSettings.groupsMultipleCodes,
+           let key = PickupRecordGrouping.key(all[index]) {
+            targets = all.indices.filter { PickupRecordGrouping.key(all[$0]) == key }
+        }
+        var changedIDs: [UUID] = []
+        for i in targets {
+            all[i].isPickedUp = picked
+            // 时间戳与状态成对改（口径同 App 侧 `PickupStore.setPicked`）：
+            // 桌面上点的这一下同样是真实的取件时刻，统计页要认它。
+            all[i].pickedUpAt = picked ? (all[i].pickedUpAt ?? stamp) : nil
+            all[i].updatedAt = stamp
+            changedIDs.append(all[i].id)
+        }
 
         // ① 先把完整状态落进共享文件 —— 小组件 UI 的即时反馈靠的就是这份数据
         PickupStorage.save(all)
-        // ② 再追加一条几十字节的增量标记作为护栏：主 App 后台若持有旧的内存副本，
-        //    下一次 `load()` 仍会把这条状态重放回来，不会被整份覆盖掉。
+        // ② 再追加几十字节的增量标记作为护栏：主 App 后台若持有旧的内存副本，
+        //    下一次 `load()` 仍会把这些状态重放回来，不会被整份覆盖掉。
         //    两步都是本机 atomic 文件写，无网络、无等待，点击响应不变慢。
-        WidgetToggleJournal.append(id: all[index].id, picked: picked, at: stamp)
+        for id in changedIDs {
+            WidgetToggleJournal.append(id: id, picked: picked, at: stamp)
+        }
         // 立即重画，否则要等系统下一个刷新周期才看到勾选结果
         WidgetCenter.shared.reloadAllTimelines()
         // 锁屏实时活动必须同步跟上：这个意图跑的进程**不一定是 App**

@@ -3,9 +3,12 @@
 // 用法：
 //   swiftc -O -o /tmp/multi-parse \
 //     "…/Allude/Models/PickupParser.swift" \
-//     "…/AlludeShared/CourierBrand.swift" \
 //     tools/multi-parse-check/main.swift
 //   /tmp/multi-parse
+//
+// 🔴 2026-11-16 修正用法：原先还要编 `CourierBrand.swift`，但 PickupParser
+//    从不引用它；而 CourierBrand 现在又依赖 BrandPalette / BrandDebug / UIImage，
+//    拉进独立编译只会报一堆找不到符号。去掉它，回归才能真正跑起来。
 //
 // 盯的是两件事：
 //   ① 一次粘贴多条短信时，**每一条都要被解析出来**（不能只出第一条）；
@@ -35,6 +38,24 @@ enum PickupKind: String {
         case .tail: "尾号"
         case .special: "特殊取件码"
         }
+    }
+}
+
+/// `PickupParser` 里会调用这个判断（把「3号货架」这种只描述货位的地址清空）。
+/// 真身在 `PickupRecord.addressIsShelfOnly`，但完整的 PickupRecord 依赖
+/// SwiftUI/WidgetKit 一大串，无法与 PickupParser 单独编译 —— 回归只需**同义**实现。
+/// ⚠️ 与 `tools/parser-regression/main.swift` 保持同一份；改真身必须两处同步。
+/// 2026-11-16 补：此前缺这个桩，脚本独立编译直接报
+/// `cannot find 'PickupRecord' in scope`，等于这条回归一直没跑起来。
+enum PickupRecord {
+    static func addressIsShelfOnly(_ address: String, shelf: String?) -> Bool {
+        guard let shelf, !shelf.isEmpty else { return false }
+        let compact = address.replacingOccurrences(of: " ", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !compact.isEmpty else { return false }
+        let forms = ["\(shelf)号货架", "货架\(shelf)", "货架号\(shelf)",
+                     "货架号：\(shelf)", "货架号:\(shelf)"]
+        return forms.contains(compact)
     }
 }
 

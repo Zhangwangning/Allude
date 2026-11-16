@@ -62,14 +62,16 @@ final class HistoryModel: ObservableObject {
     // 已取页此前只有「选择 → 批量删除」一条路，长按菜单里没有删除项，
     // 用户想删一条只能先进编辑模式 —— 反馈为「已取页面无法进行删除」。
     // 现在长按菜单直接给「删除记录」，并给 4 秒撤销条（与待取页同口径）。
-    @Published var deleteUndoRecord: PickupRecord?
+    /// 🔴 2026-11-16：改成数组 —— 一张卡多个取件码时，删除与撤销都要按**整组**走。
+    @Published var deleteUndoRecords: [PickupRecord] = []
     @Published var showDeleteUndo = false
     private var deleteUndoTask: Task<Void, Never>?
 
-    /// 删除单条并给出撤销机会。
-    func delete(_ record: PickupRecord, in store: PickupStore) {
-        withAnimation(.snappy) { store.delete(record) }
-        deleteUndoRecord = record
+    /// 删除并给出撤销机会（单条 / 整组通用）。
+    func delete(_ records: [PickupRecord], in store: PickupStore) {
+        guard !records.isEmpty else { return }
+        withAnimation(.snappy) { store.deleteMany(records) }
+        deleteUndoRecords = records
         withAnimation(.snappy) { showDeleteUndo = true }
         deleteUndoTask?.cancel()
         deleteUndoTask = Task { @MainActor in
@@ -79,13 +81,18 @@ final class HistoryModel: ObservableObject {
         }
     }
 
-    /// 撤销刚才的单条删除：必须 `insert` 回整表，`restore` 找不到已摘掉的记录。
+    /// 保留单条调用点（截图脚手架 / 单码卡），内部转到批量版。
+    func delete(_ record: PickupRecord, in store: PickupStore) {
+        delete([record], in: store)
+    }
+
+    /// 撤销刚才的删除：必须 `insert` 回整表，`restore` 找不到已摘掉的记录。
     func undoDelete(in store: PickupStore) {
         deleteUndoTask?.cancel()
-        if let record = deleteUndoRecord {
-            withAnimation(.snappy) { store.insert([record]) }
+        if !deleteUndoRecords.isEmpty {
+            withAnimation(.snappy) { store.insert(deleteUndoRecords) }
         }
-        deleteUndoRecord = nil
+        deleteUndoRecords = []
         withAnimation(.snappy) { showDeleteUndo = false }
     }
 
@@ -93,6 +100,19 @@ final class HistoryModel: ObservableObject {
         UIPasteboard.general.string = record.code
         // 与待取页同口径：复制后必须给回执（2026-10-25 主人要求）
         withAnimation(.snappy) { copiedCode = record.code }
+        copyTask?.cancel()
+        copyTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_600_000_000)
+            if !Task.isCancelled { withAnimation(.snappy) { copiedCode = nil } }
+        }
+    }
+
+    /// 一张卡多个码：复制时按行拼全部码（与待取页 `HistoryModel` 同口径）。
+    func copy(_ records: [PickupRecord]) {
+        guard let first = records.first else { return }
+        guard records.count > 1 else { copy(first); return }
+        UIPasteboard.general.string = records.map(\.code).joined(separator: "\n")
+        withAnimation(.snappy) { copiedCode = "\(records.count) 个取件码" }
         copyTask?.cancel()
         copyTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_600_000_000)
@@ -111,6 +131,16 @@ final class HistoryModel: ObservableObject {
             selection.remove(record.id)
         } else {
             selection.insert(record.id)
+        }
+    }
+
+    /// 一张卡多个码：整组一起选 / 一起取消，避免半张卡被选中（2026-11-16）。
+    func toggleSelection(_ records: [PickupRecord]) {
+        let ids = Set(records.map(\.id))
+        if ids.isSubset(of: selection) {
+            selection.subtract(ids)
+        } else {
+            selection.formUnion(ids)
         }
     }
 
@@ -186,6 +216,16 @@ struct PickedUpView: View {
         // 搜索态本来就把命中结果全铺开了，再说「还有 N 条」是自相矛盾
         guard model.query.trimmingCharacters(in: .whitespaces).isEmpty else { return 0 }
         return max(0, searchedList.count - store.visibleLimit)
+    }
+
+    /// 「一张卡片多个取件码」开启时，需要真正画出来的记录（每组只留代表）。
+    /// 与待取页同一套 `PickupRecordGrouping`，两页口径必须完全一致。
+    private var visibleRecordIDs: Set<UUID> {
+        PickupRecordGrouping.representativeIDs(visibleList)
+    }
+
+    private func rows(_ items: [PickupRecord]) -> [PickupRecord] {
+        items.filter { visibleRecordIDs.contains($0.id) }
     }
 
     private var groups: [(group: DayGroup, items: [PickupRecord])] {
@@ -507,7 +547,7 @@ struct PickedUpView: View {
                                     .listRowBackground(Color(.systemGroupedBackground))
                                     .listRowSeparator(.hidden)
 
-                                ForEach(bucket.items) { record in
+                                ForEach(rows(bucket.items)) { record in
                                     row(for: record)
                                 }
                             }
@@ -524,7 +564,7 @@ struct PickedUpView: View {
                                     .listRowBackground(Color(.systemGroupedBackground))
                                     .listRowSeparator(.hidden)
 
-                                ForEach(bucket.items) { record in
+                                ForEach(rows(bucket.items)) { record in
                                     row(for: record)
                                 }
                             }
@@ -539,7 +579,7 @@ struct PickedUpView: View {
                                     .listRowBackground(Color(.systemGroupedBackground))
                                     .listRowSeparator(.hidden)
 
-                                ForEach(section.items) { record in
+                                ForEach(rows(section.items)) { record in
                                     row(for: record)
                                 }
                             }
@@ -590,7 +630,11 @@ struct PickedUpView: View {
             // 删除撤销条（2026-11-11）：与待取页同款，4 秒内可放回
             .overlay(alignment: .bottom) {
                 if model.showDeleteUndo {
-                    UndoToast(message: model.deleteUndoRecord.map { "已删除 \($0.company) \($0.code)" } ?? "已删除",
+                    UndoToast(message: model.deleteUndoRecords.first.map { first in
+                        model.deleteUndoRecords.count > 1
+                            ? "已删除 \(first.company) 等 \(model.deleteUndoRecords.count) 件"
+                            : "已删除 \(first.company) \(first.code)"
+                    } ?? "已删除",
                               actionTitle: "撤销") {
                         model.undoDelete(in: store)
                     }
@@ -785,6 +829,19 @@ struct PickedUpView: View {
 
     @ViewBuilder
     private func row(for record: PickupRecord) -> some View {
+        // 🔴 2026-11-16「一张卡片多个取件码」：整组同源记录共用一张卡。
+        let group = PickupRecordGrouping.siblings(of: record, in: visibleList)
+        let extraCodes = PickupRecordGrouping.extraCodes(for: record, in: visibleList)
+        let restoreGroup = {
+            withAnimation(.snappy) {
+                if group.count > 1 {
+                    store.restore(group)       // 批量恢复，只写盘一次
+                } else {
+                    store.toggle(record)
+                }
+            }
+        }
+
         // ⚠️ 这里只能有**一份** `HistoryRow`（包在 `SwipeActionRow` 的尾闭包里）。
         // 2026-10-25 改造时漏删了原表达式，`@ViewBuilder` 把两份并列返回，
         // 结果是每行渲染两张一样的卡片（实测：8 条记录显示成 16 张卡）。
@@ -798,13 +855,11 @@ struct PickedUpView: View {
             openRowID: $openSwipeRow,
             leading: model.isEditing ? [] : [
                 SwipeActionItem(title: "复制", symbol: "doc.on.doc",
-                                tint: AppTheme.accent) { model.copy(record) },
+                                tint: AppTheme.accent) { model.copy(group) },
             ],
             trailing: model.isEditing ? [] : [
                 SwipeActionItem(title: "恢复", symbol: "arrow.uturn.backward",
-                                tint: AppTheme.pendingTint) {
-                    withAnimation(.snappy) { store.toggle(record) }
-                },
+                                tint: AppTheme.pendingTint, action: restoreGroup),
             ],
             enabled: !model.isEditing,
             autoPerformSide: .leading,
@@ -814,14 +869,13 @@ struct PickedUpView: View {
                 record: record,
                 showsSelection: model.isEditing,
                 isSelected: model.selection.contains(record.id),
-                onToggle: {
-                    withAnimation(.snappy) { store.toggle(record) }
-                }
+                onToggle: restoreGroup,
+                extraCodes: extraCodes
             )
             .contentShape(.rect)
             .onTapGesture {
                 if model.isEditing {
-                    withAnimation(.snappy) { model.toggleSelection(record) }
+                    withAnimation(.snappy) { model.toggleSelection(group) }
                 } else {
                     // 宽屏只切右栏（不 push）、窄屏照旧推栈 —— 见 openDetail
                     openDetail(record)
@@ -841,26 +895,36 @@ struct PickedUpView: View {
     // MARK: 长按菜单
 
     /// 已取页只有三种操作：复制 / 分享 / 恢复为待取。
-    private func menuItems(for record: PickupRecord) -> [CardMenuItem] {
-        [
+    private func menuItems(for record: PickupRecord,
+                           group: [PickupRecord] = []) -> [CardMenuItem] {
+        let related = group.isEmpty ? [record] : group
+        return [
             CardMenuItem(title: "复制取件码",
                          symbol: "doc.on.doc",
-                         action: { model.copy(record) }),
+                         action: { model.copy(related) }),
             // 分享由页面级 `.sheet` 承载 —— 菜单项不能自己弹面板（见 CardMenu.swift）
             CardMenuItem(title: "分享卡片",
                          symbol: "square.and.arrow.up",
-                         action: { SharePresenter.shared.present([record]) }),
+                         action: { SharePresenter.shared.present(related) }),
             CardMenuItem(title: "恢复为待取",
                          symbol: "arrow.uturn.backward",
                          tint: AppTheme.pendingTint,
-                         action: { withAnimation(.snappy) { store.toggle(record) } }),
+                         action: {
+                             withAnimation(.snappy) {
+                                 if related.count > 1 {
+                                     store.restore(related)
+                                 } else {
+                                     store.toggle(record)
+                                 }
+                             }
+                         }),
             // 单条删除（2026-11-11 内测反馈补）：此前已取页只有批量删除，长按没有删除项。
             CardMenuItem(title: "删除记录",
                          symbol: "trash",
                          tint: .red,
                          role: .destructive,
                          showsSeparatorBefore: true,
-                         action: { model.delete(record, in: store) }),
+                         action: { model.delete(related, in: store) }),
             // 编辑收进详情页（2026-10-14 主人定稿）：本页菜单不再放「编辑」。
         ]
     }
@@ -870,14 +934,18 @@ struct PickedUpView: View {
     private var cardMenuLayer: some View {
         if let id = cardMenu.openID,
            let record = store.records.first(where: { $0.id == id }) {
+            let group = PickupRecordGrouping.siblings(of: record, in: store.records)
             CardMenuLayer(anchor: cardMenu.frame(of: id),
-                          items: menuItems(for: record),
+                          items: menuItems(for: record, group: group),
                           onDismiss: { cardMenu.close() }) {
                 // 卡片替身：只负责「被看见」，所有回调留空。
+                // 多码时也要画成多码，否则浮层与底下那张卡高度对不上（2026-11-16）。
                 HistoryRow(record: record,
                            showsSelection: false,
                            isSelected: false,
-                           onToggle: {})
+                           onToggle: {},
+                           extraCodes: PickupRecordGrouping
+                               .extraCodes(for: record, in: store.records))
             }
         }
     }
@@ -1168,6 +1236,8 @@ struct HistoryRow: View {
     var showsSelection: Bool = false
     var isSelected: Bool = false
     let onToggle: () -> Void
+    /// 同一条短信里的其它取件码（2026-11-16，与待取页 `PickupCard` 同规格）。
+    var extraCodes: [String] = []
 
     /// 卡片强调色 —— 与待取页同一口径（2026-10-29）：
     /// **卡面、图标、取件码三者同源**，都取「快递公司 > 驿站 > 平台」。
@@ -1178,6 +1248,11 @@ struct HistoryRow: View {
 
     /// 与待取页 PickupCard v2 同一口径（26pt，图标下沉到取件码行）
     private static let iconSize: CGFloat = 26
+
+    /// 一张卡上要画的码（主码永远在第一行；多码时与待取卡同为 24pt）。
+    private var allCodes: [String] {
+        [record.code] + extraCodes.filter { $0 != record.code }
+    }
 
     /// 驿站名称库（内置 + 用户自定义），订阅以便用户在设置页增删后卡片即时刷新
     @ObservedObject private var stationDirectory = StationDirectory.shared
@@ -1281,13 +1356,22 @@ struct HistoryRow: View {
                         HStack(alignment: .center, spacing: 8) {
                             logoBlock
 
-                            record.emphasizedCodeText(isDone: record.isPickedUp, tint: iconBrand)
-                                .font(.system(size: 30, weight: .bold, design: .rounded))
-                                .monospaced()
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.5)
-                                // 已取 → 划线（与详情页已取态同口径）
-                                .strikethrough(record.isPickedUp, color: .secondary)
+                            // 与待取页 PickupCard 同一套多码版式：竖排、24pt、图标只画一次。
+                            VStack(alignment: .leading,
+                                   spacing: allCodes.count > 1 ? 1 : 0) {
+                                ForEach(allCodes, id: \.self) { code in
+                                    PickupCodeEmphasis.text(code,
+                                                            isDone: record.isPickedUp,
+                                                            tint: iconBrand)
+                                        .font(.system(size: allCodes.count > 1 ? 24 : 30,
+                                                      weight: .bold, design: .rounded))
+                                        .monospaced()
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.5)
+                                        // 已取 → 划线（与详情页已取态同口径）
+                                        .strikethrough(record.isPickedUp, color: .secondary)
+                                }
+                            }
                         }
 
                         Spacer(minLength: 6)

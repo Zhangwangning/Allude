@@ -5,11 +5,16 @@ import WidgetKit
 // 桌面小组件（我的 › 设置 › 二级页）
 //
 // 回答「我的小组件为什么长这样 / 能不能少显示点东西」：
-//   1. **效果预览**（置顶）：与桌面**同一份渲染代码**，喂示例数据，
-//      并**跟着下面的开关实时变**；
-//   2. **显示内容**：五个开关 —— 完整信息 / 取件地址 / 快递公司 / 驿站 / 快递柜·货架。
-//      取件码**不参与配置**；「完整信息」= 其余四项全开，与它们天然互斥。
+//   1. **显示内容**：六个开关 —— 完整信息 / 取件地址 / 快递公司 / 驿站 / 快递柜·货架 /
+//      显示占位符。取件码**不参与配置**；「完整信息」= 其余四项全开，与它们天然互斥。
+//   2. **效果预览**：与桌面**同一份渲染代码**，喂示例数据，
+//      并**跟着上面的开关实时变**；
 //   3. **小组件效果**：各尺寸铺开，同样用示例数据。
+//
+// 🔴 **2026-11-16 形态变更**（主人：「将显示占位符与上面的 5 个合并到一起……
+//    显示内容的开关和上面的效果预览互相换一下位置」）：
+//    顺序改成「先开关、后预览」，「空位」分组取消，占位符成为显示内容卡的第 6 行。
+//    预览仍与桌面共用一份渲染代码，实时跟随所有 6 个开关。
 //
 // 🔴 **2026-10-27 形态变更**（主人：「下面的显示内容的开关勾选直接做成开关……
 //    完整信息与下面的互斥，事实上与之前一样，但是形式变了」）：
@@ -103,11 +108,11 @@ struct WidgetSettingsView: View {
     @ViewBuilder
     private var sections: some View {
         Group {
-                // 🔴 顺序 = 先看效果、再调设置：
-                //    进这一页的人首先想知道"我的小组件长什么样"。
-            previewSection
+            // 🔴 2026-11-16 主人：把「显示内容」开关与「效果预览」互换位置 ——
+            //    先调设置、再看效果；同时「显示占位符」并入上面那张卡，
+            //    不再单列「空位」分组。
             displaySection
-            placeholderSection
+            previewSection
             gallerySection
         }
     }
@@ -147,7 +152,7 @@ struct WidgetSettingsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    // MARK: 显示内容（五个开关）
+    // MARK: 显示内容（六个开关，含占位符）
 
     private var displaySection: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -161,54 +166,17 @@ struct WidgetSettingsView: View {
             }
             .settingsCard()
 
-            // 说明放卡外（iOS 二级设置页口径：标题在卡内、说明在卡外）
-            Text("取件码永远显示。四项可同时开；「完整信息」等价于四项全开。")
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
-                .lineSpacing(2)
-                .padding(.horizontal, 16)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    // MARK: 空位（占位骨架行）
-
-    private var placeholderSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "空位")
-
-            HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(AppTheme.sky.opacity(0.14))
-                        .frame(width: 38, height: 38)
-
-                    Image(systemName: "rectangle.dashed")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(AppTheme.sky)
-                }
-
-                Text("显示占位符")
-                    .font(.system(size: 17))
-
-                Spacer(minLength: 8)
-
-                Toggle("", isOn: $showsPlaceholders)
-                    .labelsHidden()
-                    .onChange(of: showsPlaceholders) { _, _ in
-                        WidgetCenter.shared.reloadAllTimelines()
-                    }
+            // 说明放卡外（iOS 二级设置页口径：标题在卡内、说明在卡外）。
+            // 占位符并进同一张卡后，两段说明一起留在这里，不再单开分组。
+            VStack(alignment: .leading, spacing: 4) {
+                Text("取件码永远显示。四项可同时开；「完整信息」等价于四项全开。")
+                Text("关掉「显示占位符」后，一页里没填满的位置留白，不再画灰色骨架——避免被误认为还有快递没显示出来。")
             }
+            .font(.system(size: 13))
+            .foregroundStyle(.secondary)
+            .lineSpacing(2)
             .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .settingsCard()
-
-            Text("关掉后，一页里没填满的位置留白，不再画灰色骨架——避免被误认为还有快递没显示出来。")
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
-                .lineSpacing(2)
-                .padding(.horizontal, 16)
-                .fixedSize(horizontal: false, vertical: true)
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -253,6 +221,16 @@ struct WidgetSettingsView: View {
             return Binding(get: { effectiveOptions.isComplete },
                            set: { model.setComplete($0) })
         }
+        if field == .placeholders {
+            // 占位符不在 WidgetDisplayOptions 里，走 App Group 的 @AppStorage；
+            // 改完同样要重画时间线（原先在单独分组的 onChange 里做）。
+            return Binding(
+                get: { self.showsPlaceholders },
+                set: { newValue in
+                    self.showsPlaceholders = newValue
+                    WidgetCenter.shared.reloadAllTimelines()
+                })
+        }
         guard let keyPath = field.keyPath else { return .constant(false) }
         return Binding(get: { effectiveOptions[keyPath: keyPath] },
                        set: { model.set(keyPath, to: $0) })
@@ -277,9 +255,10 @@ struct WidgetSettingsView: View {
     }
 }
 
-// MARK: - 五个开关的字段定义
+// MARK: - 六个开关的字段定义
 
-/// 「显示内容」里的五个开关。顺序即页面顺序（主人 2026-10-27 给的顺序）。
+/// 「显示内容」里的六个开关。顺序即页面顺序
+/// （前五个是主人 2026-10-27 给的顺序，第六个「显示占位符」2026-11-16 并入）。
 ///
 /// 图标不是随便挑的 SF Symbol：这一页的选项差别就在"显示什么"，
 /// 图标要能一眼对上那件事（地址=定位针、公司=箱子、驿站=店铺、柜=格口网格）。
@@ -290,41 +269,47 @@ private enum WidgetField: CaseIterable {
     case company
     case station
     case locker
+    /// 空槽骨架行（2026-11-16 主人：从「空位」分组并进这一张卡）
+    case placeholders
 
     var title: String {
         switch self {
-        case .complete: "完整信息"
-        case .address:  "显示取件地址"
-        case .company:  "显示快递公司"
-        case .station:  "显示驿站"
-        case .locker:   "显示快递柜/货架"
+        case .complete:     "完整信息"
+        case .address:      "显示取件地址"
+        case .company:      "显示快递公司"
+        case .station:      "显示驿站"
+        case .locker:       "显示快递柜/货架"
+        case .placeholders: "显示占位符"
         }
     }
 
     var symbol: String {
         switch self {
-        case .complete: "list.bullet.rectangle"
-        case .address:  "mappin.and.ellipse"
-        case .company:  "shippingbox"
-        case .station:  "storefront"
-        case .locker:   "square.grid.2x2"
+        case .complete:     "list.bullet.rectangle"
+        case .address:      "mappin.and.ellipse"
+        case .company:      "shippingbox"
+        case .station:      "storefront"
+        case .locker:       "square.grid.2x2"
+        case .placeholders: "rectangle.dashed"
         }
     }
 
     var tint: Color {
         switch self {
-        case .complete: AppTheme.accent
-        case .address:  AppTheme.sky
-        case .company:  AppTheme.indigo
-        case .station:  AppTheme.violet
-        case .locker:   AppTheme.doneTint
+        case .complete:     AppTheme.accent
+        case .address:      AppTheme.sky
+        case .company:      AppTheme.indigo
+        case .station:      AppTheme.violet
+        case .locker:       AppTheme.doneTint
+        case .placeholders: AppTheme.sky
         }
     }
 
-    /// 对应 `WidgetDisplayOptions` 的字段；`.complete` 由 `isComplete` 聚合而来，没有单一字段。
+    /// 对应 `WidgetDisplayOptions` 的字段；`.complete` 由 `isComplete` 聚合而来，
+    /// `.placeholders` 走 `@AppStorage`，两者都没有单一 keyPath。
     var keyPath: WritableKeyPath<WidgetDisplayOptions, Bool>? {
         switch self {
-        case .complete: nil
+        case .complete, .placeholders: nil
         case .address:  \.showsAddress
         case .company:  \.showsCompany
         case .station:  \.showsStation

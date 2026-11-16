@@ -283,7 +283,9 @@ struct ActivityLockScreenCard: View {
             HStack(alignment: .center, spacing: 10) {
                 CourierLogo(company: item.displayName, size: 28, showsShadow: false, usesStaticAsset: true)
 
-                PickupCodeEmphasis.text(item.code, tint: islandInk(item.tint), headOpacity: 0.78)
+                // 🔴 2026-11-16：不再单独传 0.78。取件码样式改为全端统一读
+                //    `CodeAppearanceStyle.current`，岛内只保留 `islandInk` 作为品牌色回落。
+                PickupCodeEmphasis.text(item.code, tint: islandInk(item.tint))
                     .font(.system(size: 31, weight: .bold, design: .rounded))
                     .monospaced()
                     .lineLimit(1)
@@ -378,8 +380,7 @@ struct ActivityLockScreenCard: View {
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 6) {
                     PickupCodeEmphasis.text(item.code,
-                                            tint: islandInk(item.tint),
-                                            headOpacity: 0.78)
+                                            tint: islandInk(item.tint))
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                         .monospaced()
                         .lineLimit(1)

@@ -112,6 +112,23 @@ final class PickupListModel: ObservableObject {
         }
     }
 
+    /// 一张卡片挂了多个取件码（2026-11-16）：**整组一起选 / 一起取消**。
+    /// 逐条 toggle 会让同一张卡里一半选中一半没选，分享出去少一个码，非常难查。
+    func toggleSelection(_ records: [PickupRecord]) {
+        let ids = Set(records.map(\.id))
+        if ids.isSubset(of: selectedIDs) {
+            selectedIDs.subtract(ids)
+        } else {
+            selectedIDs.formUnion(ids)
+        }
+    }
+
+    /// 从长按菜单进多选时，把整张卡上的码都预选上。
+    func enterSelection(startingWith records: [PickupRecord]) {
+        selectionMode = true
+        selectedIDs = Set(records.map(\.id))
+    }
+
     /// 全选当前可见（排序 / 检索之后）的记录。
     func selectAll(_ records: [PickupRecord]) {
         selectedIDs.formUnion(records.map(\.id))
@@ -131,6 +148,19 @@ final class PickupListModel: ObservableObject {
     func copy(_ record: PickupRecord) {
         UIPasteboard.general.string = record.code
         withAnimation(.snappy) { copiedCode = record.code }
+        copyTask?.cancel()
+        copyTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_600_000_000)
+            if !Task.isCancelled { withAnimation(.snappy) { copiedCode = nil } }
+        }
+    }
+
+    /// 一张卡多个码：复制时按行拼全部码，提示语改成「已复制 N 个取件码」。
+    func copy(_ records: [PickupRecord]) {
+        guard let first = records.first else { return }
+        guard records.count > 1 else { copy(first); return }
+        UIPasteboard.general.string = records.map(\.code).joined(separator: "\n")
+        withAnimation(.snappy) { copiedCode = "\(records.count) 个取件码" }
         copyTask?.cancel()
         copyTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_600_000_000)
@@ -205,6 +235,13 @@ final class PickupListModel: ObservableObject {
     func delete(_ record: PickupRecord, in store: PickupStore) {
         withAnimation(.snappy) { store.delete(record) }
         armUndo([record], action: .deleted)
+    }
+
+    /// 一张卡多个码：删除 / 撤销都按整组走，不留半张卡。
+    func delete(_ records: [PickupRecord], in store: PickupStore) {
+        guard !records.isEmpty else { return }
+        withAnimation(.snappy) { store.deleteMany(records) }
+        armUndo(records, action: .deleted)
     }
 
     /// 弹出撤销条并在 4 秒后收起。三个动作共用同一套时序与计时器，
@@ -338,6 +375,18 @@ struct PickupListView: View {
                     : stationName(for: $0) < stationName(for: $1)
             }
         }
+    }
+
+    /// 「一张卡片多个取件码」开启时，需要真正画出来的记录（每组只留代表）。
+    /// 基于**全量 displayed** 计算，再拿去过滤各 Section，跨分组也不会重复画同一组。
+    /// 关闭时返回全部 ID —— 与升级前一码一卡完全一致。
+    private var visibleRecordIDs: Set<UUID> {
+        PickupRecordGrouping.representativeIDs(displayed)
+    }
+
+    /// 过滤后的分组内记录（组头计数仍用未过滤的 `items.count`，按件数算才对）。
+    private func rows(_ items: [PickupRecord]) -> [PickupRecord] {
+        items.filter { visibleRecordIDs.contains($0.id) }
     }
 
     private var groups: [(group: DayGroup, items: [PickupRecord])] {
@@ -854,7 +903,7 @@ struct PickupListView: View {
                         .listRowBackground(Color(.systemGroupedBackground))
                         .listRowSeparator(.hidden)
 
-                    ForEach(bucket.items) { record in
+                    ForEach(rows(bucket.items)) { record in
                         row(for: record)
                     }
                 }
@@ -872,7 +921,7 @@ struct PickupListView: View {
                         .listRowBackground(Color(.systemGroupedBackground))
                         .listRowSeparator(.hidden)
 
-                    ForEach(bucket.items) { record in
+                    ForEach(rows(bucket.items)) { record in
                         row(for: record)
                     }
                 }
@@ -890,7 +939,7 @@ struct PickupListView: View {
                         .listRowBackground(Color(.systemGroupedBackground))
                         .listRowSeparator(.hidden)
 
-                    ForEach(section.items) { record in
+                    ForEach(rows(section.items)) { record in
                         row(for: record)
                     }
                 }
@@ -1117,14 +1166,29 @@ struct PickupListView: View {
     /// 首页只有待取件一种行：`PickupCard`（图标下沉码行 + 右端勾选，标记已取走右滑 / 长按）。
     @ViewBuilder
     private func row(for record: PickupRecord) -> some View {
-        let isDone = record.isPickedUp || model.completing.contains(record.id)
+        // 🔴 2026-11-16「一张卡片多个取件码」：代表记录 + 同组兄弟记录。
+        //    卡片只画一张，但勾选 / 复制 / 分享 / 删除 / 多选全部按整组走，
+        //    免得同一张卡上两个码只处理了一个，另一个变成幽灵数据。
+        let group = PickupRecordGrouping.siblings(of: record, in: displayed)
+        let isDone = record.isPickedUp
+            || group.contains { model.completing.contains($0.id) }
 
-        let card = rowChrome(record, content: PickupCard(record: record,
-                                                         isDone: isDone,
-                                                         selectionState: model.selectionMode
-                                                             ? model.selectedIDs.contains(record.id)
-                                                             : nil,
-                                                         onToggle: { model.complete(record, in: store) }))
+        let card = rowChrome(record, group: group,
+                             content: PickupCard(record: record,
+                                                 isDone: isDone,
+                                                 selectionState: model.selectionMode
+                                                     ? model.selectedIDs.contains(record.id)
+                                                     : nil,
+                                                 onToggle: {
+                                                     if group.count > 1 {
+                                                         model.complete(group, in: store)
+                                                     } else {
+                                                         // 单码仍走带勾选动效的原路径
+                                                         model.complete(record, in: store)
+                                                     }
+                                                 },
+                                                 extraCodes: PickupRecordGrouping
+                                                     .extraCodes(for: record, in: displayed)))
         // 分栏时右栏显示的是哪一条，左列表要看得出来（系统不会给自绘卡片画选中态）。
         if PadLayout.usesSplit, splitSelection == record.id {
             card.overlay {
@@ -1146,12 +1210,15 @@ struct PickupListView: View {
     /// 分享流程里不该有删除这类破坏性操作混进来。链尾三件套（背景 / 分隔符 /
     /// insets）两种模式共用一份，保证写法始终在链尾。
     private func rowChrome<Content: View>(_ record: PickupRecord,
+                                          group: [PickupRecord] = [],
                                           content: Content) -> some View {
+        // 默认空数组 = 一码一卡（截图脚手架 / 卡片替身等调用点不用改）。
+        let related = group.isEmpty ? [record] : group
         let base = content
             .contentShape(.rect)
             .onTapGesture {
                 if model.selectionMode {
-                    model.toggleSelection(record.id)
+                    model.toggleSelection(related)
                 } else {
                     // 宽屏只切右栏（不 push）、窄屏照旧推栈 —— 见 openDetail
                     openDetail(record)
@@ -1177,12 +1244,16 @@ struct PickupListView: View {
                     openRowID: $openSwipeRow,
                     leading: [
                         SwipeActionItem(title: "复制", symbol: "doc.on.doc",
-                                        tint: AppTheme.accent) { model.copy(record) },
+                                        tint: AppTheme.accent) { model.copy(related) },
                     ],
                     trailing: [
                         SwipeActionItem(title: "已取", symbol: "checkmark.circle.fill",
                                         tint: AppTheme.doneTint) {
-                            model.complete(record, in: store)
+                            if related.count > 1 {
+                                model.complete(related, in: store)
+                            } else {
+                                model.complete(record, in: store)
+                            }
                         },
                     ],
                     autoPerformSide: .leading,
@@ -1230,23 +1301,32 @@ struct PickupListView: View {
     // MARK: 长按菜单
 
     /// 菜单内容与顺序对齐原系统菜单：复制 / 分享 / 完成 / 详情 /（分隔）删除。
-    private func menuItems(for record: PickupRecord) -> [CardMenuItem] {
-        [
+    private func menuItems(for record: PickupRecord,
+                           group: [PickupRecord] = []) -> [CardMenuItem] {
+        // 一张卡多个码时，菜单里的每个动作都作用于**整张卡**（见 rowChrome 注释）。
+        let related = group.isEmpty ? [record] : group
+        return [
             CardMenuItem(title: "复制取件码",
                          symbol: "doc.on.doc",
-                         action: { model.copy(record) }),
+                         action: { model.copy(related) }),
             // 分享由页面级 `.sheet` 承载（见 body 里的 shareRecords）——
             // 🔴 菜单项**不能**自己弹面板：面板的呈现者会随浮层一起被销毁。
             CardMenuItem(title: "分享卡片",
                          symbol: "square.and.arrow.up",
-                         action: { SharePresenter.shared.present([record]) }),
-            // 多选分享：进入多选模式并预选被长按的这一条（2026-09-23）
+                         action: { SharePresenter.shared.present(related) }),
+            // 多选分享：进入多选模式并预选被长按的这一整张卡（2026-09-23）
             CardMenuItem(title: "多选分享",
                          symbol: "checkmark.circle",
-                         action: { model.enterSelection(startingWith: record.id) }),
+                         action: { model.enterSelection(startingWith: related) }),
             CardMenuItem(title: "标记为已取",
                          symbol: "checkmark.circle",
-                         action: { model.complete(record, in: store) }),
+                         action: {
+                             if related.count > 1 {
+                                 model.complete(related, in: store)
+                             } else {
+                                 model.complete(record, in: store)
+                             }
+                         }),
             // 编辑收进了详情页（2026-10-14 主人定稿：不弹二级编辑页），
             // 菜单不再放「编辑」—— 「查看详情」进详情页后工具栏就是「编辑」。
             CardMenuItem(title: "查看详情",
@@ -1257,7 +1337,7 @@ struct PickupListView: View {
                          tint: Color(uiColor: .systemRed),
                          role: .destructive,
                          showsSeparatorBefore: true,
-                         action: { model.delete(record, in: store) }),
+                         action: { model.delete(related, in: store) }),
         ]
     }
 
@@ -1266,11 +1346,16 @@ struct PickupListView: View {
     private var cardMenuLayer: some View {
         if let id = cardMenu.openID,
            let record = store.records.first(where: { $0.id == id }) {
+            let group = PickupRecordGrouping.siblings(of: record, in: store.records)
             CardMenuLayer(anchor: cardMenu.frame(of: id),
-                          items: menuItems(for: record),
+                          items: menuItems(for: record, group: group),
                           onDismiss: { cardMenu.close() }) {
                 // 卡片替身：只负责「被看见」，所有回调留空。
-                PickupCard(record: record, isDone: record.isPickedUp)
+                // 多码时也要画成多码，否则浮层和底下那张卡高度对不上（2026-11-16）。
+                PickupCard(record: record,
+                           isDone: record.isPickedUp,
+                           extraCodes: PickupRecordGrouping
+                               .extraCodes(for: record, in: store.records))
             }
         }
     }
@@ -1450,6 +1535,10 @@ struct PickupCard: View {
     var selectionState: Bool? = nil
     /// 码行右端勾选的回调：点按切换「已取 / 待取」（2026-10-20 主人要求勾选回归卡片）
     var onToggle: () -> Void = {}
+    /// 同一条短信里的其它取件码（2026-11-16「一张卡片多个取件码」）。
+    /// 空数组 = 一码一卡，卡片与升级前**像素级一致**；非空时码行竖排展开，
+    /// 字号从 30 收到 24，图标与右端勾选仍各只有一份。
+    var extraCodes: [String] = []
 
     /// 卡片强调色（卡面底色 / 描边 / 勾选钮 / 货架胶囊）。
     ///
@@ -1465,6 +1554,11 @@ struct PickupCard: View {
     /// 品牌图标尺寸 —— 缩小到与取件码视觉同高（码为 30pt 字号，数字实际视觉高约 22pt，
     /// 图标取 26pt 兼顾辨识度），并下沉到取件码行、与码底部持平。
     private static let iconSize: CGFloat = 26
+
+    /// 一张卡上要画的码（主码永远在第一行）。
+    private var allCodes: [String] {
+        [record.code] + extraCodes.filter { $0 != record.code }
+    }
 
     /// 驿站名称库（内置 + 用户自定义），订阅以便用户在设置页增删后卡片即时刷新
     @ObservedObject private var stationDirectory = StationDirectory.shared
@@ -1576,11 +1670,21 @@ struct PickupCard: View {
                         HStack(alignment: .center, spacing: 8) {
                             logoBlock
 
-                            record.emphasizedCodeText(isDone: isDone, tint: iconBrand)
-                                .font(.system(size: 30, weight: .bold, design: .rounded))
-                                .monospaced()
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.5)
+                            // 🔴 2026-11-16「一张卡片多个取件码」：多码时竖排，
+                            //    字号统一收到 24pt，避免两个 30pt 大字把卡片撑成两层楼。
+                            //    单码时仍是原来那一条 30pt，视觉零变化。
+                            VStack(alignment: .leading,
+                                   spacing: allCodes.count > 1 ? 1 : 0) {
+                                ForEach(allCodes, id: \.self) { code in
+                                    PickupCodeEmphasis.text(code, isDone: isDone,
+                                                            tint: iconBrand)
+                                        .font(.system(size: allCodes.count > 1 ? 24 : 30,
+                                                      weight: .bold, design: .rounded))
+                                        .monospaced()
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.5)
+                                }
+                            }
                         }
 
                         Spacer(minLength: 6)

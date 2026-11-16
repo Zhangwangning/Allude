@@ -439,8 +439,18 @@ enum PickupCodeEmphasis {
         String(code.suffix(4))
     }
 
-    /// 末四位强调的取件码 `Text`：前段按 `headOpacity` 弱化，末四位全色。
-    /// 已取态整串转次级色（划线仍由调用处叠）。码长 ≤ 4 时不拆分，整串全色。
+    /// 取件码 `Text`：颜色 / 整码透明度 / 末四位强调三个设置**全端统一**在这里收口。
+    ///
+    /// 🔴 2026-11-16 主人：「可以设置取件码卡片中取件码的颜色……也可以设置一条
+    ///    取件码的透明度保持一个就行的」。此前前段写死 `0.45`、整串恒不透明，
+    ///    而且灵动岛另传 `0.78` —— 现在全部读 `CodeAppearanceStyle.current`：
+    ///      · `tint` 参数降级为「跟随品牌色」时的回落值（各视图原本的品牌色口径不变）；
+    ///      · 用户在色板里选了固定色，则九个渲染面一起换色；
+    ///      · 关掉「末四位强调」后整串只剩一个颜色、一个透明度。
+    ///    `headOpacity` 仍保留为可覆盖参数，但 App 内已无调用点传它。
+    ///
+    /// 已取态整串转次级色（划线仍由调用处叠），不随色板染色 —— 别让"已取"看着还像待取。
+    /// 码长 ≤ 4 时不拆分，整串全色。
     ///
     /// 2026-10-20：iOS 26 起 `Text + Text` 已弃用（' + ' was deprecated in iOS 26.0），
     /// 改用 `AttributedString` 承载分段着色；返回值仍为 `Text`，
@@ -448,17 +458,149 @@ enum PickupCodeEmphasis {
     static func text(_ code: String,
                      isDone: Bool = false,
                      tint: Color,
-                     headOpacity: Double = 0.45) -> Text {
-        let tailColor = isDone ? Color.secondary : tint
-        guard code.count > 4 else {
-            return Text(code.L).foregroundColor(tailColor)
+                     headOpacity: Double? = nil) -> Text {
+        let style = CodeAppearanceStyle.current
+        let base = isDone ? Color.secondary : style.resolve(tint)
+        let whole = base.opacity(style.opacity)
+        guard style.emphasisEnabled, code.count > 4 else {
+            return Text(code.L).foregroundColor(whole)
         }
         var attributed = AttributedString(code)
-        attributed.foregroundColor = tailColor          // 默认整串 = 末四位色
+        attributed.foregroundColor = whole              // 默认整串 = 末四位色
         if let range = attributed.range(of: head(code)) {
-            attributed[range].foregroundColor = isDone ? Color.secondary : tint.opacity(headOpacity)
+            let headAlpha = style.opacity * (headOpacity ?? style.headOpacity)
+            attributed[range].foregroundColor = isDone
+                ? Color.secondary
+                : base.opacity(headAlpha)
         }
         return Text(attributed)   // AttributedString，不查表
+    }
+}
+
+// MARK: - 取件码外观（色板 / 透明度 / 强调）
+
+/// 取件码的七档颜色。`.brand` = 跟随快递公司品牌色（升级前的观感，默认）。
+///
+/// 🔴 全部用**具体色值**而非 `.primary` / `.secondary` 这类语义色：灵动岛与锁屏
+///    卡是恒黑底，语义色在浅色外观下会解析成深灰，落在黑底上直接消失。
+enum CodeColorChoice: String, CaseIterable, Identifiable {
+    case brand
+    case blue
+    case violet
+    case orange
+    case green
+    case red
+    case ink
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .brand:   return "跟随品牌色"
+        case .blue:    return "蓝色"
+        case .violet:  return "紫色"
+        case .orange:  return "橙色"
+        case .green:   return "绿色"
+        case .red:     return "红色"
+        case .ink:     return "主文字色"
+        }
+    }
+
+    /// 固定色档的实际颜色；`.brand` 不会被当固定色用（`resolve` 会改用调用方传来的品牌色）。
+    var color: Color {
+        switch self {
+        case .brand:   return AppTheme.accent
+        case .blue:    return AppTheme.accent
+        case .violet:  return AppTheme.violet
+        case .orange:  return AppTheme.todayTint
+        case .green:   return AppTheme.doneTint
+        case .red:     return Color.adaptive(light: 0xDC2626, dark: 0xF87171)
+        case .ink:     return Color.adaptive(light: 0x1C1C1E, dark: 0xF2F2F7)
+        }
+    }
+
+    /// 设置页色板圆点用的颜色（`.brand` 单独画多色环，这里给个中性回落）。
+    var swatch: Color { color }
+}
+
+/// 一次渲染读一份快照，避免同一个 `Text` 里多次读偏好域出现半新半旧。
+struct CodeAppearanceStyle {
+    let choice: CodeColorChoice
+    let opacity: Double
+    let headOpacity: Double
+    let emphasisEnabled: Bool
+
+    static var current: CodeAppearanceStyle {
+        CodeAppearanceStyle(
+            choice: CodeColorChoice(rawValue: CodeAppearanceSettings.colorRaw) ?? .brand,
+            opacity: CodeAppearanceSettings.opacity,
+            headOpacity: CodeAppearanceSettings.headOpacity,
+            emphasisEnabled: CodeAppearanceSettings.emphasisEnabled)
+    }
+
+    /// 选了固定色就用固定色；否则沿用调用方原本的品牌色。
+    func resolve(_ brandFallback: Color) -> Color {
+        choice == .brand ? brandFallback : choice.color
+    }
+}
+
+// MARK: - 一张卡片多个取件码（显示层同源分组）
+//
+// 🔴 2026-11-16 主人：「有些短信一条短信有两个取件码」，希望开一个开关就能
+//    让它们回到同一张卡上，关掉再拆回一码一卡，**切换立即对全部历史生效**。
+//
+// 为什么不合并数据：`PickupParser.parseAll` 一码一条 `PickupRecord`，件数统计、
+// 去重指纹、勾选状态、iCloud 同步、小组件勾选日志全都以「一条记录」为单位。
+// 真去合并/拆分记录，等于让一次显示设置改写用户数据，还会和云端其它设备打架。
+// 这里只做**显示层分组**：同源短信的记录只渲染第一条（代表），其余码挂到同一张卡上，
+// 勾选 / 复制 / 删除 / 分享则对整组生效。关掉开关立刻恢复原样，零数据迁移。
+enum PickupRecordGrouping {
+
+    /// 同源指纹 = 取件状态 + 短信原文。
+    /// 🔴 空原文（手动添加、快捷指令没带短信）**不合并** —— 否则所有手动记录会粘成一张卡。
+    /// 取件状态也进 key：待取和已取不能出现在同一张卡上。
+    static func key(_ record: PickupRecord) -> String? {
+        let raw = record.rawMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else { return nil }
+        return "\(record.isPickedUp ? 1 : 0)|\(raw)"
+    }
+
+    static var isEnabled: Bool { CodeAppearanceSettings.groupsMultipleCodes }
+
+    /// 需要**画出来**的记录集合：每组只留列表里排最前的那一条。
+    /// 基于全量列表算，再拿去过滤各个分组 Section —— 同一组即使跨 Section 也只出现一次。
+    static func representativeIDs(_ records: [PickupRecord]) -> Set<UUID> {
+        guard isEnabled else { return Set(records.map(\.id)) }
+        var seen = Set<String>()
+        var ids = Set<UUID>()
+        for record in records {
+            guard let groupKey = key(record) else {
+                ids.insert(record.id)
+                continue
+            }
+            if seen.insert(groupKey).inserted { ids.insert(record.id) }
+        }
+        return ids
+    }
+
+    /// 同一组的全部记录（含代表自己），顺序沿用传入数组。
+    static func siblings(of record: PickupRecord,
+                         in records: [PickupRecord]) -> [PickupRecord] {
+        guard isEnabled, let groupKey = key(record) else { return [record] }
+        return records.filter { Self.key($0) == groupKey }
+    }
+
+    /// 代表记录之外的其它取件码：去重、排除与代表相同的码、保持原顺序。
+    static func extraCodes(for record: PickupRecord,
+                           in records: [PickupRecord]) -> [String] {
+        guard isEnabled else { return [] }
+        var codes: [String] = []
+        for sibling in siblings(of: record, in: records) where sibling.id != record.id {
+            if sibling.code != record.code, !codes.contains(sibling.code) {
+                codes.append(sibling.code)
+            }
+        }
+        return codes
     }
 }
 
@@ -473,7 +615,7 @@ extension PickupRecord {
     /// 末四位强调的取件码 `Text`（详见 `PickupCodeEmphasis.text`）
     func emphasizedCodeText(isDone: Bool = false,
                             tint: Color,
-                            headOpacity: Double = 0.45) -> Text {
+                            headOpacity: Double? = nil) -> Text {
         PickupCodeEmphasis.text(code, isDone: isDone, tint: tint,
                                 headOpacity: headOpacity)
     }

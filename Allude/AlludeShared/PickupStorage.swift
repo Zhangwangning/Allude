@@ -388,6 +388,9 @@ struct WidgetSnapshot {
     /// 否则「待取 3」会被误读为只有 3 件。
     let pendingTotal: Int
     let pickedTodayCount: Int
+    /// 「一张卡片多个取件码」开启时，代表记录 ID → 同组其它码。
+    /// 小组件一行画不下整组，所以主码后补几个小号码；头部计数仍是**真实件数**。
+    var extraCodes: [String: [String]] = [:]
 
     static let empty = WidgetSnapshot(items: [], pendingTotal: 0, pickedTodayCount: 0)
 
@@ -415,9 +418,24 @@ struct WidgetSnapshot {
             .filter { $0.isPickedUp && Calendar.current.isDateInToday($0.pickupMoment) }
             .count
 
-        return WidgetSnapshot(items: Array(pending.prefix(cap)),
+        // 🔴 2026-11-16「一张卡片多个取件码」：与 App 两页同一套显示层分组。
+        //    小组件的「一行」等价于 App 的「一张卡」—— 同源多码只占一行，
+        //    其余码挂在主码后面；`pendingTotal` 仍按真实记录数算，件数不缩水。
+        var shown = pending
+        var extras: [String: [String]] = [:]
+        if CodeAppearanceSettings.groupsMultipleCodes {
+            let representatives = PickupRecordGrouping.representativeIDs(pending)
+            shown = pending.filter { representatives.contains($0.id) }
+            for record in shown {
+                let codes = PickupRecordGrouping.extraCodes(for: record, in: pending)
+                if !codes.isEmpty { extras[record.id.uuidString] = codes }
+            }
+        }
+
+        return WidgetSnapshot(items: Array(shown.prefix(cap)),
                               pendingTotal: pending.count,
-                              pickedTodayCount: pickedToday)
+                              pickedTodayCount: pickedToday,
+                              extraCodes: extras)
     }
 
     var isEmpty: Bool { items.isEmpty }
@@ -974,4 +992,104 @@ enum PickupSortLogic {
             }
         }
     }
+}
+
+// MARK: - 取件码外观 / 卡片分组（App 写、小组件与灵动岛读 App Group）
+//
+// 2026-11-16 主人：「在设置页面中的桌面小组件的下面增加一个取件码管理」。
+// 全端统一：待取 / 已取 / 详情 / 桌面小组件 / 灵动岛 / 分享卡共用这一份配置。
+//
+// 🔴 与 `WidgetDisplayOptions` 同一纪律：
+//   · 全部落 **App Group `UserDefaults`**，小组件扩展与灵动岛渲染进程都读得到；
+//   · 键只增不改，读不到一律回落**升级前的默认观感**（跟随品牌色 + 末四位强调）；
+//   · 写一次 `WidgetCenter.shared.reloadAllTimelines()`，桌面立刻重画。
+//
+// ⚠️ 这里刻意不 import SwiftUI、不出现 `Color`：此文件同时被通知扩展等
+//    非 UI target 编译。色板到 `Color` 的映射放在 `PickupModels.swift` 的
+//    `CodeColorChoice` 里，本层只存 String / Double / Bool。
+enum CodeAppearanceSettings {
+    static let colorKey        = "allude.code.color"          // CodeColorChoice.rawValue
+    static let opacityKey      = "allude.code.opacity"        // 整码统一透明度
+    static let headOpacityKey  = "allude.code.headOpacity"    // 强调开启时前段透明度
+    static let emphasisKey     = "allude.code.emphasis"       // 末四位强调开关
+    static let groupMultipleKey = "allude.code.groupMultiple" // 一张卡片多个取件码
+
+    private static var store: UserDefaults { PickupStorage.sharedDefaults }
+
+    /// 颜色档位原始值。未知值一律回落 "brand"（跟随品牌色 = 升级前观感）。
+    static var colorRaw: String {
+        store.string(forKey: colorKey) ?? CodeAppearanceDefaults.brandColorRaw
+    }
+
+    static func setColorRaw(_ raw: String) {
+        store.set(raw, forKey: colorKey)
+        notifyChange()
+    }
+
+    /// 整条取件码的统一透明度（1.0 = 不透明）。
+    static var opacity: Double {
+        value(forKey: opacityKey, default: 1.0, allowed: opacityOptions)
+    }
+
+    static func setOpacity(_ value: Double) {
+        store.set(value, forKey: opacityKey)
+        notifyChange()
+    }
+
+    static let opacityOptions: [Double] = [1.0, 0.85, 0.7, 0.55]
+
+    /// 末四位强调时，**前段**相对整码再乘的透明度。默认 0.45（升级前的值）。
+    static var headOpacity: Double {
+        value(forKey: headOpacityKey, default: 0.45, allowed: headOpacityOptions)
+    }
+
+    static func setHeadOpacity(_ value: Double) {
+        store.set(value, forKey: headOpacityKey)
+        notifyChange()
+    }
+
+    static let headOpacityOptions: [Double] = [0.3, 0.45, 0.6, 0.8]
+
+    /// 末四位强调开关：关掉后整条取件码只剩一个颜色、一个透明度。
+    static var emphasisEnabled: Bool {
+        store.object(forKey: emphasisKey) as? Bool ?? true
+    }
+
+    static func setEmphasisEnabled(_ on: Bool) {
+        store.set(on, forKey: emphasisKey)
+        notifyChange()
+    }
+
+    /// 「一张卡片多个取件码」：默认关 = 升级前一码一卡；开 = 同一条短信的多个码合成一张卡。
+    /// 🔴 只影响**显示层**，数据仍是一码一 `PickupRecord`（件数、去重、勾选、iCloud 同步全不动）。
+    static var groupsMultipleCodes: Bool {
+        store.object(forKey: groupMultipleKey) as? Bool ?? false
+    }
+
+    static func setGroupsMultipleCodes(_ on: Bool) {
+        store.set(on, forKey: groupMultipleKey)
+        notifyChange()
+    }
+
+    /// 偏好域里可能残留手改的脏值；只允许落在档位表内，否则回落默认值。
+    private static func value(forKey key: String,
+                              default fallback: Double,
+                              allowed: [Double]) -> Double {
+        guard let raw = store.object(forKey: key) as? Double,
+              allowed.contains(where: { abs($0 - raw) < 0.001 }) else { return fallback }
+        return raw
+    }
+
+    /// 样式一变，桌面小组件立刻重画。
+    /// 灵动岛 / 锁屏实时活动不归 WidgetCenter 管，由设置页另外调
+    /// `PickupActivityController.refreshRendering()` 强制 update 一次。
+    static func notifyChange() {
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+}
+
+/// 颜色档位的 rawValue 常量放在这里，让不 import SwiftUI 的存储层也能写默认值。
+/// 完整的色板枚举（含 `Color` 映射）在 `PickupModels.swift`，名字是 `CodeColorChoice`。
+enum CodeAppearanceDefaults {
+    static let brandColorRaw = "brand"
 }

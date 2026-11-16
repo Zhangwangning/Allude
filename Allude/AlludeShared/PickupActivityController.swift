@@ -193,6 +193,21 @@ enum PickupActivityController {
         }
     }
 
+    /// 取件码**外观**变了，重画所有在跑的实时活动（灵动岛 / 锁屏卡）。
+    ///
+    /// 🔴 外观设置存在 App Group 里、由小组件扩展渲染，**不在 `ContentState` 中**；
+    ///    `WidgetCenter.reloadAllTimelines()` 管不到 ActivityKit 的活动，而
+    ///    `sync(pending:)` 看的是待取件列表，列表没变会被"内容一致就跳过"挡掉。
+    ///    所以这里直接对每张活动调一次 update —— state 原样回传，只为触发视图重建。
+    ///    ⚠️ 只在 **App 进程**调用（设置页）；扩展进程不要走这条路。
+    static func refreshRendering() async {
+        guard isAppProcess else { return }
+        for activity in Activity<PickupActivityAttributes>.activities {
+            await activity.update(ActivityContent(state: activity.content.state,
+                                                  staleDate: nil))
+        }
+    }
+
     static func sync(pending: [PickupRecord]) {
         Task { @MainActor in
             latest = pending

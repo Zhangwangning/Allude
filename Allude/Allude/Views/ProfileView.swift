@@ -31,6 +31,8 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     case automation
     case notification
     case widget
+    /// 2026-11-16 主人：紧跟在「桌面小组件」下面
+    case codeManagement
     case activity
     case courier
     case station
@@ -74,6 +76,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .automation:   return "快捷指令"
         case .notification: return "通知"
         case .widget:       return "桌面小组件"
+        case .codeManagement: return "取件码管理"
         // 🔴 2026-11-08 主人：只叫「实时活动」—— 灵动岛只有部分机型有，
         //    写进标题会让其他机型以为是专属功能。
         case .activity:     return "实时活动"
@@ -117,6 +120,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .automation:   return "bolt.badge.automatic.fill"
         case .notification: return "bell.badge.fill"
         case .widget:       return "square.text.square.fill"
+        case .codeManagement: return "number.square.fill"
         case .activity:     return "platter.filled.top.iphone"
         case .courier:      return "shippingbox.fill"
         case .station:      return "storefront.fill"
@@ -154,6 +158,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .automation:   return AppTheme.amber
         case .notification: return AppTheme.pendingTint
         case .widget:       return AppTheme.sky
+        case .codeManagement: return AppTheme.amber
         case .activity:     return AppTheme.accent
         case .courier:      return AppTheme.indigo
         case .station:      return AppTheme.violet
@@ -193,7 +198,8 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     ///   ④ 帮助与反馈
     ///   ⑤ 更多：快递公司 / 驿站管理 / 关于 Allude
     static let generalGroupAll: [SettingsPane] = [
-        .automation, .notification, .widget, .activity, .icloudSync, .aiCapability,
+        .automation, .notification, .widget, .codeManagement, .activity,
+        .icloudSync, .aiCapability,
     ]
     static let appearanceTopGroup: [SettingsPane] = [.appearanceGroup]
     static let dataGroup: [SettingsPane] = [.storage]
@@ -655,6 +661,7 @@ struct SettingsView: View {
         case .automation: AutoRecordSettingsView()
         case .notification: NotificationSettingsView()
         case .widget:     WidgetSettingsView()
+        case .codeManagement: CodeManagementView()
         case .activity:   ActivityPreviewGallery()
         case .courier:    CourierGalleryView(scope: .courier)
         case .station:    CourierGalleryView(scope: .station)

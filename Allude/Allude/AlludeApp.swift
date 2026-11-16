@@ -211,10 +211,37 @@ struct AlludeApp: App {
         // ⚠️ 2026-10-14：`PLAN` / `PRO` / `LICENSE` 三个脚手架随 VIP 会员体系退役
         //    （全功能开放后档位与凭证不再存在，见 Models.swift 全功能化注释）。
 
+        // 取件码外观脚手架（2026-11-16）：命令行一次性拍「固定色 / 关强调 /
+        // 一卡多码」等形态。全部走正式 setter（写 App Group），
+        // 桌面时间线与实时活动一起重画，不留特例分支。
+        if let raw = environment["CODE_COLOR"] {
+            CodeAppearanceSettings.setColorRaw(raw)
+        }
+        if let raw = environment["CODE_EMPHASIS"] {
+            CodeAppearanceSettings.setEmphasisEnabled(raw != "0")
+        }
+        if let raw = environment["CODE_OPACITY"], let value = Double(raw) {
+            CodeAppearanceSettings.setOpacity(value)
+        }
+        if let raw = environment["CODE_GROUP"] {
+            CodeAppearanceSettings.setGroupsMultipleCodes(raw == "1")
+        }
+
         switch environment["SCREEN"] {
         case "ingest":
             let outcome = PickupStore.shared.ingest(environment["SEED"] ?? "")
             print("[allude-verify] ingest => \(outcome.dialog)")
+
+        case "codeGroupSeed":
+            // 2026-11-16「一张卡片多个取件码」验收种子：一条短信两个码，
+            // 待取 / 已取各放一组，配合 `TAB=pending|picked` 两页一起验。
+            // ⚠️ 只在 DEBUG 脚手架生效；正式包由 BuildFlags 整段裁掉。
+            let store = PickupStore.shared
+            store.ingest("【圆通速递】您有 2 个包裹到站，取件码 8-4-3019、8-4-3020，幸福里小区3号楼东侧门店")
+            let done = store.records.filter { $0.code == "8-4-3019" || $0.code == "8-4-3020" }
+            store.markPicked(done)
+            store.ingest("【中通快递】您有 2 个包裹到站，取件码 7-3-8812、7-3-8813，幸福里小区3号楼东侧门店")
+            print("[allude-verify] codeGroupSeed done=\(done.count) pending=\(store.pending.count)")
 
         case "ingestDelayed":
             // 验证脚手架：延迟 DELAY 秒（默认 8）再写入。
@@ -773,6 +800,9 @@ struct AlludeApp: App {
                     NavigationStack {
                         StationLocationEditor(stationName: "菜鸟驿站")
                     }
+                case "codeManagement":
+                    // 取件码管理（2026-11-16；桌面小组件下面那一行）
+                    NavigationStack { CodeManagementView() }
 
                 case "automationShare":
                     // 🔍 2026-11-11：验证「一键导入自动化」的分享面板（内测反馈过打不开）。
