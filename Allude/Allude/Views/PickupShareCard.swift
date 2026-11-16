@@ -63,6 +63,23 @@ struct PickupShareCard: View {
     }
     private var isSingle: Bool { records.count <= 1 }
 
+    /// 措辞跟随记录自身状态（2026-11-16）。
+    ///
+    /// 🔴 起因：已取页现在也能多选分享，原来卡头硬写「待取 N 件」——
+    ///    从已取页分享出去的一律被标成「待取」，图直接是错的。
+    private var pickedCount: Int { records.filter(\.isPickedUp).count }
+
+    private var countTitle: String {
+        if pickedCount == records.count { return "已取 \(records.count) 件" }
+        if pickedCount == 0 { return "待取 \(records.count) 件" }
+        // 两页各自只含一种状态，混合只可能来自以后的新入口，给个中性说法
+        return "取件 \(records.count) 件"
+    }
+
+    private var footerTitle: String {
+        !records.isEmpty && pickedCount == records.count ? "Allude · 已取件" : "Allude · 待取件"
+    }
+
     var body: some View {
         if isSingle {
             singleCard
@@ -232,7 +249,7 @@ struct PickupShareCard: View {
         HStack(spacing: 12) {
             AppMarkIcon(size: 40)
 
-            Text("待取 \(records.count) 件")
+            Text(countTitle)
                 .font(.system(size: 21, weight: .semibold))
                 .foregroundStyle(Color(hex: 0x1C1C1E))
 
@@ -339,7 +356,7 @@ struct PickupShareCard: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(tint)
 
-            Text("Allude · 待取件")
+            Text(footerTitle)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Color(hex: 0x8E8E93))
 
@@ -426,13 +443,26 @@ final class SharePresenter: ObservableObject {
     /// 非 nil 即呈现；空数组会被忽略（没有可分享的记录）
     @Published var records: [PickupRecord]?
 
-    func present(_ records: [PickupRecord]) {
+    /// 面板关闭后的收尾动作（可选）。
+    ///
+    /// 目前只有一处用它：已取页的「选择 → 分享」—— 分享完还停在勾选态没有意义
+    /// （2026-11-16 主人：「分享面片中点击完成后，选择的状态就可以取消掉了」）。
+    /// 🔴 必须在这里清理干净：`SharePresenter` 是单例，残留的回调会在下一次
+    /// 面板关闭时误触发（比如从详情页分享一条，却把已取页的选择态也收掉）。
+    private var onFinish: (() -> Void)?
+
+    func present(_ records: [PickupRecord], onFinish: (() -> Void)? = nil) {
         guard !records.isEmpty else { return }
+        self.onFinish = onFinish
         self.records = records
     }
 
+    /// 关闭面板。点「完成」与点遮罩走同一条路，收尾动作都执行。
     func dismiss() {
+        let finish = onFinish
+        onFinish = nil
         records = nil
+        finish?()
     }
 }
 

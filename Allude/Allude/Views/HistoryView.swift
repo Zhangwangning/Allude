@@ -22,6 +22,30 @@ final class HistoryModel: ObservableObject {
     @Published var isEditing = false
     @Published var selection: Set<UUID> = []
 
+    /// 分组 / 排序方式（2026-11-16 主人：分组按钮从待取页也搬到本页）。
+    ///
+    /// 🔴 独立存一个键 —— 与待取页**各记各的**。两页的记录集合不同，
+    /// 在一页选了「按快递公司」不该把另一页也带跑。
+    private static let sortKey = PickupStorage.listSortKey + ".history"
+
+    @Published var sort: PickupSortMode {
+        didSet {
+            PickupStorage.sharedDefaults.set(sort.rawValue, forKey: Self.sortKey)
+            UserDefaults.standard.set(sort.rawValue, forKey: Self.sortKey)
+        }
+    }
+
+    /// 「清空已取件记录」的确认态（2026-11-16 从待取页迁移过来）。
+    /// 🔴 数据只在本机，删了 App 内**没有任何办法恢复**（没有云端备份、没有回收站），
+    ///    所以这个动作必须先问一次（2026-11-01 主人要求）。
+    @Published var confirmClearPicked = false
+
+    init() {
+        let saved = PickupStorage.sharedDefaults.string(forKey: Self.sortKey)
+            ?? UserDefaults.standard.string(forKey: Self.sortKey)
+        sort = saved.flatMap(PickupSortMode.init(rawValue:)) ?? .newest
+    }
+
     /// 非 nil 时弹出分享预览面板（长按菜单「分享卡片」传单条）。
     /// 🔴 面板由**页面**承载：挂进长按浮层会在菜单收起时一起被销毁（见 CardMenu.swift）。
     @Published var shareRecords: [PickupRecord]?
@@ -114,8 +138,33 @@ struct PickedUpView: View {
         store.pickedUpRecords
     }
 
+    /// 按分组方式排好的整表（2026-11-16 与待取页 `displayed` 同一套口径）。
+    /// 注意先排再裁条数：选「最早收到」时该显示最旧的那 N 条，而不是最新的 N 条。
+    private var orderedList: [PickupRecord] {
+        switch model.sort {
+        case .newest:
+            // `store.pickedUpRecords` 本身就是收到时间倒序，直接用
+            return list
+        case .oldest:
+            return list.sorted { $0.receivedAt < $1.receivedAt }
+        case .company:
+            // 只负责把同一家聚到一起；组头由 `companyGroups` 出
+            return list.sorted {
+                groupingName(for: $0) == groupingName(for: $1)
+                    ? $0.receivedAt > $1.receivedAt
+                    : groupingName(for: $0) < groupingName(for: $1)
+            }
+        case .station:
+            return list.sorted {
+                stationName(for: $0) == stationName(for: $1)
+                    ? $0.receivedAt > $1.receivedAt
+                    : stationName(for: $0) < stationName(for: $1)
+            }
+        }
+    }
+
     private var visibleList: [PickupRecord] {
-        Array(list.prefix(store.visibleLimit))
+        Array(orderedList.prefix(store.visibleLimit))
     }
 
     private var hiddenCount: Int {
@@ -124,6 +173,70 @@ struct PickedUpView: View {
 
     private var groups: [(group: DayGroup, items: [PickupRecord])] {
         store.grouped(visibleList)
+    }
+
+    /// 「按快递公司」的归类桶（组头 = 卡片主名口径的承运方，件数多的在前）。
+    /// 口径与待取页 `companyGroups` 一致：`courier ?? company`，驿站不进分组名。
+    private var companyGroups: [(company: String, items: [PickupRecord])] {
+        var buckets: [(company: String, items: [PickupRecord])] = []
+        for record in visibleList {
+            let name = groupingName(for: record)
+            if let index = buckets.firstIndex(where: { $0.company == name }) {
+                buckets[index].items.append(record)
+            } else {
+                buckets.append((name, [record]))
+            }
+        }
+        for index in buckets.indices {
+            buckets[index].items.sort { $0.receivedAt > $1.receivedAt }
+        }
+        buckets.sort {
+            $0.company == "其他" ? false
+                : $1.company == "其他" ? true
+                : $0.items.count > $1.items.count
+        }
+        return buckets
+    }
+
+    /// 「按快递驿站」的归类桶，取舍同上。
+    private var stationGroups: [(station: String, items: [PickupRecord])] {
+        var buckets: [(station: String, items: [PickupRecord])] = []
+        for record in visibleList {
+            let name = stationName(for: record)
+            if let index = buckets.firstIndex(where: { $0.station == name }) {
+                buckets[index].items.append(record)
+            } else {
+                buckets.append((name, [record]))
+            }
+        }
+        for index in buckets.indices {
+            buckets[index].items.sort { $0.receivedAt > $1.receivedAt }
+        }
+        buckets.sort {
+            $0.station == "未标注驿站" ? false
+                : $1.station == "未标注驿站" ? true
+                : ($0.items.count == $1.items.count
+                    ? $0.station < $1.station
+                    : $0.items.count > $1.items.count)
+        }
+        return buckets
+    }
+
+    private func stationName(for record: PickupRecord) -> String {
+        let name = record.station.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? "未标注驿站" : name
+    }
+
+    /// 归类名 —— 与待取页、卡片主名三方同源，组头与卡片不会打架。
+    private func groupingName(for record: PickupRecord) -> String {
+        let courier = record.courier?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !courier.isEmpty { return courier }
+        return record.company.isEmpty ? "其他" : record.company
+    }
+
+    /// 编辑态里真正会被分享 / 删除的那些（按当前显示顺序，与「分享 N」同源）。
+    private var selectedRecords: [PickupRecord] {
+        visibleList.filter { model.selection.contains($0.id) }
     }
 
     // MARK: 顶部统计摘要卡（2026-11-15 主人）
@@ -334,17 +447,55 @@ struct PickedUpView: View {
                         }
                     }
 
-                    ForEach(groups, id: \.group) { section in
-                        Section {
-                            SectionHeader(title: section.group.rawValue,
-                                          trailing: "\(section.items.count) 件")
-                                .listRowInsets(EdgeInsets(top: 2, leading: AppTheme.hInset,
-                                                          bottom: 0, trailing: AppTheme.hInset))
-                                .listRowBackground(Color(.systemGroupedBackground))
-                                .listRowSeparator(.hidden)
+                    // 分组渲染（2026-11-16 与待取页同一套）：公司 / 驿站归类时组头换成名字，
+                    // 其余仍是「今天 / 昨天 / 更早」的时间流。
+                    if model.sort == .company {
+                        ForEach(companyGroups, id: \.company) { bucket in
+                            Section {
+                                SectionHeader(title: bucket.company,
+                                              trailing: "\(bucket.items.count) 件",
+                                              symbol: "building.2.fill",
+                                              tint: CourierBrand.info(for: bucket.company).color)
+                                    .listRowInsets(EdgeInsets(top: 2, leading: AppTheme.hInset,
+                                                              bottom: 0, trailing: AppTheme.hInset))
+                                    .listRowBackground(Color(.systemGroupedBackground))
+                                    .listRowSeparator(.hidden)
 
-                            ForEach(section.items) { record in
-                                row(for: record)
+                                ForEach(bucket.items) { record in
+                                    row(for: record)
+                                }
+                            }
+                        }
+                    } else if model.sort == .station {
+                        ForEach(stationGroups, id: \.station) { bucket in
+                            Section {
+                                SectionHeader(title: bucket.station,
+                                              trailing: "\(bucket.items.count) 件",
+                                              symbol: "mappin.circle.fill",
+                                              tint: AppTheme.accent)
+                                    .listRowInsets(EdgeInsets(top: 2, leading: AppTheme.hInset,
+                                                              bottom: 0, trailing: AppTheme.hInset))
+                                    .listRowBackground(Color(.systemGroupedBackground))
+                                    .listRowSeparator(.hidden)
+
+                                ForEach(bucket.items) { record in
+                                    row(for: record)
+                                }
+                            }
+                        }
+                    } else {
+                        ForEach(groups, id: \.group) { section in
+                            Section {
+                                SectionHeader(title: section.group.rawValue,
+                                              trailing: "\(section.items.count) 件")
+                                    .listRowInsets(EdgeInsets(top: 2, leading: AppTheme.hInset,
+                                                              bottom: 0, trailing: AppTheme.hInset))
+                                    .listRowBackground(Color(.systemGroupedBackground))
+                                    .listRowSeparator(.hidden)
+
+                                ForEach(section.items) { record in
+                                    row(for: record)
+                                }
                             }
                         }
                     }
@@ -420,41 +571,150 @@ struct PickedUpView: View {
                         } label: {
                             Text(model.isAllSelected(of: visibleList) ? "全不选" : "全选")
                         }
+                        .disabled(visibleList.isEmpty)
                     }
-                }
 
-                // 工具栏回到顶部右侧（2026-10-25 主人最终定：不再做左侧竖栏）
-                ToolbarItem(placement: .topBarTrailing) {
-                    if !list.isEmpty {
+                    // 多选分享（2026-11-16 主人：已取页选中后也要有分享）。
+                    // 🔴 面板关闭时用 `onFinish` 退出选择态 —— 分享完还停在勾选态
+                    //    没有意义（主人：「不能还是选择状态吧」）。
+                    ToolbarItemGroup(placement: .topBarTrailing) {
                         Button {
-                            withAnimation(.snappy) { model.setEditing(!model.isEditing) }
+                            shareSelection()
                         } label: {
-                            Text(model.isEditing ? "完成" : "选择")
+                            Text(selectedRecords.isEmpty ? "分享" : "分享 \(selectedRecords.count)")
+                                .fontWeight(.semibold)
+                        }
+                        .disabled(selectedRecords.isEmpty)
+
+                        Button {
+                            withAnimation(.snappy) { model.setEditing(false) }
+                        } label: {
+                            Text("完成")
+                        }
+                    }
+                } else {
+                    // 工具栏回到顶部右侧（2026-10-25 主人最终定：不再做左侧竖栏）
+                    // 2026-11-16 主人：分组按钮放在「选择」左边。
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        groupMenu
+
+                        if !list.isEmpty {
+                            Button {
+                                withAnimation(.snappy) { model.setEditing(true) }
+                            } label: {
+                                Text("选择")
+                            }
                         }
                     }
                 }
             }
             .safeAreaInset(edge: .bottom) {
                 if model.isEditing {
-                    BatchDeleteBar(count: model.selection.count) {
-                        let targets = list.filter { model.selection.contains($0.id) }
+                    // 删除与分享**同源**（都取 `selectedRecords`）：曾经这里用
+                    // `list.filter { selection.contains }`，而分享用可见集 ——
+                    // 顶上写「已选 3」、实际只动到 1 条，两个入口口径必须一致。
+                    BatchDeleteBar(count: selectedRecords.count) {
                         withAnimation(.snappy) {
-                            store.deleteMany(targets)
+                            store.deleteMany(selectedRecords)
                             model.selection.removeAll()
                         }
                     }
                 }
             }
+            // 「清空已取件记录」的确认弹窗（2026-11-16 随按钮从待取页迁来）。
+            // 🔴 不用 alert 也不用新页面：随机四位数就在**弹窗里**输入，
+            //    输对了删除键才激活（2026-11-01 主人）。
+            .destructiveConfirm(
+                isPresented: $model.confirmClearPicked,
+                title: "清空已取件记录",
+                message: "记录只存在这台手机上，删除后无法恢复，也没有备份可以还原。"
+            ) {
+                DiagnosticsLog.record("records", "clear-picked \(list.count)")
+                withAnimation(.snappy) { store.clearPickedUp() }
+            }
             // 分享预览面板（单条）：与待取页共用同一个 `SharePreviewSheet`。
             .onAppear {
                 openMenuFromScaffold()
+                // 截图脚手架：`SIMCTL_CHILD_CONFIRM_DEMO=1` 打开页面就把确认弹窗亮起来
+                // （2026-11-16 随清空入口从待取页迁来；纯色底拍不出"列表 + 弹窗"的叠放）
+                if ProcessInfo.processInfo.environment["CONFIRM_DEMO"] == "1" {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                        model.confirmClearPicked = true
+                    }
+                }
                 // 截图脚手架：`SIMCTL_CHILD_EDIT=1` 启动即进编辑模式。
                 if ProcessInfo.processInfo.environment["EDIT"] == "1", !list.isEmpty {
                     model.setEditing(true)
                 }
+                // 截图脚手架：`SIMCTL_CHILD_HISTORY_SORT=company|station|oldest|newest`
+                // 直接切分组方式（菜单在命令行点不开，公司 / 驿站的组头只能这样取证）
+                switch ProcessInfo.processInfo.environment["HISTORY_SORT"] {
+                case "company": model.sort = .company
+                case "station": model.sort = .station
+                case "oldest":  model.sort = .oldest
+                case "newest":  model.sort = .newest
+                default: break
+                }
+                // 截图脚手架：`SIMCTL_CHILD_SELECT_SHARE=1|dismiss`
+                //   1       → 进编辑 + 预选两条 + 走**真实的**分享动作（拍「分享 N」与面板）
+                //   dismiss → 再把面板关掉，验证「分享完退出选择态」
+                // 走的是 `shareSelection()`，与顶栏按钮同一条路径，不是另写一份假流程。
+                if let raw = ProcessInfo.processInfo.environment["SELECT_SHARE"],
+                   !model.isEditing, !visibleList.isEmpty {
+                    model.setEditing(true)
+                    visibleList.prefix(2).forEach { model.selection.insert($0.id) }
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 900_000_000)
+                        shareSelection()
+                        guard raw == "dismiss" else { return }
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        SharePresenter.shared.dismiss()
+                    }
+                }
                 // 回到标签根页 → 露出标签栏（TabBarCloak 兜底，见 RootView）
                 TabBarCloak.shared.reveal()
             }
+    }
+
+    // MARK: 分组与排序菜单
+
+    /// 多选分享的统一入口（顶栏按钮与截图脚手架共用同一条路）。
+    ///
+    /// `onFinish` = 面板关闭后退出选择态 —— 主人 2026-11-16：
+    /// 「分享面片中点击完成后，选择的状态就可以取消掉了，不能还是选择状态吧」。
+    /// 点「完成」和点遮罩都会走 `SharePresenter.dismiss()`，两条路都会收干净。
+    private func shareSelection() {
+        SharePresenter.shared.present(selectedRecords) {
+            withAnimation(.snappy) { model.setEditing(false) }
+        }
+    }
+
+    /// 2026-11-16 主人：分组按钮搬到已取页，放在「选择」左边。
+    ///
+    /// 内容与待取页的 `filterMenuItems` 同一套排序项，但**没有**「全部标记为已取」
+    /// （本页记录本来就全是已取），最后一项是「清空已取件记录」——
+    /// 它清的就是本页的东西，入口在这儿才讲得通。
+    private var groupMenu: some View {
+        Menu {
+            Picker("排序", selection: $model.sort) {
+                ForEach(PickupSortMode.allCases) { mode in
+                    Label(mode.rawValue, systemImage: mode.symbol).tag(mode)
+                }
+            }
+
+            if !list.isEmpty {
+                Divider()
+                Button(role: .destructive) {
+                    model.confirmClearPicked = true
+                } label: {
+                    Label("清空已取件记录", systemImage: "trash")
+                }
+                .tint(.red)
+            }
+        } label: {
+            Image(systemName: "line.3.horizontal.decrease.circle")
+        }
+        .accessibilityLabel("分组与排序")
     }
 
     // MARK: 记录行

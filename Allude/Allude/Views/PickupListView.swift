@@ -73,11 +73,6 @@ final class PickupListModel: ObservableObject {
     @Published var undoAction: PickupUndoAction = .completed
     @Published var showUndo = false
 
-    /// 「清空已取件记录」的确认态。
-    /// 🔴 数据只在本机，删了 App 内**没有任何办法恢复**（没有云端备份、没有回收站），
-    ///    所以这个动作必须先问一次（2026-11-01 主人要求）。
-    @Published var confirmClearPicked = false
-
     // 添加入口（手动粘贴 / 扫描识别）
     @Published var showAdd = false
     @Published var showScan = false
@@ -711,25 +706,8 @@ struct PickupListView: View {
             .toolbarTitleDisplayMode(splitPane ? .inline : .large)
             .toolbar { toolbarContent }
             .overlay(alignment: .bottom) { bottomOverlay }
-            // 🔴 不用 alert 也不用新页面：随机四位数就在**弹窗里**输入，
-            //    输对了删除键才激活（2026-11-01 主人）。
-            // 截图脚手架：`CONFIRM_DEMO=1` 打开页面就把确认弹窗亮起来，
-            // 用来拍"列表 + 弹窗"的真实叠放效果（纯色底拍不出这个）。
-            .onAppear {
-                if ProcessInfo.processInfo.environment["CONFIRM_DEMO"] == "1" {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                        model.confirmClearPicked = true
-                    }
-                }
-            }
-            .destructiveConfirm(
-                isPresented: $model.confirmClearPicked,
-                title: "清空已取件记录",
-                message: "记录只存在这台手机上，删除后无法恢复，也没有备份可以还原。"
-            ) {
-                DiagnosticsLog.record("records", "clear-picked \(store.pickedUpRecords.count)")
-                withAnimation(.snappy) { store.clearPickedUp() }
-            }
+            // 🔴 2026-11-16：「清空已取件记录」的确认弹窗随按钮一起搬到已取页
+            //    （`PickedUpView`）。本页不再有任何清空入口，弹窗一并移走。
             .sheet(isPresented: $model.showAdd) {
                 AddPickupSheet(onClose: { model.showAdd = false },
                                onAdded: handleAdded)
@@ -982,15 +960,8 @@ struct PickupListView: View {
                 Label("全部标记为已取", systemImage: "checkmark.circle")
             }
         }
-
-        if !store.pickedUpRecords.isEmpty {
-            Button(role: .destructive) {
-                model.confirmClearPicked = true
-            } label: {
-                Label("清空已取件记录", systemImage: "trash")
-            }
-            .tint(.red)
-        }
+        // 🔴 2026-11-16 主人：「清空已取件记录」不该在待取页 —— 它清的是**已取**的记录，
+        //    入口就该住在已取页。已挪到 `PickedUpView` 的分组菜单里，这里不要再加回来。
     }
 
     /// 添加菜单的**内容**（同上，横排/竖排共用）
