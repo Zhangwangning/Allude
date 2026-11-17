@@ -15,6 +15,26 @@ import UIKit
 
 final class HistoryModel: ObservableObject {
     @Published var path = NavigationPath()
+
+    // MARK: 重计算缓存（2026-11-17 流畅度）
+
+    /// `orderedList` 的记忆化（与待取页 `displayed` 同一套做法）。
+    ///
+    /// 「已取」这条链是 `list → searchedList(过滤) → orderedList(排序)
+    /// → visibleList(裁条数)`，四层全是计算属性，而 `visibleList` 在 body 里被
+    /// 读很多次（空态、统计卡、分组、每一行、分栏右栏回退）。
+    /// 每读一次就把 50 条记录重新过滤 + 重排一遍。
+    ///
+    /// 放 model 而不是 view 的 `@State`：body 求值期间写 state 会触发
+    /// 「Modifying state during view update」，而且必然引起又一轮重算。
+    private var orderedCache: (key: String, value: [PickupRecord])?
+
+    func cachedOrdered(_ key: String, build: () -> [PickupRecord]) -> [PickupRecord] {
+        if let cache = orderedCache, cache.key == key { return cache.value }
+        let value = build()
+        orderedCache = (key, value)
+        return value
+    }
     /// 刚复制成功的取件码（非 nil 时页面底部弹「已复制 xxx」）
     @Published var copiedCode: String?
 
@@ -182,6 +202,19 @@ struct PickedUpView: View {
     /// 按分组方式排好的整表（2026-11-16 与待取页 `displayed` 同一套口径）。
     /// 注意先排再裁条数：选「最早收到」时该显示最旧的那 N 条，而不是最新的 N 条。
     private var orderedList: [PickupRecord] {
+        model.cachedOrdered(orderedCacheKey) { computedOrderedList() }
+    }
+
+    /// 缓存判据：数据版本 + 检索词 + 排序 + 可见上限 + 自定义驿站/驿站组内容。
+    /// 🔴 驿站点用 hashValue 不用 count —— 改名时数量不变，用 count 会一直命中旧结果。
+    private var orderedCacheKey: String {
+        "\(store.revision)|\(model.query)|\(model.sort.rawValue)|"
+            + "\(store.visibleLimit)|"
+            + "\(StationDirectory.shared.customNames.hashValue)|"
+            + "\(StationGroupStore.all().hashValue)"
+    }
+
+    private func computedOrderedList() -> [PickupRecord] {
         switch model.sort {
         case .newest:
             // `store.pickedUpRecords` 本身就是收到时间倒序，直接用
@@ -990,11 +1023,37 @@ struct PickedUpView: View {
 // 统计页（取件数据分析）
 // ============================================================================
 
+/// 统计聚合的跨重建缓存（见 `StatsTabView.stats`）。
+final class StatsCache: ObservableObject {
+    private var key: Int = .min
+    private var value = PickupStats(records: [])
+
+    func stats(revision: Int, records: () -> [PickupRecord]) -> PickupStats {
+        if key == revision { return value }
+        value = PickupStats(records: records())
+        key = revision
+        return value
+    }
+}
+
 struct StatsTabView: View {
     @EnvironmentObject private var store: PickupStore
 
+    /// 统计数据的记忆化（2026-11-17 流畅度）。
+    ///
+    /// `stats` 原来是个纯计算属性：`PickupStats(records:)` 每次访问都全量聚合
+    /// 一遍（按天分桶、按小时分桶、按公司分组、算平均停留 + Calendar 取值）。
+    /// 而 body 里 `stats.isEmpty`、`stats.daily`、`stats.hourly`、`stats.company`
+    /// 分属不同的卡，一次渲染就把 50 条记录重算 4~6 遍。
+    ///
+    /// 用 `@StateObject` 持有缓存：struct View 每次重建都会重新 init，
+    /// 普通属性留不住；而 `@StateObject` 能跨重建存活。
+    /// 🔴 缓存只改自己的私有字段、不发 `objectWillChange` —— body 求值期间写
+    /// 「不可观察状态」是安全的，不会触发「Modifying state during view update」。
+    @StateObject private var cache = StatsCache()
+
     private var stats: PickupStats {
-        PickupStats(records: store.records)
+        cache.stats(revision: store.revision) { store.records }
     }
 
     /// 宽屏（Duo 展开）判定：决定统计卡排成两列还是一列。
@@ -1040,7 +1099,13 @@ struct StatsTabView: View {
                                 }
                             }
                         } else {
-                            VStack(alignment: .leading, spacing: 16) {
+                            // 🔴 2026-11-17 流畅度：这里是 `VStack` → `LazyVStack`。
+                            //    五张卡的图表（`DailyBarChart` / `HourlyBarChart` 自绘 Path）
+                            //    在 `VStack` 下首帧就要全部构建完，实测首次切到统计标签
+                            //    冻结 99~180ms。懒加载后首帧只建屏幕内那几张。
+                            //    ⚠️ 代价：`proxy.scrollTo` 到尚未构建的卡会失效 ——
+                            //    那个入口只有截图脚手架在用，不影响正式功能。
+                            LazyVStack(alignment: .leading, spacing: 16) {
                                 // ① 总览三格：累计入库 / 累计取走 / 当前待取
                                 overviewCard
                                     .id("top")
