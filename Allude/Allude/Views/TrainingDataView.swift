@@ -425,14 +425,26 @@ struct TrainingSampleComposer: View {
     }
 
     private func save() {
+        // 🔴 2026-11-17：判「不是取件通知」时必须把解析结果一起清掉。
+        //    否则会写出 `label=other` 却 `code=glm-5`、`platform=华为云` 这种
+        //    自相矛盾的样本 —— 等于在训练集里告诉模型「这条不是快递，
+        //    但它的取件码是 glm-5」，正负样本的边界被自己搅浑。
+        //    （实况来源：华为云那条推广短信，用户把判定切成「不是」后字段仍留着。）
+        let isPickup = label == "pickup"
         if let editing {
             _ = TrainingSampleStore.update(id: editing.id, text: text, label: label,
-                                           code: code, address: address,
-                                           platform: platform, locker: locker, note: note)
+                                           code: isPickup ? code : nil,
+                                           address: isPickup ? address : nil,
+                                           platform: isPickup ? platform : nil,
+                                           locker: isPickup ? locker : nil,
+                                           note: note)
         } else {
-            _ = TrainingSampleStore.add(text: text, label: label, code: code,
-                                        address: address, platform: platform,
-                                        locker: locker, note: note)
+            _ = TrainingSampleStore.add(text: text, label: label,
+                                        code: isPickup ? code : nil,
+                                        address: isPickup ? address : nil,
+                                        platform: isPickup ? platform : nil,
+                                        locker: isPickup ? locker : nil,
+                                        note: note)
         }
         onDone()
         dismiss()

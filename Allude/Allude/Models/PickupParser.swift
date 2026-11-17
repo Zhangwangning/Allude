@@ -90,8 +90,11 @@ enum PickupParser {
     // MARK: - 正则真值（V7.3.0 本体实测，逐字移植）
 
     /// 关键词：V7.3.0 中作为**闸门**使用（凭证全空或关键词为空即拒绝写入）
+    ///
+    /// 🔴 2026-11-17：`京东` 补 `(?!卡)` —— 「京东卡」是营销奖品，不是承运方。
+    ///    华为云那条推广短信就是靠「京东卡」混过这道闸门的。`京东快递` 不受影响。
     static let keywordPattern =
-        #"快递|快件|速递|取件|取货|提货|包裹|近邻宝|兔喜生活|丰巢|顺丰|圆通|申通|中通|韵达|邮政|百世|德邦|京东|优速|速运|极兔|菜鸟|鸟箱|驿站"#
+        #"快递|快件|速递|取件|取货|提货|包裹|近邻宝|兔喜生活|丰巢|顺丰|圆通|申通|中通|韵达|邮政|百世|德邦|京东(?!卡)|优速|速运|极兔|菜鸟|鸟箱|驿站"#
 
     /// 取件码（V7.3.0 本体值；`[:："\s]*` 在 lookbehind 之后属匹配内容，
     /// 故结果可能带前导 `"` / `：` —— App 侧统一 trimLeadingSeparators 清理）
@@ -453,7 +456,8 @@ enum PickupParser {
         guard !text.isEmpty else { return nil }
 
         // ① 四套凭证公式
-        let code = firstMatch(codePattern, in: text).map(trimLeadingSeparators).flatMap { $0.isEmpty ? nil : $0 }
+        let code = firstMatch(codePattern, in: text).map(trimLeadingSeparators)
+            .flatMap { $0.isEmpty || isVersionLikeCode($0) ? nil : $0 }
         let waybill = firstMatch(waybillPattern, in: text).map(trimLeadingSeparators).flatMap { $0.isEmpty ? nil : $0 }
         let tail = firstMatch(tailPattern, in: text).map(trimLeadingSeparators).flatMap { $0.isEmpty ? nil : $0 }
         let special = firstMatch(specialPattern, in: text).map(normalizeSeparators).flatMap { $0.isEmpty ? nil : $0 }
@@ -464,11 +468,19 @@ enum PickupParser {
         // ② 全局闸门：四套全空 → 直接拒绝（V7.3.0 动作 51–62 的语义）
         guard code != nil || waybill != nil || tail != nil || special != nil || deliveryNo != nil else { return nil }
 
-        // ②.5 「还没到」的派送通知不算取件（2026-11-05 主人标注发现）：
-        //    「您的快递正在派送，将投放代收点」「快递将投递」这类短信里有运单号、有品牌，
+        // ②.5 「还没到」的派送通知不算取件（2026-11-05 主人标注发现）：        //    「您的快递正在派送，将投放代收点」「快递将投递」这类短信里有运单号、有品牌，
         //    会命中凭证公式被当成待取件，但包裹还没到驿站，收进去就是脏数据。
         //    只在**没有任何到达/取件线索**时才拒绝，避免误伤同时含两者的长短信。
         if PickupParser.isPendingDeliveryOnly(text) { return nil }
+
+        // ②.6 推广 / 营销短信不算取件（2026-11-17 训练样本暴露）：
+        //    华为云那条「限时活动赢华为运动手表、京东卡等大奖…拒收请回复R」
+        //    ① 「京东卡」里的「京东」命中了关键词闸门；
+        //    ② codePattern 的 `(?<=，)[A-Za-z]+-?\d+` 分支从 `glm-5.3-flash`
+        //       里截出「glm-5」当取件码；
+        //    ③ 品牌词表又从「天天送」里认出「天天」当快递公司。
+        //    三层全错，最后入库成一条假取件码。
+        if PickupParser.isPromotionalOnly(text) { return nil }
 
         // ③ 关键词闸门：为空 → 拒绝，防止非快递短信触发写入
         guard firstMatch(keywordPattern, in: text) != nil else { return nil }
@@ -825,6 +837,21 @@ enum OCRTextNormalizer {
 
 extension PickupParser {
 
+    /// 版本号 / 型号不是取件码（2026-11-17）。
+    ///
+    /// `codePattern` 里有一条通用分支 `(\d?\+?[A-Za-z]+?(-?\d+)+)`，本意是接住
+    /// `YT8861234`、`SF1234567890` 这类「字母前缀 + 长数字」的运单式取件码。
+    /// 但它的字母段只要求 ≥1 个字符、数字段只要求 ≥1 位，于是
+    /// **`glm-5.3-flash` 里的 `glm-5`**（前置逗号正好满足 lookbehind）也被当成了码。
+    ///
+    /// 判据刻意收得很窄：**纯字母 + 一个连字符 + 1~2 位数字**，整串就是版本号形态。
+    /// · `glm-5` / `gpt-4` / `claude-3` → 是版本号；
+    /// · `YT8861234`、`A-12`（柜位，且字母只有 1 位）、`8-4-3019` → 不受影响。
+    /// 宁可漏掉极少数真长这样的码，也不能把推广短信里的模型名收成取件码。
+    static func isVersionLikeCode(_ code: String) -> Bool {
+        code.range(of: #"^[A-Za-z]{2,}-\d{1,2}$"#, options: .regularExpression) != nil
+    }
+
     /// 仅"正在派送/将投递"、没有任何到达线索 → 不该收进待取件。
     static func isPendingDeliveryOnly(_ text: String) -> Bool {
         // 🔴 只挡「派送途中」，「将投递/即将送达」不挡：
@@ -835,6 +862,29 @@ extension PickupParser {
         let arrivedWords = ["已到达", "已到", "已放", "已入柜", "请凭", "取件码", "取货码",
                             "暂存", "自提", "已暂存", "到柜"]
         return !arrivedWords.contains(where: { text.contains($0) })
+    }
+
+    /// 推广 / 营销短信：**有营销特征 + 零取件线索**两条同时成立才算。
+    ///
+    /// 🔴 为什么不能只凭「拒收请回复R」判死：**真实驿站短信也常带这句**
+    ///    （「【菜鸟驿站】您的包裹已到…取件码 8-4-3019…拒收请回复R」）。
+    ///    只按营销词拦，会把一整批正经取件通知杀掉。
+    ///
+    /// 反向也一样：只按「没有取件码」拦，等于把 ② 的全局闸门再写一遍，没有意义。
+    /// 所以判据必须是**两个条件同时成立** —— 有营销话术、且通篇找不到任何取件语境。
+    static func isPromotionalOnly(_ text: String) -> Bool {
+        let promoWords = ["拒收请回复", "退订回", "回T退订", "回复T退", "限时活动",
+                          "免费开通", "免费领取", "限时免费", "抽奖", "大奖",
+                          "优惠券", "领取福利", "新用户专享", "首月0元", "限时优惠",
+                          "立即下载", "点击下载", "活动详情"]
+        guard promoWords.contains(where: { text.contains($0) }) else { return false }
+
+        // 任一命中即视为「有取件语境」，放行给后面的公式去判断。
+        // 注意不收「京东」这类品牌词：营销短信里也有「京东卡」。
+        let pickupWords = ["取件码", "取货码", "取件", "提货", "驿站", "快递柜",
+                           "丰巢", "自提柜", "代收点", "暂存", "凭取", "请凭",
+                           "到货", "格口", "货架", "派送", "签收"]
+        return !pickupWords.contains(where: { text.contains($0) })
     }
 }
 
