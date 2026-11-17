@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import QuartzCore
 import WidgetKit
 
 // MARK: ============================================================================
@@ -10,8 +11,152 @@ import WidgetKit
 // 本文件保留 App 专属部分：示例数据、写入结果、全局状态、小组件刷新。
 // ============================================================================
 
-// MARK: - 示例数据（取自真实短信语料的解析结果）
+// MARK: - 性能探针（仅 DEBUG + PERF_LOG=1）
+//
+// 卡顿归因不能靠猜：把每段可疑代码的**实际耗时**累起来写进 Documents/perf.log，
+// 跑完拉出来看哪一段占比最大。Release 包里整块不编译。
+#if DEBUG
+enum PerfProbe {
+    static let enabled = ProcessInfo.processInfo.environment["PERF_LOG"] == "1"
 
+    private struct Bucket { var count = 0; var total = 0.0; var max = 0.0 }
+    private static var buckets: [String: Bucket] = [:]
+    private static let lock = NSLock()
+    private static var flushAt = Date().addingTimeInterval(2)
+    private static var start = Date()
+
+    static func measure<T>(_ label: String, _ body: () -> T) -> T {
+        guard enabled else { return body() }
+        let t0 = CFAbsoluteTimeGetCurrent()
+        let out = body()
+        record(label, (CFAbsoluteTimeGetCurrent() - t0) * 1000)
+        return out
+    }
+
+    /// 纯计数（用于「一次 body 里某函数被调了多少次」这类 O(n) 浪费）。
+    /// 不加锁 —— 只在主线程调用，加了锁反而让探针本身成为瓶颈。
+    static func count(_ label: String, _ n: Int = 1) {
+        guard enabled else { return }
+        counts[label, default: 0] += n
+        // 每 256 次才看一眼时钟 —— count 是热路径，不能每次都取 Date()。
+        tick += 1
+        if tick & 0xFF == 0, Date() >= flushAt { flush() }
+    }
+
+    nonisolated(unsafe) private static var counts: [String: Int] = [:]
+    nonisolated(unsafe) private static var tick = 0
+
+    static func record(_ label: String, _ ms: Double, n: Int = 1) {
+        guard enabled else { return }
+        lock.lock()
+        var b = buckets[label] ?? Bucket()
+        b.count += n
+        b.total += ms
+        b.max = Swift.max(b.max, ms)
+        buckets[label] = b
+        let due = Date() >= flushAt
+        lock.unlock()
+        if due { flush() }
+    }
+
+    static func flush() {
+        guard enabled else { return }
+        lock.lock()
+        let snapshot = buckets
+        let window = Date().timeIntervalSince(start)
+        flushAt = Date().addingTimeInterval(2)
+        lock.unlock()
+        let counterSnapshot = counts
+
+        var lines = ["# window=\(String(format: "%.1f", window))s"]
+        for (key, b) in snapshot.sorted(by: { $0.value.total > $1.value.total }) {
+            let avg = b.count > 0 ? b.total / Double(b.count) : 0
+            lines.append(String(format: "%-46s n=%5d total=%8.1fms avg=%6.3f max=%7.2f",
+                                (key as NSString).utf8String!, b.count, b.total, avg, b.max))
+        }
+        lines.append("# --- 调用次数 ---")
+        for (key, n) in counterSnapshot.sorted(by: { $0.value > $1.value }) {
+            lines.append(String(format: "%-46s calls=%6d", (key as NSString).utf8String!, n))
+        }
+        let text = lines.joined(separator: "\n") + "\n"
+        let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("perf.log")
+        try? text.write(to: url, atomically: true, encoding: .utf8)
+    }
+}
+#endif
+
+// MARK: - 掉帧监视器（仅 DEBUG + PERF_FPS=1）
+//
+// 「卡顿」必须用帧间隔说话：判据是连续两帧之间隔了多久。
+// 60Hz 下 16.7ms 一帧，>20ms 就是掉了至少一帧。分桶统计后写 Documents/frames.log。
+#if DEBUG
+final class FrameMonitor: NSObject {
+    static let shared = FrameMonitor()
+    static let enabled = ProcessInfo.processInfo.environment["PERF_FPS"] == "1"
+
+    private var link: CADisplayLink?
+    private var last: CFTimeInterval = 0
+    private var frames = 0
+    private var buckets = [0, 0, 0, 0, 0]   // ≤16.7 / ≤33 / ≤50 / ≤100 / >100
+    private var worst: Double = 0
+    private var since = Date()
+    /// 当前所在页面（由脚手架切 tab 时写入），用来把冻结归到具体页
+    static var currentTag = "-"
+    private var slowLog: [String] = []
+
+    func start() {
+        guard Self.enabled, link == nil else { return }
+        let link = CADisplayLink(target: self, selector: #selector(tick(_:)))
+        link.add(to: .main, forMode: .common)
+        self.link = link
+    }
+
+    @objc private func tick(_ link: CADisplayLink) {
+        let now = CACurrentMediaTime()
+        defer { last = now }
+        guard last > 0 else { return }
+        frames += 1
+        let ms = (now - last) * 1000
+        worst = Swift.max(worst, ms)
+        switch ms {
+        case ..<16.7: buckets[0] += 1
+        case ..<33: buckets[1] += 1
+        case ..<50: buckets[2] += 1
+        case ..<100: buckets[3] += 1
+        default: buckets[4] += 1
+        }
+        if ms >= 50 {
+            slowLog.append(String(format: "%@ %.0fms", Self.currentTag, ms))
+        }
+        if Date().timeIntervalSince(lastDump) > 2 { dump() }
+    }
+
+    private var lastDump = Date()
+
+    private func dump() {
+        lastDump = Date()
+        let window = Date().timeIntervalSince(since)
+        let dropped = frames - buckets[0]
+        let lines = [
+            "# 累计窗口 \(String(format: "%.1f", window))s，总帧数 \(frames)",
+            "  正常(≤16.7ms)  \(buckets[0])",
+            "  轻微(16.7-33) \(buckets[1])",
+            "  掉帧(33-50)   \(buckets[2])",
+            "  明显(50-100)  \(buckets[3])",
+            "  冻结(>100)    \(buckets[4])",
+            String(format: "  掉帧率 %.1f%%  最长 %.1fms",
+                   frames > 0 ? Double(dropped) / Double(frames) * 100 : 0, worst),
+            "  慢帧明细: " + slowLog.suffix(40).joined(separator: " | ")
+        ]
+        let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("frames.log")
+        try? (lines.joined(separator: "\n") + "\n").write(to: url, atomically: true, encoding: .utf8)
+    }
+}
+#endif
+
+// MARK: - 示例数据（取自真实短信语料的解析结果）
 // 🔴 2026-11-11 内测反馈：Release 包**不得**再带开发者的测试记录。
 //    示例数据只是 Debug 的截图/统计样本，整块用 `#if DEBUG` 关掉。
 #if DEBUG
@@ -189,14 +334,14 @@ final class PickupStore: ObservableObject {
         //    改动前的内存副本；无条件 `save(records)` 会把旧状态整份盖回去，
         //    表现就是「小组件点完变 4 → 打开 App 变 5 → 回桌面又变 5」。
         //    `load()` 已自动重放增量日志，拿到的就是三方共同认可的最新状态。
-        let outgoing = Self.reconcileForSave(records, with: PickupStorage.load())
+        let outgoing = Self.reconcileForSave(records, with: loadDisk())
         if outgoing != records {
             // 界面也要跟到同一口径；用 isBatchUpdating 挡住 didSet 递归
             isBatchUpdating = true
             records = outgoing
             isBatchUpdating = false
         }
-        PickupStorage.save(outgoing)
+        writeOut(outgoing)
         // 日志记录的状态已经进 records 了，清掉（consume 自己会按时间戳复核，
         // 万一这里写的仍是旧数据它会把标记留着，下次读盘继续生效）。
         WidgetToggleJournal.consume(records: outgoing)
@@ -205,11 +350,40 @@ final class PickupStore: ObservableObject {
         PickupSyncBridge.schedule()
         // 数据一变就请桌面小组件重画。WidgetKit 自身对刷新有预算控制，
         // 短时间内的多次请求会被系统合并，这里不再额外做去抖。
-        WidgetCenter.shared.reloadAllTimelines()
+        requestWidgetReload()
         // 实时活动与桌面小组件同一时刻对齐：两条链路的触发点必须一致，
         // 否则会出现「小组件已更新、锁屏还挂着旧取件码」。
-        PickupActivityController.sync(pending: pending)
-        syncReminders(from: oldValue)
+        syncActivity()
+        perf("reminders") { syncReminders(from: oldValue) }
+    }
+
+    // MARK: 副作用分步（带性能探针）
+    //
+    // 拆成小函数只为埋点：`measure` 在非 PERF_LOG 下是零成本直通（一次静态布尔判断）。
+
+    @discardableResult
+    private func perf<T>(_ label: String, _ body: () -> T) -> T {
+        #if DEBUG
+        return PerfProbe.measure(label, body)
+        #else
+        return body()
+        #endif
+    }
+
+    private func loadDisk() -> [PickupRecord] {
+        perf("persist.loadDisk") { PickupStorage.load() }
+    }
+
+    private func writeOut(_ outgoing: [PickupRecord]) {
+        perf("persist.save") { PickupStorage.save(outgoing) }
+    }
+
+    private func requestWidgetReload() {
+        perf("persist.widgetReload") { WidgetCenter.shared.reloadAllTimelines() }
+    }
+
+    private func syncActivity() {
+        perf("persist.activitySync") { PickupActivityController.sync(pending: pending) }
     }
 
     /// 写盘前的状态对齐（2026-11-16 状态回滚专项）。
@@ -819,16 +993,20 @@ final class PickupStore: ObservableObject {
     func markAllPendingAsPicked() -> [PickupRecord] {
         let changed = pending
         let stamp = Date()
+        // 一次建索引：原来是「每条各扫一遍 records」的 O(n²)，
+        // 20 条不明显，50 条（免费上限）就是 1250 次比较，全在主线程同步跑。
+        var indexByID: [UUID: Int] = [:]
+        indexByID.reserveCapacity(records.count)
+        for (i, record) in records.enumerated() { indexByID[record.id] = i }
         batchUpdate {
             for record in changed {
-                if let index = records.firstIndex(where: { $0.id == record.id }) {
-                    records[index].isPickedUp = true
-                    records[index].pickedUpAt = records[index].pickedUpAt ?? stamp
-                    records[index].updatedAt = stamp
-                }
+                guard let index = indexByID[record.id] else { continue }
+                records[index].isPickedUp = true
+                records[index].pickedUpAt = records[index].pickedUpAt ?? stamp
+                records[index].updatedAt = stamp
             }
         }
-        PickupNotifier.clearDelivered(for: changed.map(\.id))
+        perf("completeAll.clearDelivered") { PickupNotifier.clearDelivered(for: changed.map(\.id)) }
         return changed
     }
 

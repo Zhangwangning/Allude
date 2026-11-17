@@ -200,6 +200,21 @@ struct RootView: View {
                 default: break
                 }
             }
+            // 性能取样：`AUTO_TAB=1` 每 1.2 秒循环切一次标签，配合 xctrace
+            // 采样「切标签卡顿」的热点。只在 DEBUG 生效，正式包没有这段。
+            if ProcessInfo.processInfo.environment["AUTO_TAB"] == "1" {
+                Task { @MainActor in
+                    let order: [RootTab] = [.pending, .picked, .stats, .settings]
+                    var index = 0
+                    while !Task.isCancelled {
+                        try? await Task.sleep(nanoseconds: 1_200_000_000)
+                        index = (index + 1) % order.count
+                        FrameMonitor.currentTag = order[index].rawValue
+                        model.selection = order[index]
+                        print("[perf] tab=\(order[index].rawValue)")
+                    }
+                }
+            }
             #endif
             // 记录"当前是不是 Duo 折叠态外屏"给小组件进程用（灵动岛由它渲染）
             if let window = UIApplication.shared.connectedScenes

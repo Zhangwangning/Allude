@@ -99,6 +99,23 @@ struct AlludeApp: App {
         let deviceCode = LicenseDevice.current
         print("[allude-verify] device=\(deviceCode)")
 
+        #if DEBUG
+        // 性能探针保底冲刷：`PERF_LOG=1` 时每 2 秒把累计统计写进 Documents/perf.log，
+        // 不需要任何交互也能取到数据（采样靠 simctl 读文件，不能靠 print）。
+        if PerfProbe.enabled {
+            Task.detached(priority: .background) {
+                while true {
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    PerfProbe.flush()
+                }
+            }
+        }
+        // `PERF_FPS=1`：起一个 CADisplayLink 数帧间隔，把掉帧率写进 Documents/frames.log。
+        if FrameMonitor.enabled {
+            DispatchQueue.main.async { FrameMonitor.shared.start() }
+        }
+        #endif
+
         // 2026-11-15 图标编号重排（带空洞的 2,3,5,…22 → 连续的 1…16）：
         // 老用户存的 rawValue 与新编号**同名不同图**，必须一次性换算，
         // 并把系统侧的备用图标同步过去 —— 否则桌面还挂着换号前那张。

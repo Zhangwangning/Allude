@@ -194,9 +194,17 @@ final class PickupListModel: ObservableObject {
     }
 
     func completeAll(in store: PickupStore) {
+        #if DEBUG
+        let changed = PerfProbe.measure("completeAll.markAll") { store.markAllPendingAsPicked() }
+        #else
         let changed = store.markAllPendingAsPicked()
+        #endif
         guard !changed.isEmpty else { return }
+        #if DEBUG
+        PerfProbe.measure("completeAll.armUndo") { armUndo(changed, action: .completed) }
+        #else
         armUndo(changed, action: .completed)
+        #endif
     }
 
     /// 多选模式下把选中条目批量标记为已取（2026-10-14，参照取件喵「一键标记已取」）。
@@ -352,6 +360,15 @@ struct PickupListView: View {
 
     /// 先按分类、范围与免费上限裁剪，再套用搜索与排序
     private var displayed: [PickupRecord] {
+        #if DEBUG
+        PerfProbe.count("list.displayed")
+        return PerfProbe.measure("list.displayed.ms") { computedDisplayed() }
+        #else
+        return computedDisplayed()
+        #endif
+    }
+
+    private func computedDisplayed() -> [PickupRecord] {
         // 有搜索词就在**全量**里搜（免费用户也能搜到全部，只是详情锁着），
         // 没有搜索词才是裁过条数的可见集。两者的排序逻辑完全一致。
         let hasQuery = !model.query.trimmingCharacters(in: .whitespaces).isEmpty
@@ -456,6 +473,9 @@ struct PickupListView: View {
     /// 驿站名：`station` 是派生值（词表命中 / AI 修正后的 stationOverride），空则归到「未标注驿站」。
     /// 2026-11-17：已归组的驿站返回**组名** —— 待取页只显示组，不再把成员拆成几个分组。
     private func stationName(for record: PickupRecord) -> String {
+        #if DEBUG
+        PerfProbe.count("list.stationName")
+        #endif
         let name = record.station.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return "未标注驿站" }
         return StationGroupStore.displayName(for: name)
@@ -555,6 +575,7 @@ struct PickupListView: View {
             openSwipeFromScaffold()
             copyToastFromScaffold()
             applySortFromScaffold()
+            completeAllFromScaffold()
         }
         .onChange(of: notificationRouter.pendingRecordID) { _, _ in consumeNotificationTarget() }
     }
@@ -580,6 +601,19 @@ struct PickupListView: View {
             UIPasteboard.general.string = first.code
             withAnimation(.snappy) { model.copiedCode = first.code }
         }
+    }
+
+    /// `AUTO_ONECLICK=1`：进页面 3 秒后自动点一次「全部完成取件」。
+    /// 配合 `PERF_LOG=1` 量化这条路径（落盘 / 小组件 / 实时活动 / 提醒）的真实耗时。
+    private func completeAllFromScaffold() {
+        #if DEBUG
+        guard ProcessInfo.processInfo.environment["AUTO_ONECLICK"] == "1" else { return }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            PerfProbe.measure("action.completeAll") { model.completeAll(in: store) }
+            PerfProbe.flush()
+        }
+        #endif
     }
 
     private func openSwipeFromScaffold() {
@@ -1574,7 +1608,10 @@ struct PickupCard: View {
     /// 「整个Allude遵循一套逻辑，而不是东一套西一套」）。
     /// 这里只提供驿站数据源（App 侧带用户自定义驿站），取名规则一处不写。
     private var naming: PickupNaming {
-        record.naming(station: stationDirectory.matchedName(in: [record.rawMessage]))
+        #if DEBUG
+        PerfProbe.count("card.naming")
+        #endif
+        return record.naming(station: stationDirectory.matchedName(in: [record.rawMessage]))
     }
     private var titlePrimary: String { naming.primary }
     private var titleSecondary: String? { naming.secondaryLabel }
