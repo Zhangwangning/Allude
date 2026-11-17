@@ -399,7 +399,15 @@ struct SettingsView: View {
     /// 窄屏：一张长页（目录驱动，与 iPad 分栏功能完全一致）。
     private var stackedSettings: some View {
         ScrollView {
-            VStack(spacing: 28) {   // 块与块之间靠留白分隔，不再画分组标题
+            // 🔴 2026-11-17 流畅度：这里是 `VStack` → 改成 `LazyVStack`。
+            //
+            // 设置页有 5 个目录块、几十行 SettingsRow（每行一个 SF Symbol 图标 +
+            // 玻璃行底），`VStack` 会在**首帧把全部行一次性构建完**。实测首次
+            // 切到设置标签时主线程冻结 **247ms** —— 是所有页面里最重的一个。
+            //
+            // 按 `LazyVStack` 懒加载后，首帧只构建屏幕内那几块，其余滚到才建。
+            // ⚠️ 块内部仍是全量的（一块 5~8 行，量小），不需要再拆。
+            LazyVStack(spacing: 28) {   // 块与块之间靠留白分隔，不再画分组标题
                 // 🔴 2026-11-08 主人：Pro 入口恢复放到**顶部**（此前学 Widgy 挪到最下面，
                 //    体验下来还是顶部更显眼，改回来）。
                 proBanner

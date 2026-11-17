@@ -302,11 +302,21 @@ final class PickupStore: ObservableObject {
 
     @Published var records: [PickupRecord] {
         didSet {
+            // 先递增版本号：批量改动期间 `didSet` 会提前 return，
+            // 但视图层的缓存必须立刻失效 —— 否则会出现「数据变了、列表没变」。
+            revision &+= 1
             // 批量改动时挂起副作用，由 `batchUpdate` 收尾统一补一次（见下方说明）
             guard !isBatchUpdating else { return }
             persistSideEffects(from: oldValue)
         }
     }
+
+    /// 数据版本号：`records` 每变一次 +1（2026-11-17 流畅度）。
+    ///
+    /// 给视图层的**重计算结果缓存**做失效判据。数组直接比较是 O(n) 且要逐字段
+    /// 比（`PickupRecord` 有十几个字段），用一个整数就够，而且绝不会漏 ——
+    /// 所有改动都必须走 `didSet`。
+    private(set) var revision: Int = 0
 
     /// 正在批量改 `records`（2026-10-25 审查修）。
     ///

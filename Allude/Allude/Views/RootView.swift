@@ -17,10 +17,23 @@ enum PadLayout {
 
     /// 当前窗口尺寸。iOS 17+ 不再用 `UIScreen.main`：多窗口 / 投屏时它会取错，
     /// 而 Duo 折叠展开恰好就是要跟着窗口变。
+    ///
+    /// 🔴 2026-11-17 加缓存：这个方法会被**每一行卡片**间接触发
+    ///    （`row(for:)` 里判断 `PadLayout.usesSplit`），50 行就是 50 次
+    ///    `connectedScenes → windows → first(isKeyWindow)` 遍历。
+    ///    100ms 的窗口足够覆盖「一次 body + 它的整轮行构建」，又短到
+    ///    Duo 折叠后下一帧就会重新取值。
+    private static var sizeCache: (size: CGSize, at: CFAbsoluteTime)?
+
     private static var windowSize: CGSize {
+        let now = CFAbsoluteTimeGetCurrent()
+        if let cache = sizeCache, now - cache.at < 0.1 { return cache.size }
+
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         let window = scenes.flatMap(\.windows).first { $0.isKeyWindow } ?? scenes.first?.windows.first
-        return window?.bounds.size ?? .zero
+        let size = window?.bounds.size ?? .zero
+        sizeCache = (size, now)
+        return size
     }
 
     /// iPhone Duo **展开态（内屏）且横屏**。

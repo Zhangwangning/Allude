@@ -86,6 +86,28 @@ final class PickupListModel: ObservableObject {
     @Published var shareRecords: [PickupRecord]?
 
     private var copyTask: Task<Void, Never>?
+
+    // MARK: 重计算缓存
+
+    /// `displayed` 的缓存（2026-11-17 流畅度专项）。
+    ///
+    /// **为什么需要**：`displayed` 是「过滤 + 全量排序」的计算属性，而一次 body
+    /// 里会被读 5~10 次 —— 空态判断、四种分组各一次、`visibleRecordIDs`、
+    /// 以及**每一行**的 `siblings`/`extraCodes` 都要拿它。每读一次就把整份记录
+    /// 重排一遍。实测 14 秒内被算 54 次，其中同一次 body 内的重复占绝大多数。
+    ///
+    /// **为什么放在 model 而不是 view 的 `@State`**：body 求值期间写 state 会触发
+    /// 「Modifying state during view update」警告，而且必然引起又一轮重算。
+    /// 这个缓存对 SwiftUI 完全不可见，只是个朴素的记忆化。
+    private var displayedCache: (key: String, value: [PickupRecord])?
+
+    func cachedDisplayed(_ key: String, build: () -> [PickupRecord]) -> [PickupRecord] {
+        if let cache = displayedCache, cache.key == key { return cache.value }
+        let value = build()
+        displayedCache = (key, value)
+        return value
+    }
+
     /// 每条记录各自的「勾选动效 → 落库」延迟任务。
     ///
     /// 🔴 必须按 `record.id` 分开存，不能共用一个数组后整批取消（2026-10-25 审查修）：
@@ -362,10 +384,28 @@ struct PickupListView: View {
     private var displayed: [PickupRecord] {
         #if DEBUG
         PerfProbe.count("list.displayed")
-        return PerfProbe.measure("list.displayed.ms") { computedDisplayed() }
-        #else
-        return computedDisplayed()
         #endif
+        return model.cachedDisplayed(displayedCacheKey) {
+            #if DEBUG
+            PerfProbe.measure("list.displayed.ms") { computedDisplayed() }
+            #else
+            computedDisplayed()
+            #endif
+        }
+    }
+
+    /// 缓存判据：数据版本 + 检索词 + 排序方式 + 驿站内排序 + 可见上限
+    /// + 自定义驿站清单 + 驿站组清单。
+    ///
+    /// 🔴 后两项**必须用 hashValue 而不是 count**：驿站改名、组换成员时数量不变，
+    ///    用 count 会让缓存一直命中旧结果 —— 用户改完驿站名，列表还按旧名分组，
+    ///    而且怎么退出重进都不变（缓存活在 model 里），极难排查。
+    ///    `StationGroup` 与 `[String]` 都自动合成了 Equatable/Hashable，内容变了 hash 就变。
+    private var displayedCacheKey: String {
+        "\(store.revision)|\(model.query)|\(model.sort.rawValue)|"
+            + "\(StationInnerOrder.current.rawValue)|\(store.visibleLimit)|"
+            + "\(StationDirectory.shared.customNames.hashValue)|"
+            + "\(StationGroupStore.all().hashValue)"
     }
 
     private func computedDisplayed() -> [PickupRecord] {
