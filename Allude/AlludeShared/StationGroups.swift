@@ -482,11 +482,6 @@ enum StationInnerOrder: String, CaseIterable, Identifiable {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    /// 取件码比较键：统一大写 + 去空白，逐字符比较
-    static func codeKey(_ code: String) -> String {
-        code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-    }
-
     /// 驿站**内部**的先后判定（外部由调用方按驿站名分桶）。
     ///
     /// `moment` 让调用方决定「时间」用哪个时刻：待取页一直按 `lastNotifiedAt`
@@ -501,11 +496,113 @@ enum StationInnerOrder: String, CaseIterable, Identifiable {
         case .oldest:
             return moment(a) < moment(b)
         case .codeAsc, .codeDesc:
-            let ka = Self.codeKey(a.code)
-            let kb = Self.codeKey(b.code)
-            if ka != kb { return self == .codeAsc ? ka < kb : ka > kb }
+            switch PickupCodeOrder.compare(a.code, b.code) {
+            case .before: return self == .codeAsc
+            case .after:  return self == .codeDesc
             // 同码（或空码）回落时间倒序，保证排序稳定、不会每帧跳
-            return moment(a) > moment(b)
+            case .same:   return moment(a) > moment(b)
+            }
         }
+    }
+}
+
+// MARK: - 取件码的自然排序（2026-11-17 主人）
+
+/// 取件码排序的**唯一口径**。
+///
+/// 🔴 以前是把码大写后直接做字符串比较 —— 逐字符比，于是：
+/// ```
+///   8-4-1005  <  8-4-999     ← 因为 '1' < '9'，但 1005 明显大于 999
+///   110226    <  90050       ← 同理，'1' < '9'
+/// ```
+/// 主人 2026-11-17 指正：数字就该按数值比，一段一段比。
+///
+/// 规则（三种形态统一成一套）：
+/// · 纯数字 `110226`：一个数字段，比数值；
+/// · 带连接符 `8-4-1005`：数字段 `8` / `4` / `1005`，从左到右逐段比数值；
+/// · 带字母 `YT169555`：字母段 `YT` 比字典序，再比后面的数字段 `169555`。
+///
+/// 分隔符（`-` `_` `/` 空格…）**只起分段作用，不参与比较** ——
+/// `8-4-1005` 与 `8 4 1005` 视为同形。数字段排在字母段之前
+/// （与 ASCII 里数字小于大写字母一致），所以 `8-4-1005` 会排在 `YT169555` 前面。
+enum PickupCodeOrder {
+
+    /// 三态比较结果。自带一个而不用 `ComparisonResult` —— 这个类型要被
+    /// App 与 Widget 两个 target 共用，不依赖 Foundation 的桥接类型更省心。
+    enum Order {
+        case before, same, after
+    }
+
+    private enum Piece: Equatable {
+        case digits(String)
+        case letters(String)
+    }
+
+    /// 把码切成「字母段 / 数字段」交替的序列。
+    ///
+    /// ⚠️ 只用 ASCII 的 `isNumber` / `isLetter` 判断：`Character.isNumber` 对
+    /// 罗马数字、全角数字也返回 true，会把它们混进数字段算出奇怪的顺序。
+    private static func pieces(_ code: String) -> [Piece] {
+        var out: [Piece] = []
+        var buffer = ""
+        var bufferIsDigits: Bool?
+
+        func flush() {
+            guard !buffer.isEmpty, let isDigits = bufferIsDigits else { return }
+            out.append(isDigits ? .digits(buffer) : .letters(buffer))
+            buffer = ""
+        }
+
+        for ch in code.uppercased() {
+            let isDigits = ch.isASCII && ch.isNumber
+            let isLetters = ch.isASCII && ch.isLetter
+            if isDigits || isLetters {
+                if let current = bufferIsDigits, current != isDigits { flush() }
+                bufferIsDigits = isDigits
+                buffer.append(ch)
+            } else {
+                // 分隔符：把当前段收尾，自己丢掉
+                flush()
+                bufferIsDigits = nil
+            }
+        }
+        flush()
+        return out
+    }
+
+    /// 数字段比较：**去前导零后先比位数、再比字典序**。
+    /// 这样既等价于比数值，又不会在超长数字上溢出 Int。
+    private static func compareDigits(_ x: String, _ y: String) -> Order {
+        let a = x.drop(while: { $0 == "0" })
+        let b = y.drop(while: { $0 == "0" })
+        if a.count != b.count { return a.count < b.count ? .before : .after }
+        if a == b { return .same }
+        return a < b ? .before : .after
+    }
+
+    static func compare(_ lhs: String, _ rhs: String) -> Order {
+        let a = pieces(lhs)
+        let b = pieces(rhs)
+
+        for index in 0..<min(a.count, b.count) {
+            switch (a[index], b[index]) {
+            case let (.digits(x), .digits(y)):
+                let result = compareDigits(x, y)
+                if result != .same { return result }
+            case let (.letters(x), .letters(y)):
+                if x != y { return x < y ? .before : .after }
+            case (.digits, .letters):
+                return .before
+            case (.letters, .digits):
+                return .after
+            }
+        }
+
+        if a.count != b.count {
+            return a.count < b.count ? .before : .after
+        }
+        // 分段后完全同形（例如仅分隔符不同）：回落原文，保证全序、排序稳定
+        if lhs == rhs { return .same }
+        return lhs < rhs ? .before : .after
     }
 }

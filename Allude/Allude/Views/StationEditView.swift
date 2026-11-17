@@ -32,6 +32,9 @@ struct StationEditView: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var showDeleteConfirm = false
+    /// 添加态的位置草稿：进页面即当前位置，保存时随新驿站名一起落盘
+    @State private var draftCoordinate: CLLocationCoordinate2D?
+    @State private var showLocationPicker = false
 
     init(mode: Mode) {
         self.mode = mode
@@ -68,12 +71,8 @@ struct StationEditView: View {
             VStack(spacing: 16) {
                 iconCard
                 nameCard
-
-                // 自定义驿站：添加完点格子进来，就能设位置；
-                // 内置驿站走网格里的同一个编辑页，不必经过这里。
-                if isEdit {
-                    locationCard
-                }
+                // 2026-11-17 老大：创建时就能加位置（可选），不再要求「先建好再回来设」。
+                locationCard
 
                 Text(isEdit
                      ? "改名后，卡片会自动按新名称从短信里识别。留空图标则显示名称首字。"
@@ -111,6 +110,12 @@ struct StationEditView: View {
                 iconChanged = true
             }
             pickerSelection = nil
+        }
+        .sheet(isPresented: $showLocationPicker) {
+            NavigationStack {
+                StationLocationPicker(coordinate: $draftCoordinate,
+                                      stationName: trimmedName)
+            }
         }
         .alert("无法保存", isPresented: $showError) {
             Button("好", role: .cancel) { }
@@ -202,48 +207,76 @@ struct StationEditView: View {
         .cardSurface()
     }
 
-    // MARK: 位置与到达提醒（仅编辑态）
+    // MARK: 位置（创建态与编辑态都显示，2026-11-17 老大）
 
-    /// 内置 / 自定义共用 `StationLocationEditor`；这里只做入口与状态摘要。
+    @ViewBuilder
     private var locationCard: some View {
-        NavigationLink {
-            StationLocationEditor(stationName: originalName ?? "")
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "mappin.circle.fill")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(AppTheme.violet)
-                    .frame(width: 28)
+        if isEdit {
+            // 已保存的驿站：进定位设置页（读写位置表，还能调半径 / 启停提醒）
+            NavigationLink {
+                StationLocationEditor(stationName: originalName ?? "")
+            } label: {
+                locationRowLabel(title: "位置",
+                                 summary: locationSummary,
+                                 showsChevron: true)
+            }
+            .buttonStyle(.plain)
+        } else {
+            // 还没保存：先在草稿里选，保存时随驿站名一起落盘
+            Button {
+                showLocationPicker = true
+            } label: {
+                locationRowLabel(title: "位置（可选）",
+                                 summary: draftLocationSummary,
+                                 showsChevron: true)
+            }
+            .buttonStyle(.plain)
+        }
+    }
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("位置与到达提醒")
-                        .font(AppTheme.TypeScale.bodyMedium)
-                        .foregroundStyle(.primary)
-                    Text(locationSummary)
-                        .font(AppTheme.TypeScale.note)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+    private var draftLocationSummary: String {
+        guard let c = draftCoordinate else { return "未设置，默认不填也可以" }
+        return String(format: "已选 %.4f, %.4f", c.latitude, c.longitude)
+    }
 
-                Spacer(minLength: 8)
+    private func locationRowLabel(title: String,
+                                  summary: String,
+                                  showsChevron: Bool) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "mappin.circle.fill")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(AppTheme.violet)
+                .frame(width: 28)
 
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title.L)
+                    .font(AppTheme.TypeScale.bodyMedium)
+                    .foregroundStyle(.primary)
+                Text(summary.L)
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+
+            if showsChevron {
                 Image(systemName: "chevron.right")
                     .font(AppTheme.TypeScale.rowSubtitle.weight(.semibold))
                     .foregroundStyle(.quaternary)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .cardSurface()
         }
-        .buttonStyle(.plain)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardSurface()
     }
 
     private var locationSummary: String {
         guard let original = originalName,
               let loc = locationStore.location(for: original) else {
-            return "未设置。设好后，到店时若有该驿站的待取件会提醒你。"
+            return "未设置"
         }
-        return loc.enabled ? "已设置并启用到达提醒" : "已设置位置，未启用到达提醒"
+        return String(format: "%.5f, %.5f", loc.latitude, loc.longitude)
     }
 
     // MARK: 删除（仅编辑态）
@@ -294,6 +327,15 @@ struct StationEditView: View {
             if let data = iconData {
                 station.setIcon(data, for: trimmedName)
             }
+            // 位置草稿：创建时选过就一起落盘
+            if let c = draftCoordinate {
+                StationLocationStore.shared.set(
+                    StationLocation(latitude: c.latitude,
+                                    longitude: c.longitude,
+                                    radius: StationLocation.defaultRadius,
+                                    enabled: true),
+                    for: trimmedName)
+            }
         }
         dismiss()
     }
@@ -312,6 +354,9 @@ struct StationAddDialog: View {
     @State private var iconData: Data?
     @State private var pickerSelection: PhotosPickerItem?
     @State private var errorMessage: String?
+    /// 创建时顺手选的位置（草稿）：保存时才随驿站名一起落盘
+    @State private var draftCoordinate: CLLocationCoordinate2D?
+    @State private var showLocationPicker = false
 
     private var trimmedName: String {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -337,6 +382,9 @@ struct StationAddDialog: View {
                 .padding(.vertical, 12)
                 .background(Color(.tertiarySystemFill),
                             in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            // 位置（可选，2026-11-17 老大）：创建时就能加，进页面即当前位置，想改就点地图
+            locationRow
 
             if let errorMessage {
                 Text(errorMessage.L)
@@ -373,6 +421,48 @@ struct StationAddDialog: View {
             }
             pickerSelection = nil
         }
+        .sheet(isPresented: $showLocationPicker) {
+            NavigationStack {
+                StationLocationPicker(coordinate: $draftCoordinate,
+                                      stationName: trimmedName)
+            }
+        }
+    }
+
+    /// 位置一行：进页面即当前位置，可清空（不设位置）。
+    private var locationRow: some View {
+        Button {
+            showLocationPicker = true
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: draftCoordinate == nil
+                      ? "mappin.slash" : "mappin.circle.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(draftCoordinate == nil
+                                     ? Color.secondary : AppTheme.violet)
+
+                Text(draftLocationSummary)
+                    .font(AppTheme.TypeScale.body)
+                    .foregroundStyle(draftCoordinate == nil ? .secondary : .primary)
+                    .lineLimit(1)
+
+                Spacer(minLength: 4)
+
+                Image(systemName: "chevron.right")
+                    .font(AppTheme.TypeScale.note.weight(.semibold))
+                    .foregroundStyle(.quaternary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color(.tertiarySystemFill),
+                        in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var draftLocationSummary: String {
+        guard let c = draftCoordinate else { return "位置（可选）" }
+        return String(format: "位置 %.4f, %.4f", c.latitude, c.longitude)
     }
 
     @ViewBuilder
@@ -431,6 +521,20 @@ struct StationAddDialog: View {
             return
         }
         if let iconData { station.setIcon(iconData, for: trimmedName) }
+        writeDraftLocation()
         onDismiss()
+    }
+
+    /// 创建时选过位置就一起落盘（2026-11-17 老大）。
+    /// 点了「位置」就是要提醒，所以直接 `enabled: true`；全局开关 / 权益 /
+    /// 权限任一不满足时 `syncRegions()` 自己会跳过，不会偷偷起围栏。
+    private func writeDraftLocation() {
+        guard let c = draftCoordinate else { return }
+        StationLocationStore.shared.set(
+            StationLocation(latitude: c.latitude,
+                            longitude: c.longitude,
+                            radius: StationLocation.defaultRadius,
+                            enabled: true),
+            for: trimmedName)
     }
 }

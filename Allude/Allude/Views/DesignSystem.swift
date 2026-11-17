@@ -344,7 +344,7 @@ struct CourierGalleryView: View {
 
             Text(scope == .courier
                  ? "品牌图标版权归各公司所有，此处仅用于标识取件来源；未收录的品牌按名称自绘色块兜底，不会出现空白。"
-                 : "点「新建驿站组」可把同一个小区的几家驿站并成一个新驿站；点任意驿站（含内置）可设置位置与到达提醒。匹配时按名称最长命中。")
+                 : "点「新建驿站组」可把同一个小区的几家驿站并成一个新驿站；点任意驿站（含内置）可设置位置。匹配时按名称最长命中。")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 4)
@@ -417,10 +417,8 @@ struct CourierGalleryView: View {
     // MARK: 驿站内排序（2026-11-17 主人）
 
     private var innerOrderCard: some View {
-        SettingsGroup(
-            title: "驿站内排序",
-            note: "只在「按快递驿站」分组时生效：先把同一个驿站的件聚到一起，再按这里选的方式排。取件码按从左到右逐位比较，所以「8-4-1005」会排在「8-4-999」前面。"
-        ) {
+        // 🔴 2026-11-17 老大要求：说明文字整段去掉，只留标题 + 排序方式一行。
+        SettingsGroup(title: "驿站内排序") {
             SettingsPlainRow(title: "排序方式") {
                 Menu {
                     Picker("", selection: $innerOrder) {

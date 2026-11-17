@@ -868,6 +868,11 @@ struct AlludeApp: App {
                     NavigationStack {
                         StationLocationEditor(stationName: "菜鸟驿站")
                     }
+                case "stationLocationPicker":
+                    // 创建驿站时的草稿选点页（2026-11-17：默认当前位置 + 手动点选）
+                    NavigationStack {
+                        StationLocationPickerPreview()
+                    }
                 case "stationGroups":
                     // 驿站管理页（2026-11-17 改成三段平铺：组 / 未归组 / 已归组成员）
                     NavigationStack {
@@ -1088,6 +1093,19 @@ struct AlludeApp: App {
         let ids = running.map(\.id).joined(separator: ",")
         raceLog("\(tag) running=\(running.count) "
                 + (running.count <= 1 ? "PASS" : "FAIL") + " ids=[\(ids)]")
+    }
+}
+
+// MARK: - 草稿选点页预览（脚手架，`SCREEN=stationLocationPicker`）
+//
+// 创建驿站 / 新建组时弹出的那个页面，平时是 sheet 里出现的，命令行点不到，
+// 所以给一个能直接渲染的壳。
+
+private struct StationLocationPickerPreview: View {
+    @State private var coordinate: CLLocationCoordinate2D?
+
+    var body: some View {
+        StationLocationPicker(coordinate: $coordinate, stationName: "恒大御府驿站")
     }
 }
 

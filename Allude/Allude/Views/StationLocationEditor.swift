@@ -27,6 +27,8 @@ struct StationLocationEditor: View {
     @State private var hint: String?
     @State private var askingLocation = false
     @State private var showRadiusMenu = false
+    /// 没存过位置时，进页面自动取一次当前位置当默认点（只跑一次）
+    @State private var didAutoLocate = false
 
     init(stationName: String) {
         self.stationName = stationName
@@ -51,9 +53,8 @@ struct StationLocationEditor: View {
         ScrollView {
             VStack(spacing: 16) {
                 mapCard
-                currentLocationButton
-                settingsCard
                 coordinateCard
+                settingsCard
                 disclaimer
                 if locationStore.location(for: stationName) != nil {
                     deleteButton
@@ -74,6 +75,14 @@ struct StationLocationEditor: View {
                     .disabled(coordinate == nil)
             }
         }
+        .task {
+            // 老大 2026-11-17：定位直接手动选，打开就该有个可用的默认点 ——
+            // 没存过位置时自动取当前位置落到地图上，想换就点地图别处。
+            guard !didAutoLocate else { return }
+            didAutoLocate = true
+            guard coordinate == nil else { return }
+            useCurrentLocation()
+        }
     }
 
     // MARK: 地图
@@ -92,7 +101,6 @@ struct StationLocationEditor: View {
                     .stroke(.primary.opacity(0.10), lineWidth: 0.5)
             }
             .mapControls {
-                MapUserLocationButton()
                 MapCompass()
             }
             // 点一下即落点。Map 自身的拖拽/缩放手势与 tap 不冲突。
@@ -102,47 +110,59 @@ struct StationLocationEditor: View {
                     hint = nil
                 }
             }
+            .overlay(alignment: .topTrailing) {
+                // 🔴 放右上角：右下角是「高德地图」法律信息水印，圆钮压上去会打架
+                locateButton
+                    .padding(10)
+            }
         }
         .overlay(alignment: .bottom) {
-            Text("在地图上点按，标记驿站所在位置")
-                .font(AppTheme.TypeScale.note)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(.ultraThinMaterial, in: .capsule)
-                .padding(.bottom, 10)
-                .allowsHitTesting(false)
+            if coordinate == nil {
+                Text("在地图上点按，标记驿站所在位置")
+                    .font(AppTheme.TypeScale.note)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(.ultraThinMaterial, in: .capsule)
+                    .padding(.bottom, 10)
+                    .allowsHitTesting(false)
+            }
         }
     }
 
-    private var currentLocationButton: some View {
-        Button {
-            askingLocation = true
-            StationLocationService.shared.requestCurrentCoordinate { hit in
-                askingLocation = false
-                guard let hit else {
-                    hint = "没取到当前位置。可以在地图上点一下，或到系统设置里检查定位权限。"
-                    return
+    /// 地图右下角的「定位到当前位置」圆钮。
+    /// 🔴 2026-11-17：原来是整条白卡按钮，占地又显眼；定位改成默认自动取一次，
+    ///    这里只留一个返场用的圆钮（失败了也能重试）。
+    private var locateButton: some View {
+        Button(action: useCurrentLocation) {
+            Image(systemName: askingLocation ? "location.fill" : "location")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(AppTheme.violet)
+                .frame(width: 38, height: 38)
+                .background(.regularMaterial, in: .circle)
+                .overlay {
+                    Circle().stroke(.primary.opacity(0.08), lineWidth: 0.5)
                 }
-                coordinate = hit
-                camera = .region(MKCoordinateRegion(center: hit,
-                                                    latitudinalMeters: 1_000,
-                                                    longitudinalMeters: 1_000))
-                hint = nil
-            }
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: askingLocation ? "location.fill" : "location")
-                    .font(.system(size: 15, weight: .semibold))
-                Text(askingLocation ? "正在定位…" : "用当前位置")
-                    .font(AppTheme.TypeScale.bodyMedium)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .cardSurface()
         }
         .buttonStyle(.plain)
         .disabled(askingLocation)
+        .accessibilityLabel("定位到当前位置")
+    }
+
+    private func useCurrentLocation() {
+        askingLocation = true
+        StationLocationService.shared.requestCurrentCoordinate { hit in
+            askingLocation = false
+            guard let hit else {
+                hint = "没取到当前位置。可以在地图上点一下，或到系统设置里检查定位权限。"
+                return
+            }
+            coordinate = hit
+            camera = .region(MKCoordinateRegion(center: hit,
+                                                latitudinalMeters: 1_000,
+                                                longitudinalMeters: 1_000))
+            hint = nil
+        }
     }
 
     // MARK: 设置
