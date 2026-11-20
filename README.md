@@ -178,14 +178,6 @@ swiftc -O -o /tmp/parser-regression \
 # current baseline: 193/514 codes, 192/514 addresses
 ```
 
-## What is *not* in the repository
-
-- No IPA, no build products (`build/`, `DerivedData/`), no provisioning profiles
-- No signing keys (`tools/license-gen/private-key.pem` is git-ignored)
-- No binaries or unpacked artifacts belonging to other apps
-
-Shipping builds go one way: Xcode Archive → App Store Connect.
-
 ## Credits
 
 极客ZHANG · zhang_wangning@126.com

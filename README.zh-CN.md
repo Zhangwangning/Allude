@@ -129,14 +129,6 @@ swiftc -O -o /tmp/parser-regression \
 # 当前基线：识别 193/514、地址 192/514
 ```
 
-## 仓库里不放什么
-
-- 不放 IPA，不放构建产物（`build/`、`DerivedData/`），不放描述文件
-- 不放签名私钥（`tools/license-gen/private-key.pem` 已在 `.gitignore`）
-- 不放其他 App 的二进制与拆包产物
-
-分发版只有一条路：Xcode Archive → App Store Connect。
-
 ## 署名
 
 极客ZHANG · zhang_wangning@126.com
