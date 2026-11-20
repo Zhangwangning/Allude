@@ -378,10 +378,6 @@ struct ScanPickupSheet: View {
                 Text("识别在本机完成，照片不出设备")
                     .font(.caption2)
                     .foregroundStyle(.white.opacity(0.65))
-                // 开了 AI 增强就得说清楚：照片不上传，但**识别出的文字**会发给你自己
-                // 接入的模型复核一次。含糊其辞比不写更糟。
-                AIEnhanceHint(compact: true)
-                    .padding(.horizontal, 28)
             }
         }
         .frame(maxWidth: .infinity)
@@ -451,9 +447,6 @@ struct ScanPickupSheet: View {
             Text("可一次选多张，最多 \(Self.photoLimit) 张")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
-
-            AIEnhanceHint(compact: true)
-                .padding(.horizontal, 34)
 
             if model.isRecognizing {
                 HStack(spacing: 8) {

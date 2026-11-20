@@ -2,7 +2,7 @@ import SwiftUI
 import WidgetKit
 
 // MARK: ============================================================================
-// 取件码管理（我的 › 设置 › 桌面小组件下面那一行）
+// 取件码管理（设置 › 桌面小组件下面那一行）
 //
 // 2026-11-16 主人：「在设置页面中的桌面小组件的下面增加一个取件码管理，其二级页面中
 //    可以设置取件码卡片中取件码的颜色……也可以设置一条取件码的透明度保持一个就行的，
@@ -21,6 +21,17 @@ import WidgetKit
 // ⚠️ 所有值落在 App Group `UserDefaults`（`CodeAppearanceSettings`），
 //    改完统一 `notifyChange()` 重画桌面时间线，再 `refreshRendering()` 重画实时活动 ——
 //    ActivityKit 的活动不归 WidgetCenter 管，少这一步灵动岛要等下一条快递才变。
+//
+// 🔴 2026-11-20 主人：「开关开着，为啥上面的预览是一个颜色……开关点击后预览要及时响应，
+//    再把这个页面的布局优化一下，提示文字能少则少」。
+//    根因有两层，都改在这里：
+//      ① 预览原先读的是**存储里的** `CodeAppearanceStyle.current`。SwiftUI 先按新的
+//         `@State` 重画一次，`onChange` 才把值写进 UserDefaults —— 于是预览永远慢一拍，
+//         拨开关看到的还是上一档样式。现在预览直接用 `@State` 拼一份 `style` 传进去，
+//         开关 / 色板 / 滑杆一动就同步重画。
+//      ② 预览原来拿 `AppTheme.accent` 冒充品牌色，和真机上圆通的紫对不上。
+//         现在走 `CourierBrand.color(for:)` + `CourierLogo`，与列表卡片同源。
+//    文案按「非必要不提示」收口：只剩分组标题和行标题，说明一律删掉。
 // ============================================================================
 
 struct CodeManagementView: View {
@@ -37,16 +48,28 @@ struct CodeManagementView: View {
         CodeColorChoice(rawValue: colorRaw) ?? .brand
     }
 
+    /// 预览专用样式：来源是视图状态，不是存储 —— 这样开关一动预览立刻跟上。
+    private var previewStyle: CodeAppearanceStyle {
+        CodeAppearanceStyle(choice: choice,
+                            opacity: opacity,
+                            headOpacity: headOpacity,
+                            emphasisEnabled: emphasis)
+    }
+
+    private var brandColor: Color {
+        CourierBrand.color(for: Self.previewCompany)
+    }
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 18) {
                 previewSection
                 colorSection
                 styleSection
                 groupingSection
             }
             .padding(.horizontal, AppTheme.hInset)
-            .padding(.top, 6)
+            .padding(.top, 8)
             .padding(.bottom, 60)
         }
         .background(Color(.systemGroupedBackground))
@@ -57,22 +80,12 @@ struct CodeManagementView: View {
 
     // MARK: 实时预览
 
-    /// 直接用**真实的** `PickupCodeEmphasis.text` 渲染，所见即 nine 个渲染面的所取。
-    /// 示例短信含两个码 —— 开关打开时正好演示「一张卡两个取件码」。
+    /// 用**真实的** `PickupCodeEmphasis.text` 渲染，所见即九个渲染面所取。
     private var previewSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "效果预览")
-
             previewCard
                 .frame(maxWidth: .infinity, alignment: .center)
-
-            Text(choice == .brand
-                 ? "示例数据 · 默认跟随快递公司品牌色，已取件仍显示为灰色"
-                 : "示例数据 · 全端统一使用「\(choice.title)」，已取件仍显示为灰色")
-                .font(.system(size: 12))
-                .foregroundStyle(.tertiary)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -84,22 +97,22 @@ struct CodeManagementView: View {
     private var previewCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 6) {
-                Text("圆通速递")
-                    .font(.system(size: 15.5, weight: .semibold))
+                Text(Self.previewCompany.L)
+                    .font(AppTheme.TypeScale.rowTitle.weight(.semibold))
                 Text("|")
-                    .font(.system(size: 13))
+                    .font(AppTheme.TypeScale.rowSubtitle)
                     .foregroundStyle(Color.secondary.opacity(0.45))
                 Text("菜鸟驿站")
-                    .font(.system(size: 13))
+                    .font(AppTheme.TypeScale.rowSubtitle)
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 6)
                 Text("今天 14:32")
-                    .font(.caption2)
+                    .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.tertiary)
             }
 
             Text("幸福里小区 3 号楼东侧门店")
-                .font(.system(size: 12.5))
+                .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .padding(.top, 4)
@@ -108,14 +121,13 @@ struct CodeManagementView: View {
                 .padding(.top, 8)
 
             HStack(alignment: .center, spacing: 8) {
-                Image(systemName: "shippingbox.fill")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(AppTheme.accent)
-                    .frame(width: 26)
+                CourierLogo(company: Self.previewCompany, size: 26)
 
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: previewCodes.count > 1 ? 1 : 0) {
                     ForEach(previewCodes, id: \.self) { code in
-                        PickupCodeEmphasis.text(code, tint: AppTheme.accent)
+                        PickupCodeEmphasis.text(code,
+                                                tint: brandColor,
+                                                style: previewStyle)
                             .font(.system(size: previewCodes.count > 1 ? 24 : 30,
                                           weight: .bold, design: .rounded))
                             .monospaced()
@@ -135,47 +147,32 @@ struct CodeManagementView: View {
         }
         .padding(.horizontal, AppTheme.cardPadding)
         .padding(.vertical, 12)
-        .cardSurface(tint: AppTheme.accent)
+        .cardSurface(tint: brandColor)
         .frame(maxWidth: 360)
     }
+
+    private static let previewCompany = "圆通速递"
 
     // MARK: 颜色
 
     private var colorSection: some View {
-        SettingsGroup(title: "取件码颜色",
-                      note: "「跟随品牌色」按快递公司取色，是原来的样子；选固定色后，待取页、已取页、桌面小组件、灵动岛和分享卡一起换。") {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 0) {
-                    ForEach(CodeColorChoice.allCases) { item in
-                        Button {
-                            CodeAppearanceSettings.setColorRaw(item.rawValue)
-                            colorRaw = item.rawValue
-                            refreshLiveActivity()
-                        } label: {
-                            swatch(item)
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(item.title)
+        SettingsGroup(title: "取件码颜色") {
+            HStack(spacing: 0) {
+                ForEach(CodeColorChoice.allCases) { item in
+                    Button {
+                        CodeAppearanceSettings.setColorRaw(item.rawValue)
+                        colorRaw = item.rawValue
+                        refreshLiveActivity()
+                    } label: {
+                        swatch(item)
+                            .frame(maxWidth: .infinity)
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(item.title)
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 14)
-
-                SettingsDivider(style: .plain)
-
-                HStack(spacing: 6) {
-                    Text("当前")
-                        .font(AppTheme.TypeScale.rowSubtitle)
-                        .foregroundStyle(.tertiary)
-                    Text(choice.title.L)
-                        .font(AppTheme.TypeScale.rowSubtitle.weight(.medium))
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
         }
     }
 
@@ -213,8 +210,7 @@ struct CodeManagementView: View {
     // MARK: 显示方式
 
     private var styleSection: some View {
-        SettingsGroup(title: "显示方式",
-                      note: "关掉「末四位强调」，整条取件码就只剩一个颜色、一个透明度；已取件始终显示为灰色，不跟随这些设置。") {
+        SettingsGroup(title: "显示方式") {
             SettingsPlainRow(title: "整码透明度") {
                 Button {
                     showOpacityMenu = true
@@ -273,11 +269,10 @@ struct CodeManagementView: View {
         }
     }
 
-    // MARK: 卡片分组
+    // MARK: 卡片
 
     private var groupingSection: some View {
-        SettingsGroup(title: "卡片",
-                      note: "默认关闭，仍是一码一张卡。一条短信里有两个取件码时，开启后回到同一张卡；关闭则立刻拆回，对全部历史同时生效。件数统计与记录本身不受影响。") {
+        SettingsGroup(title: "卡片") {
             SettingsPlainRow(title: "一张卡片多个取件码") {
                 Toggle("", isOn: $groupMultiple)
                     .labelsHidden()

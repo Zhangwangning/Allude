@@ -183,10 +183,6 @@ struct AddPickupSheet: View {
                 .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
-
-            // 2026-11-16 主人：手动添加也要走 AI 增强（链路本来就走 `commitAll`，
-            // 这里把"已经在用"这件事说出来，否则用户以为只有快捷指令才吃 AI）。
-            AIEnhanceHint()
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)

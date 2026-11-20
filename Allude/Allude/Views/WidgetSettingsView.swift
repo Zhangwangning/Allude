@@ -13,8 +13,13 @@ import WidgetKit
 //
 // 🔴 **2026-11-16 形态变更**（主人：「将显示占位符与上面的 5 个合并到一起……
 //    显示内容的开关和上面的效果预览互相换一下位置」）：
-//    顺序改成「先开关、后预览」，「空位」分组取消，占位符成为显示内容卡的第 6 行。
-//    预览仍与桌面共用一份渲染代码，实时跟随所有 6 个开关。
+//    顺序改成「先开关、后预览」，「空位」分组取消，占位符并入显示内容。
+//    预览仍与桌面共用一份渲染代码，实时跟随全部开关。
+//
+// 🔴 **2026-11-20 文案收口**（主人：「提示文字能少则少，非必要不提示，用户压根不看」）：
+//    删掉三段说明（「取件码永远显示…」「关掉占位符后…」、预览下方「示例数据…」），
+//    改成两张卡自证结构 ——「完整信息」单独一张，其余五项一张；
+//    行标题同时去掉冗余的「显示」前缀（分组标题已经写了「显示内容」）。
 //
 // 🔴 **2026-10-27 形态变更**（主人：「下面的显示内容的开关勾选直接做成开关……
 //    完整信息与下面的互斥，事实上与之前一样，但是形式变了」）：
@@ -142,41 +147,30 @@ struct WidgetSettingsView: View {
                                    showsPlaceholders: showsPlaceholders)
             }
             .frame(maxWidth: .infinity, alignment: .center)
-
-            Text("示例数据 · 桌面小组件会按这套显示设置渲染你自己的记录")
-                .font(.system(size: 12))
-                .foregroundStyle(.tertiary)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    // MARK: 显示内容（六个开关，含占位符）
+    // MARK: 显示内容（完整信息 + 五项）
 
     private var displaySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "显示内容")
 
+            // 2026-11-20 主人：「提示文字能少则少，非必要不提示，用户压根不看」。
+            // 改为两张卡自证结构：「完整信息」一键，其余五项一组 —— 不再写任何说明。
             VStack(spacing: 0) {
-                ForEach(Array(WidgetField.allCases.enumerated()), id: \.element) { index, field in
+                toggleRow(.complete)
+            }
+            .settingsCard()
+
+            VStack(spacing: 0) {
+                ForEach(Array(WidgetField.detailFields.enumerated()), id: \.element) { index, field in
                     if index > 0 { SettingsDivider(style: .plain) }
                     toggleRow(field)
                 }
             }
             .settingsCard()
-
-            // 说明放卡外（iOS 二级设置页口径：标题在卡内、说明在卡外）。
-            // 占位符并进同一张卡后，两段说明一起留在这里，不再单开分组。
-            VStack(alignment: .leading, spacing: 4) {
-                Text("取件码永远显示。四项可同时开；「完整信息」等价于四项全开。")
-                Text("关掉「显示占位符」后，一页里没填满的位置留白，不再画灰色骨架——避免被误认为还有快递没显示出来。")
-            }
-            .font(.system(size: 13))
-            .foregroundStyle(.secondary)
-            .lineSpacing(2)
-            .padding(.horizontal, 16)
-            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -192,15 +186,17 @@ struct WidgetSettingsView: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
                     .fill(field.tint.opacity(0.14))
-                    .frame(width: 38, height: 38)
+                    .frame(width: 34, height: 34)
 
                 Image(systemName: field.symbol)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(field.tint)
             }
 
             Text(field.title.L)
-                .font(.system(size: 16, weight: field == .complete ? .semibold : .regular))
+                .font(field == .complete
+                      ? AppTheme.TypeScale.rowTitle.weight(.semibold)
+                      : AppTheme.TypeScale.rowTitle)
                 .foregroundStyle(.primary)
 
             Spacer(minLength: 8)
@@ -211,7 +207,7 @@ struct WidgetSettingsView: View {
                 .tint(AppTheme.accent)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.vertical, 9)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(.rect)
     }
@@ -275,11 +271,11 @@ private enum WidgetField: CaseIterable {
     var title: String {
         switch self {
         case .complete:     "完整信息"
-        case .address:      "显示取件地址"
-        case .company:      "显示快递公司"
-        case .station:      "显示驿站"
-        case .locker:       "显示快递柜/货架"
-        case .placeholders: "显示占位符"
+        case .address:      "取件地址"
+        case .company:      "快递公司"
+        case .station:      "驿站"
+        case .locker:       "快递柜 / 货架"
+        case .placeholders: "占位符"
         }
     }
 
@@ -303,6 +299,11 @@ private enum WidgetField: CaseIterable {
         case .locker:       AppTheme.doneTint
         case .placeholders: AppTheme.sky
         }
+    }
+
+    /// 第二张卡里的五项（`.complete` 单独一张卡，不在这里）。
+    static var detailFields: [WidgetField] {
+        allCases.filter { $0 != .complete }
     }
 
     /// 对应 `WidgetDisplayOptions` 的字段；`.complete` 由 `isComplete` 聚合而来，

@@ -35,8 +35,10 @@ struct AICapabilityView: View {
                 purposeCard
                 // 🔴 2026-11-08 主人：国行用不了端侧接口，给个「去开启」按钮点了也没用。
                 //    只在**系统确实有开关**（Apple 智能未开启）时才展示这一卡。
+                // 🔴 2026-11-20 主人：原「可选：千问扩展」卡片删除 —— App 只留 Apple
+                //    端侧能力，不引导、不提及任何第三方模型服务。
                 if needsSystemEnable {
-                    qwenCard
+                    enableHintCard
                 }
             }
             .padding(.horizontal, AppTheme.hInset)
@@ -135,7 +137,7 @@ struct AICapabilityView: View {
         withAnimation(AppMotion.standard) { justChecked = false }
     }
 
-    // MARK: 为什么有这个功能 / 千问扩展
+    // MARK: 为什么有这个功能 / 系统开关提示
 
     private var purposeCard: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -143,9 +145,9 @@ struct AICapabilityView: View {
                 .font(AppTheme.TypeScale.rowTitleMedium)
 
             bullet("shield.lefthalf.filled",
-                   "Allude用 iPhone 自己的端侧智能识别短信，**不联网、不上传**——数据一直在本机。")
+                   "Allude用 iPhone 自己的端侧智能辅助识别短信，**不联网、不上传**——数据一直在本机。")
             bullet("text.alignleft",
-                   "系统没开放时，Allude自动用正则解析；收码、小组件、灵动岛都不受影响。")
+                   "识别主力是本机正则；端侧智能在旁边补齐、校对，结果更完整。系统没开放时只是少了这层辅助，收码照常。")
             bullet("questionmark.circle",
                    "能不能用由 iOS 决定，Allude没法绕过，也不会伪造。")
         }
@@ -168,12 +170,12 @@ struct AICapabilityView: View {
         }
     }
 
-    private var qwenCard: some View {
+    private var enableHintCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("可选：千问扩展")
+            Text("怎么打开")
                 .font(AppTheme.TypeScale.rowTitleMedium)
 
-            Text("iOS 已与千问合作提供智能扩展。你可以在系统设置里自行开启；开启后这部分识别由系统与第三方服务完成，**数据不再经过Allude**，相关问题与隐私由该服务方负责。")
+            Text("Apple 智能默认是关的，可以在 **设置 › Apple 智能与 Siri** 里打开。开不开这个开关由系统和你的账号地区决定，Allude 不代你判断，也不会为此联网。")
                 .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.secondary)
                 .lineSpacing(3)

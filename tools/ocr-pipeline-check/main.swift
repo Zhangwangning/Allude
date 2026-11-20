@@ -6,30 +6,38 @@
 //   ② PickupParser 能否从 OCR 结果里拿到正确的凭证与地址
 //   ③ 同图里的银行消费短信（含「尾号」）是否被正确拦下
 //
-// 用法：
+// 用法（2026-11-20 起必须带这 11 份 —— PickupParser 依赖 PickupRecord.addressIsShelfOnly，
+// 只编 PickupParser 会报 "cannot find 'PickupRecord' in scope"）：
+//   仓库根下执行：
 //   swiftc -O -o /tmp/ocr-pipeline-check \
-//     "/Volumes/ZWN/Downloads/Project/Allude/Allude/Allude/Models/PickupParser.swift" \
-//     "/Volumes/ZWN/Downloads/Project/Allude/tools/ocr-pipeline-check/main.swift"
-//   /tmp/ocr-pipeline-check "/Volumes/ZWN/Downloads/Project/Allude/tools/ocr-pipeline-check/sms-sample.png"
+//     "$PWD/Allude/Allude/Models/PickupParser.swift" \
+//     "$PWD/Allude/AlludeShared/PickupModels.swift" \
+//     "$PWD/Allude/AlludeShared/CourierBrand.swift" \
+//     "$PWD/Allude/AlludeShared/BrandPalette.swift" \
+//     "$PWD/Allude/AlludeShared/PickupStorage.swift" \
+//     "$PWD/Allude/AlludeShared/StationGroups.swift" \
+//     "$PWD/Allude/AlludeShared/Localization.swift" \
+//     "$PWD/Allude/AlludeShared/AppTheme.swift" \
+//     "$PWD/Allude/AlludeShared/FontScale.swift" \
+//     "$PWD/Allude/AlludeShared/OfflineLicense.swift" \
+//     "$PWD/Allude/AlludeShared/LicenseDevice.swift" \
+//     "$PWD/tools/swift-cli-shim.swift" \
+//     "$PWD/tools/ocr-pipeline-check/main.swift"
+//   /tmp/ocr-pipeline-check "$PWD/tools/ocr-pipeline-check/sms-sample.png"
+// 实测（2026-11-20）：凭证 C-4082 / 平台 免喜生活 / 地址 舜耕中路2号院… / 银行短信已拦下，全部通过。
 
 import Foundation
 import Vision
 import CoreGraphics
 import ImageIO
 
-// 解析引擎只用到 PickupKind 的类型名与 case，这里给最小等价定义
-enum PickupKind: String {
-    case code, waybill, tail, special
-
-    var label: String {
-        switch self {
-        case .code: "取件码"
-        case .waybill: "运单号"
-        case .tail: "尾号"
-        case .special: "特殊取件码"
-        }
-    }
-}
+// ⚠️ 2026-11-20：这里原本自己定义了一份最小 `PickupKind`，因为 PickupParser 只依赖
+// Foundation、可以单文件编译。现在不行了 —— `PickupParser.swift` 会调
+// `PickupRecord.addressIsShelfOnly(_:shelf:)`（在 `AlludeShared/PickupModels.swift`），
+// 所以必须把 PickupModels 一起编进来；自己再定义一份同名枚举就变成
+// 「'PickupKind' is ambiguous for type lookup in this context」。
+// 结论：本地枚举已删除，直接用 PickupModels 里的 `PickupKind`（`label` 口径相同）。
+// 编译命令见文件头注释（要带 PickupModels 与它依赖的 iCloud / 品牌 / 主题那几份）。
 
 let imagePath = CommandLine.arguments.count > 1
     ? CommandLine.arguments[1]

@@ -453,7 +453,11 @@ final class PickupStore: ObservableObject {
     ///    必须同一个数字，否则会出现"列表 3 条、小组件 4 条"这种自相矛盾。
     static let freeVisibleLimit = PickupLimits.freeVisible
     /// 免费版短信存储上限（2026-10-30 主人定为 50；超出后 FIFO 淘汰最旧）
-    static let freeStorageLimit = 50
+    ///
+    /// 🔴 2026-11-20 改成引用共享层常量：`PickupLimits.freeStorage` 当时写的是 60，
+    ///    而真正生效的是这里的硬编码 50 —— 同一个额度两个数字，交接文档因此记成「60 条」。
+    ///    现在只有一处定义（`PickupLimits.freeStorage`），行为保持 50 不变。
+    static let freeStorageLimit = PickupLimits.freeStorage
     /// 「不限量」的替代值。**不要用 `Int.max`** —— `pending.count - limit`
     /// 这类减法会直接溢出崩溃；一个够大的常数能达到同样效果且安全。
     static let unlimitedCount = 9_999
@@ -837,9 +841,6 @@ final class PickupStore: ObservableObject {
         if #available(iOS 26.0, *) {
             PickupAIEnhancer.schedule(merged.added)
         }
-        // 🆕 第三方模型扩展（BYOK，2026-11-13）：端侧不可用时的第二条路。
-        // 默认关闭；用户没开开关/没存 Key 时 schedule 里第一行就 return。
-        AIExtensionEnhancer.schedule(merged.added)
 
         outcome.pendingCount = pending.count
         return outcome
@@ -975,6 +976,23 @@ final class PickupStore: ObservableObject {
         var copy = edited
         copy.updatedAt = Date()
         records[index] = copy
+    }
+
+    /// 驿站被挪到另一个组时，把这批**已有**记录钉在原组。
+    ///
+    /// 2026-11-21 主人定「一个驿站只在一个组」：同一个品牌换组后，历史记录如果继续按
+    /// 名字自动归组，会集体改判到新组 —— 但那些件当初是在老地方取的。
+    /// 这里只钉「没有手工指定过」的记录，用户自己选过的保持不动。
+    func pinRecords(station stationName: String, toGroup groupID: String) {
+        let stamp = Date()
+        batchUpdate {
+            for index in records.indices {
+                guard records[index].station == stationName,
+                      records[index].stationGroupOverride == nil else { continue }
+                records[index].stationGroupOverride = groupID
+                records[index].updatedAt = stamp
+            }
+        }
     }
 
     /// 卡片内一键切换（首页/记录页直接调用，无需进入详情）

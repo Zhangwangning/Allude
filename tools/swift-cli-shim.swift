@@ -23,6 +23,9 @@ enum WidgetAccentedRenderingMode { case fullColor }
 extension Image {
     init(uiImage: NSImage) { self.init(nsImage: uiImage) }
     func widgetAccentedRenderingMode(_ mode: WidgetAccentedRenderingMode) -> Image { self }
+    /// `GlassCompat.swift` 里的 iOS 18 兼容封装：macOS 侧直接返回原图。
+    /// 不引 GlassCompat 是因为它依赖 PickupStorage / AppTheme 一整串共享源码。
+    func widgetAccentedFullColor() -> Image { self }
 }
 #endif
 

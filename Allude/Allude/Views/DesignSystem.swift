@@ -212,9 +212,9 @@ private struct HorizontalRule: Shape {
 
 // MARK: - 票券撕票线（虚线 + 两侧打孔）
 //
-// 设计语言 v2（2026-10-14，借鉴车票票的票面质感）：把普通卡片变成「票」的关键
+// 设计语言 v2（2026-10-14）：把普通卡片变成「票」的关键
 // 就是这条撕票线 —— 虚线两侧各嵌一枚「打孔」半圆（填页面底色、外溢出卡边），
-// 上下两层信息像被撕开的票根。纸质票 / 钱包 Pass / 车票票都用这一视觉母语。
+// 上下两层信息像被撕开的票根 —— 纸质票与钱包 Pass 都是这个视觉母语。
 struct TicketPunchLine: View {
     /// 打孔直径（外溢一半，露出半圆缺口）
     private let punch: CGFloat = 13
@@ -286,6 +286,9 @@ struct CourierGalleryView: View {
     /// 「两份内存状态谁覆盖谁」的回滚问题（小组件勾选那次踩过）。
     @State private var groups: [StationGroup] = []
     @State private var innerOrder: StationInnerOrder = .newest
+    /// 驿站管理搜索（2026-11-21）：34 个内置 + 自定义 + 组，滑两屏才找得到，
+    /// 直接给一个搜索框比再加说明文字有用。
+    @State private var query: String = ""
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -320,7 +323,14 @@ struct CourierGalleryView: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 24) {
-            summary
+            // 2026-11-21 主人：「提示文字能少则少」。驿站页原来顶着一张
+            // 「内置 34 个取件地点图标 + 两句说明」的大卡，占掉半屏却没人看，
+            // 换成搜索框 —— 34 个格子 + 自定义 + 组，滑两屏才找得到才是真问题。
+            if scope == .station {
+                searchField
+            } else {
+                summary
+            }
 
             // 2026-11-17 主人：「驿站管理里面再添加一个驿站内排序」。
             // 放在最上面 —— 它是常用设置，不该埋在几十个格子的下面。
@@ -342,13 +352,13 @@ struct CourierGalleryView: View {
                 groupedMemberSection
             }
 
-            Text(scope == .courier
-                 ? "品牌图标版权归各公司所有，此处仅用于标识取件来源；未收录的品牌按名称自绘色块兜底，不会出现空白。"
-                 : "点「新建驿站组」可把同一个小区的几家驿站并成一个新驿站；点任意驿站（含内置）可设置位置。匹配时按名称最长命中。")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .padding(.horizontal, 4)
-                .fixedSize(horizontal: false, vertical: true)
+            if scope == .courier {
+                Text("品牌图标版权归各公司所有，此处仅用于标识取件来源。")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 4)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(.horizontal, AppTheme.hInset)
         .padding(.top, 8)
@@ -361,7 +371,7 @@ struct CourierGalleryView: View {
     private func categoryGrid(_ category: CourierBrand.Category,
                               items: [CourierBrand.Info]) -> some View {
         let ungroupedCustoms = scope == .station
-            ? StationGroupStore.ungroupedNames(in: station.customNames)
+            ? StationGroupStore.ungroupedNames(in: station.customNames).filter(matchesQuery)
             : []
 
         VStack(alignment: .leading, spacing: 12) {
@@ -460,14 +470,14 @@ struct CourierGalleryView: View {
 
             LazyVGrid(columns: columns, spacing: 14) {
                 addGroupCell
-                ForEach(groups) { group in
+                ForEach(groups.filter { matchesQuery($0.name) }) { group in
                     groupCell(group)
                 }
             }
             .padding(14)
             .settingsCard()
 
-            Text("组是一个全新驿站：有自己的名称、图标和位置。归组后，待取 / 已取页只显示组，不再单独列成员。")
+            Text("组＝一个取件地点。一个驿站只在一个组里，个别件可在详情页单独指定。")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 4)
@@ -510,6 +520,19 @@ struct CourierGalleryView: View {
                     .overlay(alignment: .topTrailing) {
                         if groupArrivalEnabled(group) { locationBadge }
                     }
+                    .overlay(alignment: .bottomLeading) {
+                        // 成员数（2026-11-21）：不用点进去就知道这个组装了几家
+                        if !group.memberIDs.isEmpty {
+                            Text("\(group.memberIDs.count)")
+                                .font(.system(size: 9, weight: .semibold))
+                                .monospacedDigit()
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1.5)
+                                .background(AppTheme.violet, in: .capsule)
+                                .offset(x: -3, y: 3)
+                        }
+                    }
                 Text(group.name.L)
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
@@ -527,18 +550,23 @@ struct CourierGalleryView: View {
         return locationStore.location(for: key)?.enabled == true
     }
 
-    /// 已被归组的成员（含内置与自定义），带所属组 ID 供点击回组
-    private var groupedMembers: [(name: String, groupID: String)] {
+    /// 已被归组的成员（含内置与自定义），带所属组 ID 供点击回组。
+    ///
+    /// 2026-11-21：多组共享之后同一个驿站可能出现在**多个**组里，
+    /// 这里按 (驿站, 组) 展开 —— 一格一个组，点哪个回哪个，
+    /// 否则跨组的驿站会整条消失（`memberIndex()` 多组时给 nil）。
+    private var groupedMembers: [(name: String, groupID: String, groupName: String)] {
         let candidates = CourierBrand.items(in: .station).map(\.name)
             + CourierBrand.items(in: .locker).map(\.name)
             + station.customNames
-        let index = StationGroupStore.memberIndex()
-        let groups = StationGroupStore.all()
-        return candidates.compactMap { name in
-            guard let groupName = index[name],
-                  let group = groups.first(where: { $0.name == groupName }) else { return nil }
-            return (name, group.id)
+        let map = StationGroupStore.groupsByMember()
+        var out: [(name: String, groupID: String, groupName: String)] = []
+        for name in candidates {
+            for group in map[name] ?? [] where group.name != name {
+                out.append((name, group.id, group.name))
+            }
         }
+        return out
     }
 
     private var groupedMemberSection: some View {
@@ -558,12 +586,14 @@ struct CourierGalleryView: View {
             .padding(.leading, 4)
 
             LazyVGrid(columns: columns, spacing: 14) {
-                ForEach(groupedMembers, id: \.name) { item in
+                ForEach(groupedMembers.filter { matchesQuery($0.name) }, id: \.groupID) { item in
                     NavigationLink {
                         StationGroupEditView(mode: .edit(item.groupID))
                     } label: {
                         VStack(spacing: 7) {
                             StationLogo(name: item.name, size: 54, showsShadow: false)
+                            // 2026-11-21 起一个驿站只属于一个组，格子里不再缀组名
+                            // （缀上会折成三行，还显得像两套东西）。
                             Text(item.name.L)
                                 .font(.system(size: 10))
                                 .foregroundStyle(.tertiary)
@@ -575,12 +605,14 @@ struct CourierGalleryView: View {
                         .opacity(0.55)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("\(item.name)，已归入驿站组，轻点回到组")
+                    .accessibilityLabel("\(item.name)，已归入「\(item.groupName)」，轻点回到组")
                 }
             }
             .padding(14)
             .settingsCard()
         }
+        // 截图脚手架 `GALLERY_ANCHOR=groupedMembers` 可以直接滚到这一段
+        .id("groupedMembers")
     }
 
     /// 某一分类下**还没归组**的驿站。快递公司分类不过滤。
@@ -588,7 +620,44 @@ struct CourierGalleryView: View {
         let items = CourierBrand.items(in: category)
         guard scope == .station else { return items }
         let grouped = Set(StationGroupStore.groupedNames(in: items.map(\.name)))
-        return items.filter { !grouped.contains($0.name) }
+        return items
+            .filter { !grouped.contains($0.name) }
+            .filter { matchesQuery($0.name) }
+    }
+
+    /// 驿站搜索框（2026-11-21）
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.secondary)
+            TextField("搜索驿站或驿站组", text: $query)
+                .font(AppTheme.TypeScale.rowTitle)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.search)
+            if !query.isEmpty {
+                Button {
+                    query = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 15))
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("清除搜索")
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .settingsCard(radius: AppTheme.innerRadius)
+    }
+
+    /// 搜索词是否命中（空查询全部命中）
+    private func matchesQuery(_ name: String) -> Bool {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return true }
+        return name.localizedStandardContains(q)
     }
 
     private var summary: some View {
@@ -1056,36 +1125,6 @@ struct ProLockedSplitPlaceholder: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemGroupedBackground))
-    }
-}
-
-// MARK: - AI 增强状态提示（2026-11-16 主人）
-
-/// 「AI 增强已开启」的一行提示。
-///
-/// 为什么需要它：第三方模型增强挂在 `commitAll` 末尾，**四条入口全部覆盖**
-/// （手动粘贴 / 拍照 / 相册 / 快捷指令）—— 主人以为只有快捷指令那条路在用 AI，
-/// 就是因为这条链路没有任何可见痕迹。提示只讲**事实**：开了哪个服务商、
-/// 请求在本机直连、App 不参与，不承诺"一定改对"。
-struct AIEnhanceHint: View {
-    var compact = false
-
-    var body: some View {
-        if let provider = AIProviderSettings.anyReadyProvider {
-            HStack(alignment: .top, spacing: 6) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(AppTheme.violet)
-
-                Text(compact
-                     ? "AI 增强已开启，添加后会由 \(provider.title) 复核一遍"
-                     : "已开启 AI 增强（\(provider.title)）：添加后会再复核一遍取件码与地址，请求从本机直连，App 不参与。")
-                    .font(AppTheme.TypeScale.note)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
     }
 }
 

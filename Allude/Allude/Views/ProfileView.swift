@@ -57,13 +57,14 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     case icloudSync
     case encourage
     case privacySimple
-    // 🔴 2026-11-16：分栏右栏的**内部面板**，不进入任何目录数组（不会显示成设置行）。
-    //    为什么需要：横屏分栏右栏的根内容会随 `pane` 被整棵替换，往它内部 push
-    //    会被当成无效操作丢掉（日志能看到 push 被调用、界面不动）。所以 AI 子树
-    //    的两级改成「切右栏」，跟外观与个性化 / 关于 Allude 同一套做法。
-    case aiAppleIntelligence
-    case aiExtensions
-    case aiUsage
+    /// 2026-11-21 主人：关于页新增「开源项目」与「特别鸣谢」两页
+    case openSource
+    case credits
+    /// 2026-11-21 主人：「推荐给朋友」从「鼓励一下」挪到关于页（这一行是 ShareLink，不是 push）
+    case share
+    // 🔴 2026-11-20 主人：**第三方模型通道整个删除**，只保留 Apple 端侧智能，
+    //    「扩展」与「用量统计」两个面板连同它们的 pane case 一起消失。
+    //    这条设置行现在直达 Apple 智能检测页（不经总览页）。
 
     var id: String { rawValue }
 
@@ -90,7 +91,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .feedback:     return "反馈"
         case .version:      return "版本"
         case .privacy:      return "隐私"
-        case .aiCapability: return "Apple 智能与扩展"
+        case .aiCapability: return "Apple 智能"
         case .appIcon:      return "App 图标"
         case .privacyDoc:   return "隐私政策"
         // 2026-11-12 主人：改叫「服务条款」，并把「声明与免责」并进这一页
@@ -105,10 +106,9 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .icloudSync:   return "iCloud 同步"
         case .encourage:    return "鼓励一下"
         case .privacySimple: return "隐私政策（简明版）"
-        // 分栏右栏的内部面板，不会出现在任何目录里，只为 switch 穷尽
-        case .aiAppleIntelligence: return "Apple 智能"
-        case .aiExtensions: return "扩展"
-        case .aiUsage:      return "用量统计"
+        case .openSource:   return "开源项目"
+        case .credits:      return "特别鸣谢"
+        case .share:        return "推荐给朋友"
         }
     }
 
@@ -144,9 +144,9 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .icloudSync:   return "icloud.fill"
         case .encourage:    return "heart.fill"
         case .privacySimple: return "hand.raised.fill"
-        case .aiAppleIntelligence: return "brain.head.profile"
-        case .aiExtensions: return "puzzlepiece.extension.fill"
-        case .aiUsage:      return "chart.bar.xaxis"
+        case .openSource:   return "chevron.left.forwardslash.chevron.right"
+        case .credits:      return "heart.text.square.fill"
+        case .share:        return "square.and.arrow.up.fill"
         }
     }
 
@@ -180,11 +180,11 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .appearanceGroup: return AppTheme.accent
         case .aboutAllude:  return AppTheme.indigo
         case .icloudSync:   return AppTheme.sky
+        case .openSource:   return AppTheme.indigo
+        case .credits:      return AppTheme.pink
+        case .share:        return AppTheme.sky
         case .encourage:    return AppTheme.pendingTint
         case .privacySimple: return AppTheme.doneTint
-        case .aiAppleIntelligence: return AppTheme.violet
-        case .aiExtensions: return AppTheme.accent
-        case .aiUsage:      return AppTheme.accent
         }
     }
 
@@ -212,7 +212,8 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     /// 「关于 Allude」二级页的顺序：鼓励一下 / 服务条款 / 隐私政策（完整版）/
     /// 隐私政策简明版 / 版本信息
     static let aboutDetailGroup: [SettingsPane] = [
-        .encourage, .termsDoc, .privacyDoc, .privacySimple, .version,
+        .encourage, .share, .termsDoc, .privacyDoc, .privacySimple,
+        .openSource, .credits, .version,
     ]
 }
 
@@ -516,22 +517,13 @@ struct SettingsView: View {
                         //    也跟着重建 —— 实测 push 被调用（有日志）却推不动。
                         //    现在栈上没有 path、也没有 `.id`，SwiftUI 按正常语义管理栈：
                         //    切 pane 时 `paneContent` 返回的是不同视图，栈自然重置。
-                        // 🔴 2026-11-16：AI 子树的路由目标必须注册在**栈根**这一层。
-                        //    写在 `AIExtensionsHomeView` 内部（`paneContent` 的条件分支里）
-                        //    横屏分栏下完全不落地，日志显示 push 被调用、界面纹丝不动。
                         // 🔴 2026-11-07：帮助页里那两个入口是「切详情列」打开的
                         //    （push 在这层不落地），所以补一个返回按钮回到帮助与反馈。
                         .toolbar {
-                            if pane == .trainingSamples || pane == .contactInfo
-                                || pane == .aiAppleIntelligence || pane == .aiExtensions {
+                            if pane == .trainingSamples || pane == .contactInfo {
                                 ToolbarItem(placement: .topBarLeading) {
                                     Button {
-                                        // AI 的两个子面板回到总览，其余回帮助与反馈
-                                        if pane == .aiAppleIntelligence || pane == .aiExtensions {
-                                            pane = .aiCapability
-                                        } else {
-                                            pane = .help
-                                        }
+                                        pane = .help
                                     } label: {
                                         Label("返回", systemImage: "chevron.backward")
                                             .labelStyle(.titleAndIcon)
@@ -681,16 +673,8 @@ struct SettingsView: View {
         case .storage:    StorageSpaceView()
         case .feedback:   feedbackPane
         case .privacy:    privacyPane
-        case .aiCapability:
-            // 2026-11-14 主人：这一行原本直达「Apple 智能」检测页，把「扩展」（第三方模型）
-            // 那一半整个挡住了 —— 改成先进总览，两条通道各一个入口。
-            // 🔴 2026-11-16：分栏时把「切右栏」的能力交给它，否则两个入口点不动（见下方注释）。
-            AIExtensionsHomeView(openPane: isSplitLayout ? { pane = $0 } : nil)
-
-        // 分栏右栏的两个内部面板（单列下走 push，不会用到这两个 case）
-        case .aiAppleIntelligence: appleIntelligencePane
-        case .aiExtensions:        AIExtensionsListView(openPane: isSplitLayout ? { pane = $0 } : nil)
-        case .aiUsage:             AIUsageView()
+        // 2026-11-20 主人：第三方模型通道已删，这一行直达 Apple 端侧智能检测页
+        case .aiCapability: appleIntelligencePane
         case .appIcon:      AppIconSettingsView()
         case .privacyDoc:   LegalDocumentView(document: .privacy)
         // 2026-11-12 主人：服务条款与「声明与免责」合并成一页
@@ -717,6 +701,11 @@ struct SettingsView: View {
         case .icloudSync:   ICloudSyncView()
         case .encourage:    EncourageView()
         case .privacySimple: PrivacySimpleView()
+        // 2026-11-21 主人：关于页新增两页
+        case .openSource:   OpenSourceView()
+        case .credits:      CreditsView()
+        // 这一行在关于页里是 ShareLink，不会走到 push；留个安全落点
+        case .share:        EncourageView()
         }
     }
 

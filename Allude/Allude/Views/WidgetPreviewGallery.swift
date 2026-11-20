@@ -270,16 +270,14 @@ struct WidgetGalleryContent: View {
                 }
             }
 
+            // 2026-11-20 主人：「提示文字能少则少，非必要不提示」。
+            // 只留一句能力边界（免费档能加哪些尺寸、同屏几条），说明性脚注全部删除。
             if !EntitlementSnapshot.licensedPro {
-                Text("小、中两种尺寸可直接添加，桌面最多显示 \(PickupLimits.freeVisible) 条待取。")
-                    .font(.footnote)
+                Text("小、中尺寸可直接添加，最多 \(PickupLimits.freeVisible) 条。")
+                    .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-
-            Text("以上为示例数据；桌面上的小组件显示你的真实记录。")
-                .font(.footnote)
-                .foregroundStyle(.tertiary)
         }
         .onGeometryChange(for: CGFloat.self) { proxy in
             proxy.size.width

@@ -66,9 +66,16 @@ struct AlludeApp: App {
         // 把被杀的 App 拉起来时收不到（2026-11-16）
         StationLocationService.shared.bootstrap()
 
+        // 2026-11-21：灵岛/锁屏的驿站名也走单一解析入口（自定义驿站、记录级指定的组
+        // 都算进去）。以前这里直接问 StationDirectory，扩展侧规则与 App 会漂。
         PickupActivityController.stationResolver = { record in
-            StationDirectory.shared.matchedName(in: [record.rawMessage])
+            let r = record.stationResolution
+            return r.hasStation ? r.stationName : nil
         }
+
+        // 把自定义驿站名单补进 App Group：小组件进程读不到 App 私有的偏好域，
+        // 不同步就会出现「App 里建了组、桌面显示未标注驿站」（2026-11-21）。
+        StationDirectory.shared.syncCatalog()
 
         // 🔴 设备码必须**冷启动最早期**就把它写进 App Group（2026-09-23）。
         //
@@ -761,6 +768,12 @@ struct AlludeApp: App {
                         }
                         .navigationDestination(for: String.self) { _ in UsageGuideView() }
                     }
+                case "openSource":
+                    // 关于 › 开源项目（2026-11-21 新增）
+                    NavigationStack { OpenSourceView() }
+                case "credits":
+                    // 关于 › 特别鸣谢（2026-11-21 新增）
+                    NavigationStack { CreditsView() }
                 case "versionHistory":
                     // 版本历史（「设置 › 关于 › 版本」push 进入），独立栈截图用。
                     NavigationStack { VersionHistoryView() }
@@ -862,7 +875,14 @@ struct AlludeApp: App {
                     }
                 case "stationEdit":
                     // 自定义驿站编辑页（添加模式，2026-10-15 名称+图标同页）
-                    NavigationStack { StationEditView(mode: .add) }
+                    // `STATION=名称` 可切到编辑态（2026-11-21：验证「驿站组」快速分组行）
+                    NavigationStack {
+                        if let name = ProcessInfo.processInfo.environment["STATION"], !name.isEmpty {
+                            StationEditView(mode: .edit(name))
+                        } else {
+                            StationEditView(mode: .add)
+                        }
+                    }
                 case "stationLocation":
                     // 驿站定位编辑页（2026-11-16 到达提醒；内置 / 自定义共用）
                     NavigationStack {
@@ -910,16 +930,8 @@ struct AlludeApp: App {
                     NavigationStack { AppearanceSettingsView() }
                 case "personalization":
                     NavigationStack { AppearancePersonalizationView() }
-                case "aiHub":
-                    AIHubScaffold()
                 case "storage":
                     NavigationStack { StorageSpaceView() }
-                case "aiExtensions":
-                    NavigationStack { AIExtensionsListView() }
-                case "aiUsage":
-                    NavigationStack { AIUsageView() }
-                case "aiProvider":
-                    NavigationStack { AIProviderDetailView(provider: .deepseek) }
                 case "aiCapability":
                     NavigationStack {
                         if #available(iOS 26.0, *) {
@@ -1254,26 +1266,6 @@ struct ColorCheckView: View {
         }
     }
 }
-
-/// 截图/回归脚手架：`AI_HUB_ROUTE=extensions|apple` 启动 1 秒后往栈里 push 一次，
-/// 用来验证「Apple 智能与扩展」的两个入口确实能进二级页（命令行点不了屏）。
-private struct AIHubScaffold: View {
-    @State private var path = NavigationPath()
-
-    var body: some View {
-        NavigationStack(path: $path) {
-            AIExtensionsHomeView()
-                .onAppear {
-                    guard let raw = ProcessInfo.processInfo.environment["AI_HUB_ROUTE"] else { return }
-                    Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 1_000_000_000)
-                        path.append(raw == "apple" ? AIHubRoute.appleIntelligence : .extensions)
-                    }
-                }
-        }
-    }
-}
-
 
 #if DEBUG
 // MARK: - 小组件状态回滚回归探针（SIMCTL_CHILD_ROLLBACK_PROBE=1）

@@ -194,6 +194,7 @@ extension Color {
     /// 但落到深色卡片上只剩约 2.5:1，低于 WCAG AA 的 4.5:1 门槛。
     /// 这里为深色外观单独给一档更亮的同色相值，而不是简单提亮（避免偏白失真）。
     static func adaptive(light: UInt32, dark: UInt32) -> Color {
+        #if canImport(UIKit)
         Color(uiColor: UIColor { traits in
             let hex = traits.userInterfaceStyle == .dark ? dark : light
             return UIColor(
@@ -203,6 +204,11 @@ extension Color {
                 alpha: 1
             )
         })
+        #else
+        // macOS 侧（`tools/*-check` 用命令行 swiftc 编译共享源码做自检）没有 UIKit：
+        // 自检不渲染界面，取浅色档即可，不影响 iOS / 小组件 target 的任何行为。
+        Color(hex: light)
+        #endif
     }
 }
 

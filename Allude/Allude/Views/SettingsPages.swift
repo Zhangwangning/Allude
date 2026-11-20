@@ -151,9 +151,15 @@ struct AppearancePersonalizationView: View {
         }
     }
 
+    /// 「推荐给朋友」是系统分享面板，不是 push（2026-11-21 主人从「鼓励一下」挪过来）
+    private static let shareText = "推荐 Allude：一个只在本机整理快递取件码的 App，不联网、不上传、不用注册。"
+
     @ViewBuilder
     private func row(_ item: SettingsPane) -> some View {
-        if let openPane {
+        if item == .share {
+            ShareLink(item: Self.shareText) { label(item) }
+                .buttonStyle(.plain)
+        } else if let openPane {
             Button { openPane(item) } label: { label(item) }
                 .buttonStyle(.plain)
         } else {
@@ -353,6 +359,8 @@ struct AboutAlludeView: View {
                     title: title(item),
                     subtitle: nil,
                     detail: item == .version ? AppVersion.display : nil,
+                    // 分享行是 ShareLink（弹系统面板），不是 push，所以不画 chevron
+                    showsChevron: item != .share,
                     tint: item.tint)
     }
 
@@ -370,6 +378,8 @@ struct AboutAlludeView: View {
         case .termsDoc:      LegalDocumentView(document: .terms, extraHTML: StatementHTML.appended)
         case .privacyDoc:    LegalDocumentView(document: .privacy)
         case .privacySimple: PrivacySimpleView()
+        case .openSource:    OpenSourceView()
+        case .credits:       CreditsView()
         default:             VersionHistoryView()
         }
     }
@@ -377,12 +387,10 @@ struct AboutAlludeView: View {
 
 // MARK: - 鼓励一下
 
-/// 「鼓励一下」= 评分 + 分享，不做任何打赏/付费引导。
+/// 「鼓励一下」= 只做 App Store 评分（2026-11-21 主人：推荐给朋友挪到「关于 Allude」）。
 /// 用系统的 `requestReview`：什么时候弹由 iOS 决定，我们不诱导、也不追踪。
 struct EncourageView: View {
     @Environment(\.requestReview) private var requestReview
-
-    private let shareText = "推荐 Allude：一个只在本机整理快递取件码的 App，不联网、不上传、不用注册。"
 
     var body: some View {
         ScrollView {
@@ -399,44 +407,22 @@ struct EncourageView: View {
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 8)
-
-                    Text("如果愿意，可以在 App Store 给个评分，或者推荐给身边的人。")
-                        .font(AppTheme.TypeScale.note)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.horizontal, 8)
                         .padding(.bottom, 8)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
 
-                VStack(spacing: 0) {
-                    Button {
-                        requestReview()
-                    } label: {
-                        SettingsRow(symbol: "star.fill", title: "在 App Store 上评分",
-                                    showsChevron: false,
-                                    tint: AppTheme.amber)
-                    }
-                    .buttonStyle(.plain)
-
-                    SettingsDivider()
-
-                    ShareLink(item: shareText) {
-                        SettingsRow(symbol: "square.and.arrow.up.fill", title: "推荐给朋友",
-                                    showsChevron: false,
-                                    tint: AppTheme.sky)
-                    }
-                    .buttonStyle(.plain)
+                Button {
+                    requestReview()
+                } label: {
+                    SettingsRow(symbol: "star.fill", title: "在 App Store 上评分",
+                                showsChevron: false,
+                                tint: AppTheme.amber)
                 }
+                .buttonStyle(.plain)
                 .settingsCard()
 
-                Text("评分与否都不会影响任何功能，Allude 也不会因此收集任何数据。")
-                    .font(AppTheme.TypeScale.note)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 4)
+                PageFooter()
             }
             .padding(.horizontal, AppTheme.hInset)
             .padding(.top, 12)
