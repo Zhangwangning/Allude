@@ -32,7 +32,11 @@ code): a few regular expressions that pulled the code out of the SMS, formatted 
 and put it on the clipboard or into Notes. Multiple codes per message, the pickup
 point name and the address were added later.
 
-Once that shortcut circulated a little, the feedback was consistent:
+That shortcut lives in
+[shortcut_pickup_code](https://gitee.com/zhang_wangning/shortcut_pickup_code)
+(Gitee mirror; the GitHub copy is being published).
+
+Once it circulated a little, the feedback was consistent:
 
 - screenshots had to be saved by hand, and were still lost afterwards;
 - people wanted "already picked up" separated from "still waiting";
