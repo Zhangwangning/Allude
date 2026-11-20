@@ -3,7 +3,7 @@ import Foundation
 // MARK: ============================================================================
 // App 图标切换（2026-11-01 主人）
 //
-// 十七套内置图标，**第 4 套（C 标）为默认主图标**。
+// 十七套内置图标，**第 7 套（黑盒立体）为默认主图标**（2026-11-20 主人定）。
 //
 // 🔴 2026-11-15 大整理（主人连着几轮删改之后定的最终形态）：
 //    · 先删掉 1 号码牌 / 4 扫码件 / 6 手提袋 / 8 卡包 / 11 牛皮纸 / 13 快递箱 / 23 玻璃白盒；
@@ -37,12 +37,15 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
     case icon01, icon02, icon03, icon04, icon05, icon06, icon07, icon08
     case icon09, icon10, icon11, icon12, icon13, icon14, icon15, icon16, icon17
 
-    /// 默认图标 = 第 4 套（C 标）。
+    /// 默认图标 = 第 7 套（黑盒立体）。
     ///
-    /// 🔴 2026-11-11 主人：默认图标换成「C 标」。主图标（`AppIcon.appiconset`）
-    ///    art 就是 C 标；重排后它落到了 04 号，所以这里 `fallback` 也跟着改成 `.icon04`。
-    ///    `alternateName` 对 fallback 恒返回 nil（即「用回主图标」）。
-    static let fallback: AppIconChoice = .icon04
+    /// 🔴 2026-11-20 主人：默认图标从第 4 套「C 标」换成第 7 套「黑盒立体」。
+    ///    主图标（`AppIcon.appiconset` 的三张 1024）art 同步换成第 7 套；
+    ///    反过来 **C 标（Icon04）改登记成 alternate** —— `Info.plist` 的
+    ///    `CFBundleAlternateIcons` 去掉 `Icon07`、补上 `Icon04`。
+    ///    `alternateName` 对 fallback 恒返回 nil（即「用回主图标」），所以
+    ///    第 7 套走主图标、第 4 套走 alternate，两者都能被选。
+    static let fallback: AppIconChoice = .icon07
 
     var id: String { rawValue }
 
@@ -192,7 +195,7 @@ enum AppIconStore {
         if UserDefaults.standard.string(forKey: schemeKey) == currentScheme { return nil }
 
         // 迁移只认「旧方案存下来的名字」：命中 legacyMap 就换算，
-        // 其余（没存过 = 全新安装，或存的是已删除图标）一律回落到默认 C 标。
+        // 其余（没存过 = 全新安装，或存的是已删除图标）一律回落到当前默认图标。
         // ⚠️ 不能写成「能解出 case 就沿用」—— 新旧方案的 iconNN 同名不同图。
         let target = storedRawValue.flatMap { legacyMap[$0] } ?? .fallback
 

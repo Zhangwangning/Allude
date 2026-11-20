@@ -85,7 +85,7 @@ struct PickupActivityAttributes: ActivityAttributes {
         ///    灵动岛/锁屏由**小组件进程**渲染，那一侧和 App 之间只有 **App Group**
         ///    一条通路。App Group 一旦不可用（无签名调试包、容器重建、
         ///    扩展读不到共享偏好域），扩展读到的就是 nil，`AppIconStore.current`
-        ///    回落到 `AppIconChoice.fallback`（第 4 套「C 标」）——
+        ///    回落到 `AppIconChoice.fallback`（第 7 套「黑盒立体」）——
         ///    于是「桌面图标已经换成快递箱，灵动岛里还是 C 标」，主人一眼看出对不上。
         ///    把选择**随 ContentState 跨进程传**，渲染端就完全不再依赖任何共享存储，
         ///    这条链路上再没有能"读到 nil"的地方。
