@@ -58,3 +58,6 @@ tools/license-gen/*.pem
 
 # App Store Connect API 私钥（tools/testflight-publish.py 用，只放本机 ~/.appstoreconnect）
 *.p8
+
+# 2026-11-21 开源前清理：不带第三方 App 的逆向产物进仓库（文件仍留在本机）
+Reverse/

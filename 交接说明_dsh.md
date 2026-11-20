@@ -497,3 +497,509 @@ Widget：同上，去掉 iCloud / aps，`application-identifier` 与 `keychain-a
 ## 14. 一句话总结
 
 代码与发版链路都是通的（321 已在 TestFlight 正常分发），**卡住上架的只有三件外部事情**：App Review 的拒信要读、内购要提交、备案号要拿到。技术债集中在「没有单测、真机验证不系统、驿站与解析两个子系统逻辑密度高」。接手时先按 §12.4 走，不要一上来改代码。
+
+---
+
+## 15. dsh 接手复核记录（2026-11-20）
+
+只写**实测**结论，替代本文档里对不上的数字。跑法与命令见 §9 / §10。
+
+### 15.1 与旧结论不符的四处
+
+| 项 | 本文档原口径 | 2026-11-20 实测 |
+|---|---|---|
+| 免费存储上限 | 60 条（`PickupLimits.freeStorage`） | **50 条**。那个 60 从来没人读过，真正生效的是 `PickupStore.freeStorageLimit`（硬编码 50），订阅页/设置页显示的也是 50。已在本日合成一处：`PickupLimits.freeStorage = 50`，`PickupStore.freeStorageLimit` 引用它，**行为不变**。 |
+| 解析回归基线 | 精选库「175 命中 / 274 拒绝」 | 口径对不上。实测：全量库 `短信语料库_v1.md` **识别 193/514、地址 192/514**（旧基线 192/189，均高 1，**无回归**）。 |
+| `tools/station-check` | §11.2 第 9 项：跑不起来 | **已修**。真因不是 UIKit 混编，而是 `Allude/AlludeShared/CourierBrand.swift:720` 调 `.widgetAccentedFullColor()`（定义在 `GlassCompat.swift`，又会拉进 PickupStorage 整条链）。在 `tools/swift-cli-shim.swift` 的 `extension Image` 里补一个原样返回的同名方法即可，**匹配逻辑一行没动**。修完 63/63 精选 + 14/14 对抗样本全过。 |
+| `tools/dedupe-check` | 未提 | 同样跑不起来：断言写的是 2026-09-21 那套旧口径，且用例索引越界崩溃。已按 `PickupModels.swift` 里 2026-10-30 的现有口径重写（同 id+同码+同驿站 才算重复；同码不同驿站 / 不同码同驿站 / 已取与待取 都不合并），28 条断言全过。 |
+
+另：`tools/ocr-pipeline-check` 也不能只编 `PickupParser.swift` 了 —— 解析器现在会调
+`PickupRecord.addressIsShelfOnly(_:shelf:)`，必须把 `PickupModels` 与它依赖的
+（CourierBrand / PickupStorage / StationGroups / Localization / AppTheme / FontScale /
+OfflineLicense / LicenseDevice + shim）一起编，且**本地不能再自定义 `PickupKind`**（会
+`ambiguous for type lookup`）。完整命令已写进 `tools/ocr-pipeline-check/main.swift` 文件头。
+`tools/brand-check` 仍是文档写明的 2 项既有业务差异，非回归，别去「修」。
+
+### 15.2 构建与运行（可照抄）
+
+```
+cd Allude && xcodebuild -project Allude.xcodeproj -scheme Allude \
+  -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/allude-verify build \
+  CODE_SIGNING_ALLOWED=NO OTHER_SWIFT_FLAGS="-disable-sandbox"
+```
+- **clean build 实测 0 warning / BUILD SUCCEEDED**（2026-11-20，日志 `/tmp/allude-clean.build.log`）。
+- ⚠️ agent 会话里跑构建前必须把 `Allude/Allude/Resources/AlludePickup.mlmodel` 临时移走
+  （CoreML 编译会被 sandbox-exec 卡住），**跑完记得移回来**。
+- 装机核对：iPhone 16 Pro 模拟器 `0211F7EF-0339-4BAF-B0D9-37521A0537AF`，
+  `SCREEN=pending / add / pickedUp / stats / settings / license / appicon` 全部出图正常；
+  订阅页在模拟器里两档都显示 `$0.99`（local StoreKit 配置，不是真实价）。
+
+### 15.3 上架真实卡点（ASC API 实测，不是推测）
+
+- 版本 `0d47d7bf-888e-4589-8a03-838658d34a4d`：1.0.0、`REJECTED`、`SCHEDULED`、
+  最早放行 `2026-11-30T09:00:00-08:00`、挂的是 **build 309**。
+- reviewSubmission `1c1857ec-d1da-4d33-bd70-80c44f2787f6`：`UNRESOLVED_ISSUES`（2026-11-15 提交）。
+- `appStoreReviewDetail` `2de42837-aba8-4918-8973-f495a7e1a166` 的 notes **只有 128 字符**
+  —— 苹果 2026-11-16 要求的 **2.1 Information Needed 六项一条都没写**。
+- 两个内购 `pro.annual`(6833105878) / `pro.lifetime`(6833100079) 仍是 `READY_TO_SUBMIT`，
+  **从未随版本提交过**（3.1.1 点名过）。
+- 🔴 **§12.4 的「先按 checklist 走」有更新**：2.1 是信息不足，**不用打新包**。
+  收口包（Notes 正文 3108 字符含预算核算 + 真机录屏脚本 + 待执行的 ASC 操作清单）在
+  `tools/appstore-review/1.0.0-resubmit-2.1.md`，照它走即可。
+
+### 15.4 顺带纠正的小口径
+
+- App 图标是 **17 套**（`AppIconChoice` 有 icon01…icon17）。
+  ⚠️ 2026-11-20 起主图标换成 **`icon07`「黑盒立体」**（详见 §16.1），
+  `Allude/Info.plist` 声明 16 个 alternate（去掉 `Icon07`）。`AGENTS.md` 的「十六套」是旧数。
+
+---
+
+## 16. 2026-11-20 第二轮改动（主人当天新指令）
+
+主人当场给的两件事：**默认图标换成第 7 个**、**第三方模型全部删掉，App 绝不使用任何互联网行为和服务**。
+ASC 那边他说「先优化 App」，重提授权有，但要等他给录屏链接。
+
+### 16.1 默认 App 图标 = 第 7 套「黑盒立体」
+
+换默认必须**同时动三处**，少一处就会出现「设置里选了、系统图标没变」或反过来：
+
+| 位置 | 改动 |
+|---|---|
+| `Allude/Allude/Assets.xcassets/AppIcon.appiconset/` | 三张 1024（Any / Dark / Tinted）换成黑盒立体 |
+| 工程根 `Allude/Info.plist` | 旧默认（`Icon04`）插回 alternate 列表，新默认（`Icon07`）删掉声明 → 仍是 16 条 |
+| `Allude/AlludeShared/AppIconChoice.swift` | `static let fallback: AppIconChoice = .icon07`（原 `.icon04`） |
+
+- ⚠️ **没有 1024 原稿**：`tools/appicon-source/` 里只有 C 标源图与 icon13–19，
+  `git log --diff-filter=D` 也查不到被删的 1024。所以从 `AppIcons/Icon07@3x.png`（180px）
+  LANCZOS 升采样到 1024 + `UnsharpMask(2, 80, 2)`。**笔画略软，App Store 图标可用但不锐**；
+  主人若能找到 1024 原稿，直接替换同名三张即可，代码不用动。
+- 验证：装 `0211F7EF-0339-4BAF-B0D9-37521A0537AF` 后 `SCREEN=appicon` 勾已落在第 7 格，
+  bundle 内 `AppIcon60x60@2x.png` 就是黑盒立体。
+  🔴 光装机看不见主屏变化，必须 `xcrun simctl spawn <udid> killall SpringBoard`，
+  否则看到的是旧的 icon 缓存（本次第一张截图就被缓存骗过）。
+- 老用户不受影响：`AppIconStore` 的 `migrateLegacyNumberingIfNeeded()` 只管 01–16 那次重排，
+  这次只换默认值，已选过图的用户仍是自己那张。
+
+### 16.2 第三方模型通道整条删除
+
+删掉的 5 个文件（都在 Xcode 同步组里，pbxproj 无引用，`rm` 即可）：
+
+```
+Allude/Allude/Views/AIExtensionsView.swift      653 行
+Allude/Allude/Views/AIUsageView.swift           162 行
+Allude/Allude/Models/AIProviderStore.swift      257 行
+Allude/Allude/Models/AIExtensionEnhancer.swift  268 行
+Allude/Allude/Models/AIUsageStore.swift         124 行
+```
+
+连带改的：
+
+- `Allude/Allude/Views/ProfileView.swift`：`SettingsPane` 去掉 `.aiAppleIntelligence` /
+  `.aiExtensions` / `.aiUsage` 三个 case；`.aiCapability` 标题改「Apple 智能」，
+  `paneContent` 直达 `appleIntelligencePane`（不再经「扩展」总览）。
+- `Allude/Allude/AlludeApp.swift`：删 `aiExtensions` / `aiUsage` / `aiHub` / `aiProvider`
+  四个截图脚手架分支与 `AIHubScaffold`；`aiCapability` 保留。
+- `Allude/Allude/Views/AICapabilityView.swift`：`qwenCard`（「可选：千问扩展」）换成
+  `enableHintCard`（「怎么打开」＋跳系统设置），触发条件不变。
+- `Allude/Allude/Views/DesignSystem.swift` + `AddPickupSheet.swift` + `ScanPickupSheet.swift`：
+  删 `AIEnhanceHint`（读 `AIProviderSettings.anyReadyProvider`）及三处调用。
+- `Allude/Allude/Models/Models.swift`：`ingest()` 里删 `AIExtensionEnhancer.schedule(merged.added)`；
+  `PickupAIEnhancer.schedule`（纯 Apple 端侧）保留。
+- 文案：`BetaBuildLog.swift` 删 47 行第三方相关更新（剩 60 条），
+  `VersionHistoryView.swift` 1.0.0 主题改「…· iCloud 同步」、删 3 条第三方 highlights。
+- 法务（App 内）：`Legal/privacy.html` 删第 12 节改写「12. 不使用第三方服务」、
+  「运行方式」段改「没有第三方模型、没有 API Key、没有外部接口」；
+  `Legal/terms.html` 删「4B. 第三方模型扩展」整节。
+- `AGENTS.md`：图标段改十七套/默认第 7 套；端侧 AI 段补「第三方通道整条删除，别再加回来」。
+- 审核 Notes（`tools/appstore-review/1.0.0-resubmit-2.1.md`）第 4 项改写成
+  **「No AI or model service of any kind … Apart from StoreKit and the user's own optional
+  iCloud container, the app contains no networking code and contacts no server.」**
+  正文重新计数 **3170 字符**（+录屏长链 691 = 3861，仍在 4000 以内）。
+
+🔴 **代码侧确认无联网**：全仓 `grep -rn "URLSession\|URLRequest\|NSURLConnection"` 在 app /
+shared / widget 三个目录**零命中**，`https://` 只出现在 `LegalLinks.swift`（法务网址）、
+`SmsLibrary.swift`（Debug 语料里的短信原文）、快捷指令签包链接。
+`SmsLibrary` 整个包在 `#if DEBUG` 里，Release 不带。
+
+### 16.3 自检与构建（改完重跑，全绿）
+
+| 项 | 结果 |
+|---|---|
+| clean build | **BUILD SUCCEEDED，0 warning 0 error**（`/tmp/clean3.log`） |
+| `tools/parser-regression 短信语料库_v1.md` | 识别 193/514、地址 192/514，与基线无回退 |
+| `tools/station-check` | 63/63 精选 + 14/14 对抗样本 |
+| `tools/dedupe-check` | 28 条断言全过（编译要 11 份文件，见 §15） |
+| `tools/ocr-pipeline-check` | 端到端通过：C-4082 / 免喜生活 / 地址全对，银行短信已拦 |
+| `tools/multi-parse-check` | 全部通过 |
+| `tools/notify-check` | 全部通过 |
+| `tools/brand-check` | 仍是既有 2 项业务差异（非回归） |
+
+### 16.4 仍未做 / 需要主人
+
+1. ~~法务远程副本未同步~~ → GitHub 已推（§17.2）；Gitee 因 token 过期待主人换令牌。
+2. ~~1024 图标原稿~~ → 主人 2026-11-20 给了 1536×1536 原稿，已全部重出（§17.1）。
+3. **ASC 重提**：等录屏链接；操作清单在 `tools/appstore-review/1.0.0-resubmit-2.1.md`。
+4. **App 备案进度**：仍未知，中国区能不能上取决于它。
+5. **全仓未提交**（22 个 M + 5 个 D + 1 个 ??），等主人过一眼再落 commit。
+
+---
+
+## 17. 2026-11-20 第二轮：图标换原稿 / 法务推送 / 取件码管理页重做
+
+### 17.1 图标换成主人给的原稿（1536×1536）
+
+`20261120-223431.png` 的 art bbox 占幅 0.608×0.641、中心 (0.501,0.500)，
+与旧 180px 版（0.617×0.650）帧位一致，**不裁切**直接 LANCZOS 出各档：
+
+| 目标 | 文件 |
+|---|---|
+| App 图标 | `Allude/Allude/Assets.xcassets/AppIcon.appiconset/AppIcon-1024{,-Dark,-Tinted}.png` |
+| 内嵌 imageset | `AlludeShared/Assets.xcassets/AppIcon07.imageset/AppIcon07@{1x,2x,3x}.png` |
+| alternate 包内图 | `Allude/AppIcons/Icon07@{2x,3x}.png` |
+
+全部 RGB 无 alpha（App Store 会拒带 alpha 的 1024）。§16.1 里「180 放大笔画软」的遗留已消。
+
+### 17.2 法务三副本
+
+- GitHub Pages `Zhangwangning/allude-legal`：**已推**，commit `1ad10c7`（删第 12 节第三方模型 →
+  「12. 不使用第三方服务」；条款删 4B 与尾部两段；support 页改只讲 iCloud）。
+- Gitee 镜像：本地已提交 `67305c4`（用 GitHub 权威版整体覆盖，顺带补齐落后两版的
+  「到达提醒」「驿站组排序」），**推送被拒**：`Oauth: Access token is expired`（403）。
+  修法：在 Gitee 重新生成私人令牌，或主人用客户端推 `/tmp/legal-gitee`。
+- App 内 `Allude/Allude/Legal/*.html` 见 §16.2。
+
+### 17.3 取件码管理页（`Allude/Allude/Views/CodeManagementView.swift` 重做）
+
+主人反馈：「开关开着，为啥上面的预览是一个颜色……开关点击后预览要及时响应……
+提示文字能少则少」。三个根因、三处改动：
+
+1. **预览慢一拍**：原来预览读的是存储里的 `CodeAppearanceStyle.current`，而 SwiftUI 先按
+   新的 `@State` 重画、`onChange` 之后才写 UserDefaults —— 拨开关看到的永远是上一档。
+   现在预览用 `@State` 现拼一份 `style` 传给 `PickupCodeEmphasis.text(_:isDone:tint:headOpacity:style:)`
+   （新增可选 `style` 参数，默认仍读存储，真实渲染面一个都没动）。
+2. **颜色对不上**：预览原来拿 `AppTheme.accent` 冒充品牌色，现在走
+   `CourierBrand.color(for: "圆通速递")` + `CourierLogo`，与列表卡片同源，圆通就是紫的。
+3. **文案收口**：删掉三段说明（色板说明、「关掉末四位强调…」长句、「示例数据…」脚注）
+   与「当前 · xxx」那一行；只留分组标题 + 行标题，靠预览本身自证。
+
+模拟器实测（`SCREEN=codeManagement`）：`/tmp/cm-new.png` —— 圆通紫码、
+「8-4-」浅 /「3019」实、色板 7 档、三行显示方式（关掉强调时「前段透明度」行自动收起）、
+卡片分组一行。列表真卡同源：`/tmp/list-final-crop.png`（申通 D31- 浅 / 2532 实）。
+
+---
+
+## 18. 2026-11-20 第三轮：桌面小组件页去文案 / Gitee 推送完成
+
+### 18.1 Gitee 镜像已推（§17.2 的遗留）
+
+用主人给的私人令牌推成功：`0565b31..67305c4  main`。已重新匿名 clone 复核：
+`privacy.html` 是「12. 不使用第三方服务」，四份文件里 `第三方模型扩展` / `API Key 接入` 零命中。
+（令牌只在本轮命令里用过，没写进任何脚本或配置文件。）
+
+### 18.2 桌面小组件页（`Allude/Allude/Views/WidgetSettingsView.swift`）
+
+主人口径：「提示文字能少则少，非必要不提示，用户压根不看」。改动：
+
+| 原来 | 现在 |
+|---|---|
+| 六行开关一张卡 | **两张卡**：「完整信息」单独一张，其余五项一张 |
+| 三行「显示xxx」 | 去掉「显示」前缀：取件地址 / 快递公司 / 驿站 / 快递柜 / 货架 / 占位符 |
+| 卡下两段说明（「取件码永远显示…」「关掉占位符后…」） | **全删** |
+| 预览下「示例数据 · 桌面小组件会按这套显示设置渲染…」 | **删** |
+| 行内 `.system(size: 16)` | 统一 `AppTheme.TypeScale.rowTitle`（17） |
+| 图标底 38pt / 图标 16pt | 34pt / 15pt，行高略收 |
+
+`Allude/Allude/Views/WidgetPreviewGallery.swift` 同一轮收口：
+删「以上为示例数据…」；免费档那句缩成「小、中尺寸可直接添加，最多 4 条。」
+
+`Allude/Allude/zh-Hant.lproj/Localizable.strings` 补四条新键（取件地址 / 驿站 / 快递柜 / 货架 / 占位符）。
+
+模拟器实测：`SCREEN=widgetSettings` → `/tmp/w-final.png`（对比旧版 `/tmp/w-before.png`）。
+
+### 18.3 验证
+
+clean build **BUILD SUCCEEDED，0 warning 0 error**（`/tmp/clean3.log`）。
+
+---
+
+## §19 驿站运行逻辑重做（2026-11-21，按主人四项决定落地）
+
+### 19.1 主人的四项决定（原话：「1、A　2、加　3、不参与　4、按照你的建议」）
+
+| # | 问题 | 决定 | 代码落点 |
+|---|---|---|---|
+| 1 | 组是「地点」还是「品牌集合」 | **A：地点** → 同一品牌可在多个组 | `StationGroupStore.create/update` 不再 `detach`；`groupsByMember()` 一对多 |
+| 2 | 记录能不能手工改驿站 / 组 | **加** | `PickupRecord.stationGroupOverride` + 详情页编辑态选择器 |
+| 3 | 组名 / 别名参不参与识别 | **不参与** | 识别仍只用内置词表 `name`/`aliases` + 自定义驿站名 |
+| 4 | 围栏与排序口径 | 按建议 | 围栏「组 → 最近用过的位置」；组间「件数多在前」 |
+
+### 19.2 新增：单一解析入口（`Allude/AlludeShared/StationGroups.swift`）
+
+```swift
+StationCatalog            // 自定义驿站名单的跨进程副本（App Group: allude.station.customNames）
+StationResolution         // stationName / groupID / groupName / candidateGroups / source
+StationResolver.resolve(_:)  // ① 记录指定组 ② 记录指定驿站 ③ 内置词表 ④ 自定义 ⑤ 唯一归属
+```
+
+优先级 **记录指定 > 自动识别**；驿站出现在多个组时 `candidateGroups` 非空、`isAmbiguous == true`，
+分组键回落成驿站原名（不猜），详情页提示「这个驿站在 A、B，请选一个」。
+
+消费端全部改走它：`PickupSortLogic.stationName`、`PickupNaming(resolution:)` / `record.namingResolved`、
+`PickupListView` / `HistoryView` / `RecordDetailView` / `PickupShareCard` /
+`PickupActivityController.stationResolver`（灵动岛）/ `StationLocationService.matches`（围栏）。
+
+### 19.3 修掉的四个真实缺陷
+
+1. **小组件认不出自定义驿站**：扩展进程读不到 `UserDefaults.standard`，
+   自定义驿站建的组在桌面掉进「未标注驿站」→ `StationDirectory.persist()` 顺手写
+   `StationCatalog`（App Group），启动时再 `syncCatalog()` 补一次。
+2. **组间排序三处不一致**：待取/已取按件数、小组件按名字升序 → 统一「件数多在前 → 同数按名字 →
+   未标注置底」，组内仍按「驿站内排序」。
+3. **`StationGroupStore.save()` 缓存顺序反了**（本轮新发现）：原来先 `cachedGroups = groups`
+   再 `invalidateCache()`，等于把刚存的组从缓存里抹掉，磁盘写失败时组会凭空消失。
+   现在「先清派生索引 → 再落新缓存」，并补 `createDirectory`。
+4. **跨组成员在两个列表里同时出现**：`ungroupedNames` / `groupedNames` 用 `memberIndex()`
+   （多组时给 nil）→ 改走 `groupsByMember()`；「已归入驿站组」段按 (驿站, 组) 展开，
+   格子标题写成「菜鸟驿站 · 恒大御府」。
+
+### 19.4 围栏（到达提醒）
+
+- `StationLocation` 新增 `updatedAt`（Optional，旧数据解码为 nil）；
+- `StationLocationService.plannedTargets()` 抽成单一口径：组 → 未归组驿站（**最近改动位置的在前**）→ 上限 20；
+- 设置 › 通知 › 到达提醒 的驿站列表里，超出 20 个的会标一枚「未在监控」——
+  以前界面照旧一个开关，用户以为在监控，其实系统里没有这个围栏。
+
+### 19.5 自检
+
+新增 `tools/station-resolver-check/main.swift`（9 条断言，退出码 0/1）：
+
+```bash
+swiftc -O -o /tmp/station-resolver-check \
+  "$PWD/Allude/AlludeShared/PickupModels.swift" "$PWD/Allude/AlludeShared/CourierBrand.swift" \
+  "$PWD/Allude/AlludeShared/BrandPalette.swift" "$PWD/Allude/AlludeShared/PickupStorage.swift" \
+  "$PWD/Allude/AlludeShared/StationGroups.swift" "$PWD/Allude/AlludeShared/Localization.swift" \
+  "$PWD/Allude/AlludeShared/AppTheme.swift" "$PWD/Allude/AlludeShared/FontScale.swift" \
+  "$PWD/Allude/AlludeShared/OfflineLicense.swift" "$PWD/Allude/AlludeShared/LicenseDevice.swift" \
+  "$PWD/tools/swift-cli-shim.swift" "$PWD/tools/station-resolver-check/main.swift" && /tmp/station-resolver-check
+```
+
+本轮全绿：resolver 9/9、station-check 63/63 + 14/14、dedupe 28/28、
+parser 识别 193/514（基线 192）+ 地址 192/514（基线 189）；clean build **0 warning 0 error**。
+
+### 19.6 仍未做
+
+- 组间排序里「件数多在前」只在待取页验证过；已取页与小组件是同一函数，未单独截图；
+- 详情页驿站选择器只拍了编辑态外观（模拟器无法脚本化点击菜单），逻辑由 resolver 断言覆盖。
+
+### 19.7 口径修订（2026-11-21 深夜，主人推翻 19.1 的第 1 条）
+
+主人原话：「一个驿站只能属于一个组，我觉得没问题，你想想，App 是一个人在用的，取件的地址基本上在范围内是固定的几个地方，如果短信中有菜鸟驿站，按照你的有多个组都包含菜鸟驿站，那么这条信息的驿站就没法归到一个具体的驿站组中啊」
+
+**定案：一个驿站只属于一个组**（`create` / `update` 都把成员从其它组摘掉）。理由就是上面那句 ——
+「多组共享」会把「短信里只有一个品牌名」的记录变成永久歧义，而一个人常去的取件点就那么几个，
+真正需要区分的是**地点**，不是让品牌同时挂多处。
+
+保留 19.1 的另外三条：手工指定照旧（`stationGroupOverride` 优先级最高）、组名不参与识别、围栏口径不变。
+
+配套新增（避免移组把历史改判）：
+
+- **移组时钉住历史**：`StationGroupStore.displacedMembers(_:excluding:)` 先算出「这次保存会把谁从哪个组拿走」，
+  `StationGroupEditView.save()` 拿到结果后对每个被移走的驿站调
+  `PickupStore.pinRecords(station:toGroup:)` —— 给**没有手工指定过**的旧记录写上原组 ID。
+  效果：把菜鸟驿站从「恒大御府」挪到「蓝山公馆」后，以前那批件仍然算恒大御府的。
+- 文案回退：成员行 `在「X」里，勾选会移过来`；成员卡 `选中的驿站会从待取 / 已取页收进这个组。一个驿站只在一个组里。`；
+  驿站组说明 `组是一个取件地点：…一个驿站只在一个组里；个别记录不在这组取的，详情页里可以单独指定。`；
+  「已归入驿站组」格子去掉「· 组名」后缀（一个组一个归属后，后缀纯属噪音，还会折成三行）。
+- `StationResolution.isAmbiguous` 与 `candidateGroups` **保留**：只服务旧数据 / 手改文件里重复归属的情况，
+  正常路径下恒为 false / 空。
+
+自检同步改写：`tools/station-resolver-check` 现在断言「移组后归属新组、候选为空、原组成员被摘掉」，
+外加「移组前能算出原组」；9 条断言全过。
+
+---
+
+## §20 驿站管理三页改版 + 快速分组（2026-11-21）
+
+主人原话：「把驿站管理的页面再优化一下，还有新建/编辑驿站组的页面也重新优化设计，还有点击驿站可以后不仅可以设置定位和到达提醒，还增加一个快速分组的功能，点击可以快速选择不同的驿站组或添加到新创建驿站组中」。
+
+### 20.1 驿站管理页（`Allude/Allude/Views/DesignSystem.swift` · `CourierGalleryView`）
+
+| 改前 | 改后 |
+|---|---|
+| 顶部一张「内置 34 个取件地点图标 + 两句说明」的大卡 | **删掉，换成搜索框**（34 个内置 + 自定义 + 组，滑两屏才找得到才是真问题） |
+| 组格子只有图标 + 名字 | 图标左下角加**成员数徽章**（一眼知道这组装了几家） |
+| 组段下面一段长说明 | 一行：「组＝一个取件地点。一个驿站只在一个组里，个别件可在详情页单独指定。」 |
+| 页面底部一句「点『新建驿站组』可把…最长命中」 | **删掉**（快递公司页保留版权那一句） |
+
+搜索同时过滤：内置驿站格、自定义驿站格、驿站组格、「已归入驿站组」段。
+
+### 20.2 新建 / 编辑驿站组页（`Allude/Allude/Views/StationGroupEditView.swift`）
+
+| 改前 | 改后 |
+|---|---|
+| 组名一张卡（含「不能与内置驿站…」说明） | 与图标合并成**顶部一张卡**：左图标（点一下切到相册来源）、右名字输入 |
+| 图标一张卡 + 三格大缩略图 | 三枚小胶囊：**首字 / 相册 / 继承**，选中紫底；继承模式的成员横条仍在 |
+| 位置卡：一句「或直接沿用成员的位置」+ 一排成员图 | 收成一行 **「位置来源」Menu**：自己的位置 / 沿用「X」 |
+| 成员卡：一段说明 + 长列表 | 删说明，加**搜索框**（34 个内置 + 自定义，滑一半就找不到） |
+| 页尾一段「组是独立的一个驿站…」 | **删掉**；重名等错误仍走页脚红字 |
+
+### 20.3 快速分组（`Allude/Allude/Views/StationEditView.swift`）
+
+- 「编辑驿站」页（内置驿站走 `StationLocationEditor`，自定义走这里）新增 **驿站组 › 所属** 一行：
+  `Menu` 里是「不归组 / 各组名（当前组带勾）/ 新建驿站组…」。
+- 选组＝`StationGroupStore.addMember(stationName:toGroup:)`：把该驿站从原组摘掉、加进新组，并**返回原组 ID**；
+  调用方据此 `PickupStore.pinRecords(station:toGroup:)` 把旧记录钉在原组（移组不改判历史）。
+- 「新建驿站组…」→ 弹 `StationGroupEditView(mode: .create, preselectedMemberIDs: [该驿站])`，建完自动带上它。
+- 该页同时把「图标卡 + 名称卡」合并成一张头部卡，删掉「改名后…」「点按图标从相册选择」两句说明。
+
+### 20.4 新增脚手架
+
+`SCREEN=stationEdit` 支持 `STATION=菜鸟驿站` 直接进**编辑态**（原来只能进添加态，验证不了「驿站组」行）。
+
+### 20.5 自检
+
+- `tools/station-resolver-check` 增 3 条：快速分组返回原组 / 分组后归新组 / 不归组回落原名 → 共 12 条全过。
+- station-check 63/63 + 14/14、dedupe 28/28、parser 193 与 192（无回退）。
+- clean build **0 warning 0 error**。
+
+### 20.6 内置驿站也能直接分组（2026-11-21 补）
+
+- 新增组件 `Allude/Allude/Views/StationGroupMembershipRow.swift`：一行「驿站组 › 所属」Menu
+  （不归组 / 各组名带勾 / 新建驿站组…），内部走 `StationGroupStore.addMember` →
+  `PickupStore.pinRecords` → `WidgetCenter.reloadAllTimelines()`，建组回来自动刷新。
+- 挂载点两处：
+  - `Allude/Allude/Views/StationLocationEditor.swift`（内置 / 自定义共用的定位页）：
+    `settingsCard` 之后、`disclaimer` 之前 —— 内置驿站点进来就能改归属。
+  - `Allude/Allude/Views/StationEditView.swift`：`groupCard` 改成复用同一组件，
+    原 `showCreateGroup` / `stationIDForGrouping` / `moveToGroup` / `currentGroupID` /
+    `currentGroupName` 全部删除（同一份逻辑只留一处）。
+- 验证：clean build 0 warning 0 error；resolver 12/12、station-check、dedupe 全过；
+  截图 `/tmp/r-loc-crop.png`（菜鸟驿站定位页底部出现「驿站组 › 所属 恒大御府」）。
+
+## 21. 对外文案：不表述收费（2026-11-21）
+
+主人指令：更新隐私政策、使用条款、版本历史等，**去除关于收费、订阅、iPadOS 适配**的内容。
+
+### 21.1 法务两页（三副本已同步）
+
+- `Allude/Allude/Legal/privacy.html` 整篇重写（13 节）：运行方式 / 1 数据 / 2 权限 /
+  3 小组件与实时活动 / 4 端侧智能 / 5 iCloud 同步 / 6 TestFlight / 7 反馈 /
+  8 数据保留与删除 / 9 儿童 / 10 安全 / 11 变更 / 12 不使用第三方服务 / 13 联系方式。
+  原文件有两个「9.」编号重复、一节「内购」、一处「Allude Pro 的实验功能」、日志口径写「权益档位」。
+- `Allude/Allude/Legal/terms.html` 整篇重写（11 节）：0 运行方式 / 1 许可范围 /
+  2 功能边界 / 3 iCloud 同步 / 4 内测版 / 5 得到什么不会得到什么 / 6 责任 /
+  7 免责声明 / 8 责任限制 / 9 变更 / 10 适用法律 / 11 联系方式。
+  原文件的价格表、「订阅、扣款与取消」、「内购走 StoreKit 沙盒」、「责任不超过实际支付金额」全部删除。
+- `support.html`（仅远程副本）删掉英文「Subscription and purchase」整节与中文「恢复购买 / 取消订阅」两条。
+- 远程同步：GitHub Pages `09ad47b`、Gitee 镜像 `33967d9`（`grep` 复核 `订阅|内购|买断|Allude Pro|Restore Purchases` 全为 0）。
+- ⚠️ 如果以后仍然售卖内购，Apple 3.1.2 要求在**购买页内**显示自动续期与取消方式 ——
+  那时在 `SubscriptionView` 里补最小一版即可，不要依赖法务页承担这件事。
+
+### 21.2 版本历史
+
+- `Allude/Allude/Views/VersionHistoryView.swift`：entries 26 条（1.0.0 → 0.1.0）。
+  **整条删掉 0.3.0 / 0.3.1**（原文全是「免费下载 + 订阅解锁」「订阅页三档」）；
+  1.0.0 去掉「Allude Pro 订阅版」「购买页价格」「iPad 与折叠屏分栏下线」；
+  0.3.7 / 0.3.3 / 0.2.8 / 0.2.4 / 0.2.1 各删若干条 Pro / Duo / 凭证 / 会员体系表述。
+- `Allude/Allude/Views/BetaBuildLog.swift`：按 `Duo|iPad|折叠|分栏|订阅|买断|价格|内购|免费|Pro|恢复购买|沙盒|凭证`
+  过滤，删 64 条要点、5 个构建清空后整条移除（318 / 316 / 314 / 303 / 248），现存 **55 条**构建。
+- 内测区标题下那句「前期做过 iPad 与折叠屏的分栏适配尝试…」改成「以下是 TestFlight 的逐次构建记录。」
+- 截图验收：`SCREEN=versionHistory`（含 `BETA_EXPAND=1` + `SCROLL_TO=beta` 看内测区）。
+
+### 21.3 项目指令
+
+- `AGENTS.md` 顶部加「对外不表述收费」红框，商品信息标注为**内部备查**（App Store Connect 两条商品仍在，是否继续售卖待定）。
+
+## 22. 端侧智能定位 + 排序同源（2026-11-21）
+
+### 22.1 端侧智能是「辅助」，不是与正则二选一
+
+主人原话：「Apple 端侧智能能力只用于正则表达式解析时辅助以获取更完美的结果，不是 Apple 端侧智能与正则表达式是二选一」。
+
+- 代码本来就这个分工（`PickupAI` 注释写明：正则主力、模型只填空不覆盖），**逻辑没改**；
+  改的是所有**对外口径**，以前写成「能用端侧智能就用，不能用就退回正则」，读起来像二选一。
+- 改的文案：`Allude/Allude/Legal/privacy.html`（运行方式 / 第 4 节 / 第 12 节三处）、
+  `Allude/Allude/Views/AICapabilityView.swift` 的说明卡、`AGENTS.md` 的端侧 AI 段。
+  现在的说法：**正则负责主解析，端侧智能在旁边辅助补齐与校对，结果更完整；不可用时只是少了这层辅助**。
+- 远程副本已同步：GitHub `3a7fa69`、Gitee `46ef1a3`。
+
+### 22.2 小组件排序＝待取页排序（同一门函数）
+
+主人原话：「小组件的排序就和待取页面的分组排序保持一致就行」。
+
+三处以前各写一套，现在收敛到 `Allude/AlludeShared/PickupStorage.swift` 的 `PickupSortLogic`：
+
+| 位置 | 改前 | 改后 |
+|---|---|---|
+| `PickupSortLogic.sort(.station)` | 组内按 `receivedAt` | 组内按 `lastNotifiedAt`（= 待取页同一时刻） |
+| `PickupListView.stationName(for:)` | `record.station` → 组名（不认手工指定） | `PickupSortLogic.stationName(of:)`（走单一解析入口） |
+| `HistoryView`（已取） | 组间按名字升序、组内 `receivedAt` | 直接 `PickupSortLogic.sort(_:mode: .station)` |
+| `HistoryView.stationName(for:)` | 同上旧实现 | 同上共享函数 |
+
+组间口径（三页 + 小组件一致）：**件数多在前 → 同数按名字 → 「未标注驿站」置底 → 组内按「驿站内排序」**。
+
+⚠️ 踩坑：`PickupRecord.lastNotifiedAt` 是**非可选**计算属性（`history?.last ?? receivedAt`），
+写 `lastNotifiedAt ?? receivedAt` 会报 `left side of nil coalescing operator '??' has non-optional type`。
+
+---
+
+## §23 2026-11-21：开源页 / 特别鸣谢 / 首启同意页（主人第 13 轮）
+
+### 23.1 关于 Allude › 开源项目
+
+新增 `SettingsPane.openSource`（标题「开源项目」，图标 `chevron.left.forwardslash.chevron.right`，
+色 `AppTheme.indigo`），排在「隐私政策（简明版）」之后、「特别鸣谢」之前。
+页面在 `Allude/Allude/Views/AboutOpenSource.swift`：顶部一句「Allude 的代码是公开的」，
+两张仓库卡（`OpenSourceLinks.alludeApp` / `.shortcuts`，点击跳 GitHub），
+底部「仓库里有什么」写清 **完整开发过程在此仓库、不放 IPA / 构建产物 / 签名私钥**。
+
+### 23.2 关于 Allude › 特别鸣谢
+
+`SettingsPane.credits`（图标 `heart.text.square.fill`，色 `AppTheme.pink`）。
+名单按主人给的原顺序：@我爱吃派大星 / @么么 / @很酷的Z / @无言 / @青云 / @momo /
+@春山springhil / @低调肚兜 —— 页面下方只补一句「排名不分先后」。
+
+### 23.3 首启同意页重做（`LegalConsentView.swift`）
+
+- 版式：图标 + 「取件码，只留在你手机上」+「全程离线 · 不需要账号」徽标（三句差异点：
+  不联网 / 不上传 / 不用注册）→ 一行删除提醒 → 条款两行 + 勾选 → 底部主按钮。
+  删掉原来的大段说明与「删除请谨慎」重复话术。
+- 🔴 行为变更：「同意并继续」**不再置灰**。未勾选时点它 → 自动勾上「我已阅读并同意」并弹
+  「确认同意」框（按钮：同意 / 查看条款 / 不同意）。确认框里能直接翻条款（sheet 打开
+  `LegalDocumentView`），不同意则回到原来的说明弹窗。
+- 截图脚手架：`SCREEN=consent`（页面本体）、`CONSENT_CONFIRM=1`（复现确认框，
+  simctl 点不了屏幕，这条路径只能这样验）。
+
+### 23.4 仓库开源前清理
+
+- 新增 `README.md`：定位、编译命令（含 `-disable-sandbox` 说明）、
+  「仓库里有什么（开发过程）」清单、自检脚本跑法、仓库不放什么、署名与第三方标识口径。
+- `Reverse/`（三个第三方 App 的逆向产物 Info.plist）已 `git rm --cached` 并写进 `.gitignore`，
+  文件仍留在本机。
+- 实测 `git ls-files | grep -c '\.ipa$'` = 0，仓库内无 IPA。
+
+### 23.5 验证
+
+- clean build：**0 warning / 0 error / BUILD SUCCEEDED**。
+- 模拟器：iPhone 16 Pro `0211F7EF…`、**iPhone Duo `EEFA6F55…`（折叠态 `--display=1`）**、
+  **iPhone 18 Pro Max `97B88473…`** 三台都已装最新构建，主人可直接看。
+- 截图：`/tmp/about-list2-b.png`（关于页两行新入口）、`/tmp/about-openSource.png`、
+  `/tmp/about-credits.png`、`/tmp/consent-new.png`、`/tmp/consent-confirm-c.png`、
+  `/tmp/duo-consent.png`（Duo 外屏，右侧摄像头区安全内缩生效）。
+  ⚠️ `simctl io <udid> screenshot --display=1 <path>` 的参数顺序必须是
+  `screenshot --display=… 路径`，写在 screenshot 前面会报 `Invalid argument`。
+
+### 23.6 2026-11-21 晚二轮修订（主人当场反馈）
+
+| 项 | 改成 |
+|---|---|
+| 开源项目页 | **删掉所有说明**（intro 卡 + 「仓库里有什么」卡），只剩两行仓库：`Allude` / `快递取件码`，点进去看源码 |
+| 特别鸣谢页 | 文案里的「被他们逼出来」删掉；**只留名字**，居中单列、无图标无首字块（主人：没有头像，硬做图反而难受）；保留一句分组标题「深度测试与反馈」与「排名不分先后」 |
+| 鼓励一下页 | 只保留「在 App Store 上评分」（`requestReview`）；两段说明与「推荐给朋友」一并移出 |
+| 推荐给朋友 | 挪到**关于 Allude**，紧跟「鼓励一下」下面是 `ShareLink`（不是 push，所以**不画 chevron**） |
+| 首启确认框 | 原生 `.alert` 会**自动补一个多余的「取消」**，且按钮颜色不可控 → 改**自绘确认框**（`.regularMaterial` 卡片、42pt 行、分隔线、圆角 22），「同意 / 查看条款」系统蓝、「不同意」`Color(.systemRed)` |
+| 勾选状态 | 点「取消」（空白处）或「不同意」时，**把「我已阅读并同意」退回未勾选**（主人 2026-11-21 要求）；「查看条款 / 同意」不回退 |
+
+截图：`/tmp/v3-openSource.png`、`/tmp/v9-credits-c.png`、`/tmp/v3-encourage.png`、
+`/tmp/chk-aboutAllude-c.png`（关于页含「推荐给朋友」且无 chevron）、`/tmp/v6-confirm-c.png`（确认框）。

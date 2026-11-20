@@ -3,7 +3,12 @@
 iOS 取件码收纳 App。核心承诺：**数据只在本机，不联网、不上传、不需要注册**。
 SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 
-商业模式：**免费下载 + 订阅解锁**（参照 Infuse），同一权益。2026-11-08 主人定：**只卖两档**：
+> 🔴 **对外不表述收费（2026-11-21 主人定）**：隐私政策、使用条款、版本历史、App Store
+> 文案与支持页里**不出现价格、档位名（Allude Pro）、订阅 / 买断 / 恢复购买、iPadOS 适配**
+> 这类表述。本节下面的商品信息只作开发者内部备查（App Store Connect 里两条商品仍在，
+> 是否继续售卖待定）；改动对外文案前先按这条口径过一遍。
+
+商业模式（内部备查）：**免费下载 + 分级解锁**，同一权益。2026-11-08 主人定：**只卖两档**：
 
 | 商品 | Product ID | 定价 | 说明 |
 |---|---|---|---|
@@ -189,9 +194,10 @@ iPhone 直板机已完工（0.3.3）；**iPhone Duo 折叠屏适配已开工**�
 
 ## App 图标切换
 
-十六套内置图标，2026-11-15 一晚上反复增删后的**最终形态**：现存 15 套按
-「从上到下、从左到右」重排为 01–15，当晚新给的一张「蓝线稿白盒」补成 16。
-**默认是第 4 套「C 标」**（2026-11-11 主人改的；此前默认是第 3 套「取件袋」）。
+**十七套内置图标**，2026-11-15 反复增删后的最终形态：16 套按「从上到下、从左到右」
+重排为 01–16，2026-11-16 又补了一张「皮革卡包」成 17。
+**默认是第 7 套「黑盒立体」**（2026-11-20 主人改的；此前默认是第 4 套「C 标」，
+再往前是第 2 套「取件袋」）。
 🔴 **编号与网格顺序严格一致（01…16 连续）**。重排会让老用户存的 `rawValue`
 指向另一张图（新旧 iconNN 同名不同图），所以 `AppIconStore` 里有一套
 **一次性迁移** `migrateLegacyNumberingIfNeeded()`：靠 `allude.appIcon.scheme`
@@ -201,17 +207,18 @@ iPhone 直板机已完工（0.3.3）；**iPhone Duo 折叠屏适配已开工**�
 原主图标「取件袋」现在作为 alternate icon `Icon02` 保留，仍可在设置里选。
 
 - 主图标：`Allude/Assets.xcassets/AppIcon.appiconset`（1024，**不能有透明通道、不能自带圆角**）。
-- 🔴 **16 套 `AppIconNN.imageset`（App 内预览 / 灵动岛 / 关于页 / 分享卡共用）
+- 🔴 **17 套 `AppIconNN.imageset`（App 内预览 / 灵动岛 / 关于页 / 分享卡共用）
   统一放 `AlludeShared/Assets.xcassets`**（2026-11-15 从 App 的 catalog 迁过来）。
   理由：共享 catalog 被 App 与小组件**两个 target 各编译一次**，扩展进程才查得到；
   放在 App 的 catalog 里，小组件取不到图，`Image("AppIconNN")` 会**静默渲染成灰块**
   —— 1.0.0(312) 灵动岛不显示 App 图标就是这个原因。每份 imageset 必须带
   `"template-rendering-intent": "original"` + 1x(60)/2x(120)/3x(180) 三档。
-- 除默认那套（`Icon04` = C 标 = 主图标，不注册为 alternate）以外，全部由
+- 除默认那套（`Icon07` = 黑盒立体 = 主图标，不注册为 alternate）以外，全部由
   **真实 `Allude/Info.plist`** 的 `CFBundleIcons › CFBundleAlternateIcons`
-  声明 `Icon01`…`Icon16`（共 15 条），文件是 bundle 根目录的
+  声明 `Icon01`…`Icon17` 中的 16 条（去掉 `Icon07`），文件是 bundle 根目录的
   `IconNN@2x.png`(120) / `@3x.png`(180)（纯 iPhone 工程，不需要 `~ipad`）。
-  新增一套要同时动三处：imageset、`AppIcons/IconNN*.png`、Info.plist 声明，
+  换默认图标也要同时动三处：`AppIcon.appiconset` 三张 1024、Info.plist 里新旧两条
+  alternate 互换、`AppIconChoice.fallback`。新增一套要同时动三处：imageset、`AppIcons/IconNN*.png`、Info.plist 声明，
   再加 `AppIconChoice` 的 case 与 `title`（`assetName`/`alternateName` 由 `number` 自动拼）。
   `AppIcons/` 与 `Allude/` 都在 Xcode 的同步组里，**不用改 pbxproj**。
 - 图源自满幅方图，**不再裁切**（早期那批是白底圆角，裁过角）。
@@ -221,7 +228,7 @@ iPhone 直板机已完工（0.3.3）；**iPhone Duo 折叠屏适配已开工**�
   增删 Info.plist 键要改那个真实文件，`INFOPLIST_KEY_*` 不再生效。
 - 选择状态存 **App Group**（`allude.appIcon`），但 🔴 **灵动岛/锁屏不靠它**：
   选择随 `ContentState.appIconRaw` 过进程边界（2026-11-15 修）。扩展进程自己读
-  共享偏好域那条链一断就回落到第 4 套 C 标，表现为「桌面换了、岛里还是旧图标」。
+  共享偏好域那条链一断就回落到默认图标（第 7 套黑盒立体），表现为「桌面换了、岛里还是旧图标」。
 - `AppMarkIcon(choice:)`（灵动岛/锁屏）、关于页顶部、设置网格读同一份选择。
 - 🔴 **给灵动岛用的图片资源，`Contents.json` 必须写两样**，否则折叠态会渲染成
   一个纯色方块（2026-11-01 真机修复）：
@@ -249,7 +256,7 @@ App 内「关于 › 声明与免责」（`StatementView`）是唯一的对外�
    「快递取件码」快捷指令；App 把那套取码逻辑搬进原生应用，没有第二个来源。
 2. **技术**：全部 Apple 官方工具与框架（Xcode / Swift / SwiftUI / WidgetKit /
    ActivityKit / StoreKit），零第三方依赖、零第三方 SDK。
-3. **关于借鉴**：产品形态、交互、视觉均自设计，未借鉴未抄袭其他应用；
+3. **设计来源**：产品形态、交互、视觉均自设计，未使用其他应用的内容或素材；
    解析规则来自真实短信整理与回归测试，语料与基线可复核。
 4. **第三方标识**：快递公司/驿站图标只用于**标识取件来源**，版权归各品牌方；
    不表示授权或合作；权利人异议即移除。侵权联系邮箱同「联系方式」。
@@ -774,12 +781,21 @@ App Store 版没有这个文件 → 整行自动不显示。
 
 ## 端侧 AI 与地址兜底（2026-11-05）
 
+🔴 **定位（2026-11-21 主人再次明确）**：端侧智能是**正则解析的辅助**，不是二选一。
+`PickupParser` 的正则负责主解析（快、稳定、可回归），端侧模型只在**正则没捞到某个字段**时补一刀，
+把结果补完整；两条红线不变：**只填空不覆盖**（尤其取件码）、**不可用就当没有**。
+对外文案不要写成「能用 AI 就用 AI、不能用退回正则」——正确说法是「正则为主、端侧智能辅助补齐与校对」。
+
 **端侧大模型（FoundationModels）在国内机型上不可用**：`SystemLanguageModel.default.availability`
 返回 `.unavailable(.deviceNotEligible)`，机型 iPhone17,1 / iOS 27.3 / 地区 CN，
 `supportsLocale(zh_CN)` 为 true —— 排除语言问题，是系统层面的资格判定。
 
 - 写作工具在**任何 App** 都能用，那是系统级能力；与第三方 App 调用端侧模型是两条通道。
-- 设置 › 关于 ›「AI 能力检测」可随时查看（`SCREEN=aiCapability` 截图脚手架）。
+- 设置 ›「Apple 智能」可随时查看（`SCREEN=aiCapability` 截图脚手架）。
+- 🔴 **2026-11-20 主人：第三方模型通道（BYOK：DeepSeek / 豆包 / 千问 / Kimi）整条删除**。
+  App 只保留 Apple 端侧能力，**不接任何第三方服务、没有 API Key、不发起网络请求**；
+  `AIProviderStore` / `AIExtensionEnhancer` / `AIUsageStore` / `AIExtensionsView` / `AIUsageView`
+  已删，设置里那一页直接进「Apple 智能」检测页。别再把这条通道加回来。
 - 不可用时解析链自动退回纯正则，功能不受影响。
 
 **地址兜底改用 NaturalLanguage**（不依赖 AI 资格、纯本地）：
