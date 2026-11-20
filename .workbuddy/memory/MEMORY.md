@@ -121,10 +121,15 @@ xcodebuild -project Allude.xcodeproj -scheme Allude -destination "$DEST" \
   issuer `e2936bfc-e52b-4931-a763-9f03dec868e3`；`WILL RETRY` 是常态）
   → 2–3 分钟转 VALID 后 `python3 tools/testflight-publish.py --build NNN --notes-file …`。
 
-## 现状（2026-11-17）
-- 1.0.0 已提交审核（WAITING_FOR_REVIEW，绑 309）。320 已上传 VALID 并挂「Allude公测」+ Beta 审核。
-- 两个内购仍 `CREATED`，中国区价格未生效 → TestFlight 沙盒回落 USD 基准价。
-- 法务线上仓 `Zhangwangning/allude-legal`（GitHub Pages）；App 内文本 `Allude/Allude/Legal/*.html`，两边同步改。
+## 现状（2026-11-20 实测 ASC）
+- 🔴 **1.0.0 = REJECTED**（`appStoreState` 实测，仍绑构建 309；`releaseType=SCHEDULED`，
+  `earliestReleaseDate=2026-11-30`）。拒绝原因不在公开 API，须登录 Resolution Center 看。
+- 321 已 `VALID` + Beta 审核 `APPROVED`，挂「Allude公测」，测试内容已写。
+- 两个内购现为 **`READY_TO_SUBMIT`**（lifetime / annual），**尚未随版本提交**；
+  首次必须与 App 版本一起提交审核。
+- App 备案未完成（网站 ICP 陇ICP备2026011130号已过，App 备案是另一套编号）。
+- 法务线上仓 `Zhangwangning/allude-legal`（GitHub Pages）；App 内文本 `Allude/Allude/Legal/*.html`，三副本同步改。
+- 移交文档：`交接说明_dsh.md`（2026-11-20，499 行，面向接手人；`交接说明_workbuddy.md` 312 版已部分过时）。
 - 性能范式：计算属性记忆化缓存放 **model（@StateObject 的 class）**，不放 View 的 `@State`
   （body 求值期间写 state 会二次重算）；缓存键用 `hashValue` 不用 `count`。
   `VStack` → `LazyVStack` 可消首帧冻结，代价 `proxy.scrollTo` 到未构建视图失效。
