@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import WidgetKit
 
 // MARK: - 自定义驿站编辑页（2026-10-15 主人定稿）
 //
@@ -69,20 +70,13 @@ struct StationEditView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                iconCard
-                nameCard
+                // 2026-11-21：图标与名称合并成一张卡（原来两张卡各占半屏，
+                // 中间还夹一句说明）。现在「点头像＝换图、点名字＝改名」一眼就懂。
+                headerCard
                 // 2026-11-17 老大：创建时就能加位置（可选），不再要求「先建好再回来设」。
                 locationCard
-
-                Text(isEdit
-                     ? "改名后，卡片会自动按新名称从短信里识别。留空图标则显示名称首字。"
-                     : "不添加图标时，卡片与网格里会按名称首字自动生成图标。")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 4)
-
                 if isEdit {
+                    groupCard
                     deleteButton
                 }
             }
@@ -135,30 +129,47 @@ struct StationEditView: View {
         }
     }
 
-    // MARK: 图标卡（点预览即换图）
+    // MARK: 头部卡（图标 + 名称，2026-11-21 合并）
 
-    private var iconCard: some View {
-        VStack(spacing: 14) {
-            // 点预览图直接弹系统相册；角标提示「可更换」
+    private var headerCard: some View {
+        HStack(spacing: 14) {
             PhotosPicker(selection: $pickerSelection, matching: .images, photoLibrary: .shared()) {
                 preview
                     .overlay(alignment: .bottomTrailing) {
                         Image(systemName: "photo.badge.plus")
-                            .font(.system(size: 22, weight: .semibold))
+                            .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(.white)
-                            .padding(6)
+                            .padding(4)
                             .background(AppTheme.accent, in: .circle)
-                            .offset(x: 8, y: 8)
+                            .offset(x: 4, y: 4)
                     }
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("更换驿站图标")
 
-            Text("点按图标从相册选择（可选）")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 6) {
+                TextField(isEdit ? "驿站名称" : "如「XX 便利店代收」", text: $name)
+                    .font(.system(size: 17, weight: .medium))
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+
+                if iconData != nil {
+                    Button {
+                        iconData = nil
+                        iconChanged = true
+                    } label: {
+                        Text("用名称首字")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.accent)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            Spacer(minLength: 0)
         }
         .padding(14)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .cardSurface()
     }
 
@@ -169,42 +180,31 @@ struct StationEditView: View {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFill()
-                .frame(width: 96, height: 96)
-                .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
+                .frame(width: 64, height: 64)
+                .clipShape(RoundedRectangle(cornerRadius: 64 * 0.29, style: .continuous))
                 .overlay {
-                    RoundedRectangle(cornerRadius: corner, style: .continuous)
+                    RoundedRectangle(cornerRadius: 64 * 0.29, style: .continuous)
                         .stroke(.primary.opacity(0.10), lineWidth: 0.5)
                 }
         } else if !trimmedName.isEmpty {
-            CourierLogo(company: trimmedName, size: 96)
+            CourierLogo(company: trimmedName, size: 64)
         } else {
             ZStack {
-                RoundedRectangle(cornerRadius: corner, style: .continuous)
+                RoundedRectangle(cornerRadius: 64 * 0.29, style: .continuous)
                     .fill(AppTheme.accent.opacity(0.12))
                 Image(systemName: "plus")
-                    .font(.system(size: 30, weight: .semibold))
+                    .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(AppTheme.accent)
             }
-            .frame(width: 96, height: 96)
+            .frame(width: 64, height: 64)
         }
     }
 
-    // MARK: 名称卡
+    // MARK: 驿站组（2026-11-21 主人：点驿站就能快速分组）
 
-    private var nameCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("驿站名称")
-                .font(.system(size: 12))
-                .foregroundStyle(.tertiary)
-
-            TextField("如「XX 便利店代收」", text: $name)
-                .font(.system(size: 16))
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity)
-        .cardSurface()
+    private var groupCard: some View {
+        // 与内置驿站定位页共用同一份 Menu（2026-11-21 抽出组件）
+        StationGroupMembershipRow(stationName: originalName ?? trimmedName)
     }
 
     // MARK: 位置（创建态与编辑态都显示，2026-11-17 老大）

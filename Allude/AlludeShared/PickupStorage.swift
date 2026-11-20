@@ -132,7 +132,13 @@ enum PickupLimits {
     ///    `WidgetSnapshot` 都引用它，改额度只改这里。
     static let freeVisible = 4
     /// 存储上限，超出后 FIFO 淘汰最旧
-    static let freeStorage = 60
+    ///
+    /// 🔴 2026-11-20 更正：这里原先写 60，但**全 App 从来没有任何地方读过它**，
+    ///    真正生效的是 `PickupStore.freeStorageLimit`（硬编码 50），
+    ///    订阅页与设置页显示的也是 50。现在两处合成一处：App 侧的
+    ///    `PickupStore.freeStorageLimit` 直接引用本常量，所以这里必须等于真实额度 50。
+    ///    改额度只改这里（小组件与本机数据都看它）。
+    static let freeStorage = 50
     /// 「不限量」的替代值。**不要用 `Int.max`**：`count - limit` 这类减法会溢出崩溃。
     static let unlimited = 9_999
     /// 小组件单次可翻动的最大条数。
@@ -965,11 +971,11 @@ enum PickupSortLogic {
     static let noStation = "未标注驿站"
 
     static func stationName(of record: PickupRecord) -> String {
-        let raw = record.station.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !raw.isEmpty else { return noStation }
-        // 2026-11-17 主人：组驿站是一个全新的驿站 —— 归组后分组键用组名，
-        // 成员原名只留在卡面副名的「组名/原名」里。
-        return StationGroupStore.displayName(for: raw)
+        // 2026-11-21：分组键改由**单一解析入口**给（含自定义驿站、记录级手工指定、
+        // 多组不猜）。以前这里只是拿词表名去查组名，于是：
+        //   · 用户自定义驿站建的组在小组件里掉进「未标注驿站」；
+        //   · 详情页手工指定的组，列表上不认。
+        record.stationResolution.displayName
     }
 
     static func companyName(of record: PickupRecord) -> String {
@@ -993,15 +999,32 @@ enum PickupSortLogic {
                 return $0.receivedAt > $1.receivedAt
             }
         case .station:
-            // 老大 2026-11-17：驿站**内**部的先后由「驿站内排序」决定，
-            // 组与组之间仍按名字排（未标注驿站永远置底）。
+            // 🔴 2026-11-21 统一口径（主人定）：**组间按件数多在前**，同数按名字，
+            //    「未标注驿站」永远置底；组**内**的先后由「驿站内排序」决定。
+            //    以前待取/已取按件数、桌面小组件按名字升序 —— 同一份数据两种顺序，
+            //    手机上排好的顺序到桌面就乱了。
             let inner = StationInnerOrder.current
+            var keys: [UUID: String] = [:]
+            var counts: [String: Int] = [:]
+            for record in records {
+                let key = stationName(of: record)
+                keys[record.id] = key
+                counts[key, default: 0] += 1
+            }
             return records.sorted {
-                let a = stationName(of: $0), b = stationName(of: $1)
+                let a = keys[$0.id] ?? noStation, b = keys[$1.id] ?? noStation
                 let aIsNone = (a == noStation), bIsNone = (b == noStation)
                 if aIsNone != bIsNone { return bIsNone }   // 未标注驿站永远置底
-                if a != b { return a < b }
-                return inner.isOrderedBefore($0, $1)
+                if a != b {
+                    let ca = counts[a] ?? 0, cb = counts[b] ?? 0
+                    if ca != cb { return ca > cb }          // 件数多的组在前
+                    return a < b
+                }
+                // 组内先后与待取页同一个时刻：`lastNotifiedAt`（它本身就是
+                // `history?.last ?? receivedAt`，没通知过自然回落收到时间）。
+                // 2026-11-21 主人：「小组件的排序就和待取页面的分组排序保持一致就行」。
+                let moment: (PickupRecord) -> Date = { $0.lastNotifiedAt }
+                return inner.isOrderedBefore($0, $1, moment: moment)
             }
         }
     }

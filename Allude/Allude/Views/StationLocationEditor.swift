@@ -55,6 +55,8 @@ struct StationLocationEditor: View {
                 mapCard
                 coordinateCard
                 settingsCard
+                // 2026-11-21 主人：内置驿站点进来也要能直接分组，不用再绕到组里去勾
+                StationGroupMembershipRow(stationName: stationName)
                 disclaimer
                 if locationStore.location(for: stationName) != nil {
                     deleteButton

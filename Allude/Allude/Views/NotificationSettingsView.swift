@@ -447,15 +447,29 @@ struct NotificationSettingsView: View {
                 }
                 .buttonStyle(.plain)
 
+                // 2026-11-21：系统只给 20 个围栏，超出部分**不会**被监控。
+                // 以前界面照旧一个开关，用户以为在监控、其实没有 —— 这里如实标出来。
+                let monitored = Set(StationLocationService.plannedTargets()
+                    .prefix(StationLocationService.regionLimit)
+                    .map(\.name))
+
                 ForEach(locationStore.configuredNames, id: \.self) { name in
                     SettingsDivider(style: .plain)
                     SettingsPlainRow(title: name) {
-                        Toggle("", isOn: Binding(
-                            get: { locationStore.location(for: name)?.enabled ?? false },
-                            set: { locationStore.setEnabled($0, for: name) }
-                        ))
-                        .labelsHidden()
-                        .tint(AppTheme.accent)
+                        HStack(spacing: 8) {
+                            if locationStore.location(for: name)?.enabled == true,
+                               !monitored.contains(name) {
+                                Text("未在监控")
+                                    .font(AppTheme.TypeScale.badge)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Toggle("", isOn: Binding(
+                                get: { locationStore.location(for: name)?.enabled ?? false },
+                                set: { locationStore.setEnabled($0, for: name) }
+                            ))
+                            .labelsHidden()
+                            .tint(AppTheme.accent)
+                        }
                     }
                 }
 

@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import WidgetKit
 
 // MARK: - 驿站组编辑页（2026-11-17 主人）
 //
@@ -8,7 +9,9 @@ import PhotosUI
 // 继承是**动态引用**（成员换图 / 换位置，组立刻跟着变），不是复制一份快照。
 //
 // 成员关系挂的是成员**驿站 ID**（`NZYZ…` / `DZYYZ…`），所以成员改名不会断链。
-// 一个成员只能进一个组：选一个已在别组里的成员时，会明确提示「将从原组移出」。
+// 2026-11-21 主人定：**一个驿站只属于一个组**（取件地点固定，多个组都收同一个品牌
+// 会让短信没法定组）。勾选已在别组的成员会把它移过来，行里先标一句「在「X」里」；
+// 移组时已有记录会被钉在原组（`PickupStore.pinRecords`），历史归属不会跟着变。
 
 struct StationGroupEditView: View {
 
@@ -53,13 +56,17 @@ struct StationGroupEditView: View {
     /// 新建组时的位置草稿（老大：创建时就能加定位，默认当前位置）
     @State private var draftCoordinate: CLLocationCoordinate2D?
     @State private var showLocationPicker = false
+    /// 成员搜索（2026-11-21）
+    @State private var memberQuery: String = ""
 
-    init(mode: Mode) {
+    /// `preselectedMemberIDs`：从「编辑驿站 › 驿站组 › 新建驿站组…」进来时，
+    /// 把这个驿站预先勾上（2026-11-21 主人要的快速分组）。
+    init(mode: Mode, preselectedMemberIDs: [String] = []) {
         self.mode = mode
         switch mode {
         case .create:
             _name = State(initialValue: "")
-            _selectedMemberIDs = State(initialValue: [])
+            _selectedMemberIDs = State(initialValue: Set(preselectedMemberIDs))
             _iconMode = State(initialValue: .fallback)
             _iconInheritMemberID = State(initialValue: nil)
             _locationInheritMemberID = State(initialValue: nil)
@@ -103,11 +110,17 @@ struct StationGroupEditView: View {
         }
     }
 
+    /// 搜索过滤后的成员候选（空查询＝全部）
+    private var filteredCandidates: [(id: String, name: String)] {
+        let q = memberQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return allCandidates }
+        return allCandidates.filter { $0.name.localizedStandardContains(q) }
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                nameCard
-                iconCard
+                headerCard
                 locationCard
                 memberCard
 
@@ -118,13 +131,6 @@ struct StationGroupEditView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 4)
                 }
-
-                Text("组是独立的一个驿站：待取 / 已取页只显示组名，卡面副名仍保留「组名/成员原名」。解散组后成员会原地恢复独立显示，历史记录不受影响。")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 4)
-                    .fixedSize(horizontal: false, vertical: true)
 
                 if groupID != nil {
                     deleteButton
@@ -173,76 +179,58 @@ struct StationGroupEditView: View {
 
     // MARK: 名称
 
-    private var nameCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("组名")
-                .font(.system(size: 12))
-                .foregroundStyle(.tertiary)
+    // MARK: 头部卡（图标 + 组名 + 来源三选一，2026-11-21 合并）
 
-            TextField("如「恒大御府驿站」", text: $name)
-                .font(.system(size: 16))
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-
-            Text("不能与内置驿站、自定义驿站或其它组同名。")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cardSurface()
-    }
-
-    // MARK: 图标（2026-11-17 老大：原来那版「不好」，重做）
-
-    /// 旧版是「一行摘要 + 三段分段控件 + 随模式换内容」：分段控件只有文字，
-    /// 选之前完全看不出图标长什么样；继承又用下拉菜单，只能看名字不能看图。
-    ///
-    /// 现在改成三格**带缩略图**的来源选择：每一格直接画出「选它之后组会长什么样」，
-    /// 选中格用紫色描边 + 淡底；下面的补充区只在需要时出现（已选的摘要里已说明的
-    /// 就不再重复一遍文字）。
-    private var iconCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
+    /// 原来「组名一张卡 + 图标一张卡 + 三格来源」占掉两屏，中间还夹着
+    /// 「不能与内置驿站…」这类规则说明。现在合成一张：名字是主角，
+    /// 图标摆在左边点一下就能换，来源退化成三枚小胶囊；规则说明删掉，
+    /// 重名时保存会直接在页脚报错（`errorMessage`）。
+    private var headerCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 14) {
-                iconPreview
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("图标")
-                        .font(AppTheme.TypeScale.bodyMedium)
-                    Text(iconSummary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                // 点图标 = 切到「相册」来源（下面立刻出现选图按钮），不另外弹窗
+                Button {
+                    iconMode = .custom
+                } label: {
+                    iconPreview
                 }
-                Spacer(minLength: 0)
-            }
+                .buttonStyle(.plain)
+                .accessibilityLabel("更换组图标")
 
-            HStack(spacing: 10) {
-                ForEach(IconMode.allCases) { mode in
-                    iconSourceTile(mode)
+                VStack(alignment: .leading, spacing: 8) {
+                    TextField("如「恒大御府驿站」", text: $name)
+                        .font(.system(size: 17, weight: .medium))
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+
+                    HStack(spacing: 8) {
+                        ForEach(IconMode.allCases) { mode in
+                            iconModePill(mode)
+                        }
+                    }
                 }
+
+                Spacer(minLength: 0)
             }
 
             switch iconMode {
             case .fallback:
-                // 摘要已写「按组名首字生成」，这里不再重复一句话
                 EmptyView()
 
             case .custom:
                 PhotosPicker(selection: $pickerSelection, matching: .images, photoLibrary: .shared()) {
                     Label(iconData == nil ? "从相册选择图片" : "换一张图片",
                           systemImage: "photo.badge.plus")
-                        .font(AppTheme.TypeScale.bodyMedium)
+                        .font(AppTheme.TypeScale.body)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
+                        .padding(.vertical, 9)
                         .background(AppTheme.violet.opacity(0.10),
-                                    in: .rect(cornerRadius: 12, style: .continuous))
+                                    in: .rect(cornerRadius: 11, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
             case .inherit:
-                memberStrip(selected: $iconInheritMemberID,
-                            noneTitle: nil,
-                            emptyHint: "先在下面「成员驿站」里选几个成员，再回来挑一个继承来源。")
+                memberStrip(selected: $iconInheritMemberID, noneTitle: nil, emptyHint: nil)
             }
         }
         .padding(14)
@@ -250,74 +238,38 @@ struct StationGroupEditView: View {
         .cardSurface()
     }
 
-    /// 一格来源：缩略图 + 名称，选中即切换。
-    private func iconSourceTile(_ mode: IconMode) -> some View {
+    /// 一枚来源胶囊：图标 + 两字，选中紫底。
+    private func iconModePill(_ mode: IconMode) -> some View {
         let selected = iconMode == mode
+        let symbol: String = {
+            switch mode {
+            case .fallback: "character.cursor.ibeam"
+            case .custom:   "photo"
+            case .inherit:  "person.2"
+            }
+        }()
+        let title: String = {
+            switch mode {
+            case .fallback: "首字"
+            case .custom:   "相册"
+            case .inherit:  "继承"
+            }
+        }()
         return Button {
-            withAnimation(.snappy(duration: 0.18)) { iconMode = mode }
-            if mode != .inherit { iconInheritMemberID = nil }
+            iconMode = mode
         } label: {
-            VStack(spacing: 7) {
-                iconTileThumbnail(mode)
-                    .frame(height: 36)
-                Text(mode.title.L)
-                    .font(.system(size: 11, weight: selected ? .semibold : .regular))
-                    .foregroundStyle(selected ? AppTheme.violet : Color.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+            HStack(spacing: 4) {
+                Image(systemName: symbol).font(.system(size: 11, weight: .semibold))
+                Text(title.L).font(.system(size: 12, weight: .medium))
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .background(selected ? AppTheme.violet.opacity(0.10) : Color(.tertiarySystemFill),
-                        in: .rect(cornerRadius: 12, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(selected ? AppTheme.violet.opacity(0.55) : .clear,
-                                  lineWidth: 1.5)
-            }
-            .contentShape(.rect)
+            .foregroundStyle(selected ? AppTheme.violet : Color.secondary)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(selected ? AppTheme.violet.opacity(0.14) : Color(.tertiarySystemFill),
+                        in: .capsule)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(mode.title)
         .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-
-    @ViewBuilder
-    private func iconTileThumbnail(_ mode: IconMode) -> some View {
-        switch mode {
-        case .fallback:
-            // 换成实际首字预览：空名时用一个「驿」占位，让人知道这里会出字
-            CourierLogo(company: trimmedName.isEmpty ? "驿" : trimmedName,
-                        size: 34, showsShadow: false)
-        case .custom:
-            if let iconData, let image = UIImage(data: iconData) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 34, height: 34)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            } else {
-                placeholderThumb(systemName: "photo")
-            }
-        case .inherit:
-            if let memberID = iconInheritMemberID,
-               let memberName = StationIdentity.name(for: memberID) {
-                StationLogo(name: memberName, size: 34, showsShadow: false)
-            } else {
-                placeholderThumb(systemName: "square.stack.3d.up.fill")
-            }
-        }
-    }
-
-    private func placeholderThumb(systemName: String) -> some View {
-        RoundedRectangle(cornerRadius: 10, style: .continuous)
-            .fill(AppTheme.violet.opacity(0.12))
-            .frame(width: 34, height: 34)
-            .overlay {
-                Image(systemName: systemName)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(AppTheme.violet)
-            }
     }
 
     @ViewBuilder
@@ -415,31 +367,41 @@ struct StationGroupEditView: View {
                 .buttonStyle(.plain)
             }
 
+            // 位置来源（2026-11-21）：原来是一句「或直接沿用成员的位置」+ 一排成员图，
+            // 把整张卡撑得很高。收成一行 Menu：用自己的位置 / 沿用某个成员。
             if !memberCandidates.isEmpty {
                 Divider().opacity(0.6)
-
-                HStack(spacing: 6) {
-                    Text("或直接沿用成员的位置")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 4)
-                    if locationInheritMemberID != nil {
-                        Button("改用自己的位置") {
-                            locationInheritMemberID = nil
+                HStack {
+                    Text("位置来源")
+                        .font(AppTheme.TypeScale.body)
+                    Spacer(minLength: 8)
+                    Menu {
+                        Button("自己的位置") { locationInheritMemberID = nil }
+                        Divider()
+                        ForEach(memberCandidates, id: \.id) { member in
+                            Button("沿用「\(member.name)」") {
+                                locationInheritMemberID = member.id
+                            }
                         }
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(AppTheme.violet)
+                    } label: {
+                        SettingsValueLabel(text: locationSourceTitle)
                     }
                 }
-
-                memberStrip(selected: $locationInheritMemberID,
-                            noneTitle: nil,
-                            emptyHint: nil)
+                .padding(.vertical, 2)
             }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardSurface()
+    }
+
+    /// 「位置来源」这一行右侧的值
+    private var locationSourceTitle: String {
+        if let memberID = locationInheritMemberID,
+           let name = StationIdentity.name(for: memberID) {
+            return "沿用「\(name)」"
+        }
+        return "自己的位置"
     }
 
     private func locationActionRow(hasLocation: Bool) -> some View {
@@ -577,13 +539,32 @@ struct StationGroupEditView: View {
                 Spacer(minLength: 0)
             }
 
-            Text("选中的驿站会从待取 / 已取页收进这个组。一个驿站只能在一个组里。")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            // 搜索（2026-11-21）：34 个内置驿站 + 自定义，滑到一半就找不到要选的
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                TextField("搜索驿站", text: $memberQuery)
+                    .font(AppTheme.TypeScale.body)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                if !memberQuery.isEmpty {
+                    Button {
+                        memberQuery = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(Color(.tertiarySystemFill), in: .rect(cornerRadius: 10, style: .continuous))
 
             LazyVStack(spacing: 0) {
-                ForEach(allCandidates, id: \.id) { candidate in
+                ForEach(filteredCandidates, id: \.id) { candidate in
                     Button {
                         toggle(candidate.id)
                     } label: {
@@ -591,7 +572,7 @@ struct StationGroupEditView: View {
                     }
                     .buttonStyle(.plain)
 
-                    if candidate.id != allCandidates.last?.id {
+                    if candidate.id != filteredCandidates.last?.id {
                         Divider().padding(.leading, 44)
                     }
                 }
@@ -613,8 +594,9 @@ struct StationGroupEditView: View {
                     .lineLimit(1)
 
                 if let other = occupiedGroupName(candidate.id) {
-                    // 老大第 2 条：只能进一个组，再选进新组要明说「将从原组移出」
-                    Text("在「\(other)」里，选中后会移出")
+                    // 2026-11-21 主人选 A（组是地点）：同一个品牌可以在多个点各有组，
+                    // 所以这里不再说「会移出」，改成如实说明「也在别处」。
+                    Text("在「\(other)」里，勾选会移过来")
                         .font(.caption2)
                         .foregroundStyle(AppTheme.violet)
                         .lineLimit(1)
@@ -687,6 +669,8 @@ struct StationGroupEditView: View {
         }
 
         let members = Array(selectedMemberIDs)
+        // 一个驿站只在一个组：这次保存会把它们从哪些旧组里拿走（用来钉住历史记录）
+        let displaced = StationGroupStore.displacedMembers(members, excluding: groupID)
         let inheritIcon = iconMode == .inherit ? iconInheritMemberID : nil
         let inheritLocation = locationInheritMemberID
 
@@ -729,6 +713,17 @@ struct StationGroupEditView: View {
                                                   enabled: true),
                                   for: created.name)
             }
+        }
+
+        // 换组后把**已有记录**钉回原组：那些件当初是在老地方取的，
+        // 不钉的话一次移组会让历史记录集体改判到新组。
+        if !displaced.isEmpty {
+            let store = PickupStore.shared
+            for (memberID, oldGroupID) in displaced {
+                guard let name = StationIdentity.name(for: memberID) else { continue }
+                store.pinRecords(station: name, toGroup: oldGroupID)
+            }
+            WidgetCenter.shared.reloadAllTimelines()
         }
 
         StationGroupStore.invalidateCache()

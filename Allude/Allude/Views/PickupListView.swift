@@ -516,9 +516,10 @@ struct PickupListView: View {
         #if DEBUG
         PerfProbe.count("list.stationName")
         #endif
-        let name = record.station.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return "未标注驿站" }
-        return StationGroupStore.displayName(for: name)
+        // 2026-11-21：分组键与桌面小组件**同一门函数**（`PickupSortLogic.stationName`），
+        // 里面走单一解析入口，带记录级手工指定与自定义驿站；以前这里只认词表名，
+        // 手工指定的驿站/组在待取页不生效，桌面反而对。
+        return PickupSortLogic.stationName(of: record)
     }
 
     /// 归类用的名字：快递公司 > 驿站名（名称库命中）> 短信平台，
@@ -1651,7 +1652,7 @@ struct PickupCard: View {
         #if DEBUG
         PerfProbe.count("card.naming")
         #endif
-        return record.naming(station: stationDirectory.matchedName(in: [record.rawMessage]))
+        return record.namingResolved
     }
     private var titlePrimary: String { naming.primary }
     private var titleSecondary: String? { naming.secondaryLabel }

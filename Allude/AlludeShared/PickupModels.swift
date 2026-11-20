@@ -112,8 +112,20 @@ struct PickupRecord: Identifiable, Hashable, Codable {
     /// - `receivedAt` 仍保持**首次**时刻不动，统计页的停留时长才不会被重复通知拉短。
     var history: [Date]? = nil
 
+    /// **记录级手工指定的驿站组**（2026-11-21 主人定「加」）。
+    ///
+    /// 存的是组的 **ID**（`FZYD…`）而不是组名：组可以改名，ID 跟名字无关。
+    /// 只有「同一个品牌出现在两个组」这类分不清的情况才需要用它 ——
+    /// 解析入口（`StationResolver`）把它的优先级排在所有自动识别之上。
+    ///
+    /// 🔴 Optional + 默认 nil：旧 JSON 没这个 key，合成 Codable 走 `decodeIfPresent`。
+    var stationGroupOverride: String? = nil
+
     /// 最后一次被通知的时间（卡片右上角那个时间戳用它）
     var lastNotifiedAt: Date { history?.last ?? receivedAt }
+
+    /// 这条记录的驿站 / 组结论（与列表、小组件、围栏同一份）
+    var stationResolution: StationResolution { StationResolver.resolve(self) }
 
     /// **本机最后一次改动这条记录的时间**（2026-11-12 加 iCloud 同步）。
     ///
@@ -395,6 +407,41 @@ struct PickupNaming: Equatable {
         return "\(stationGroup)/\(secondary)"
     }
 
+    /// 走单一解析入口的构造器（App / 小组件 / 分享卡 / 灵动岛都该用它）。
+    ///
+    /// 与下面的 `init(courier:platform:station:)` 的区别只有一个：
+    /// 驿站**与组**同时由 `StationResolver` 给出 —— 手动指定的组、
+    /// 自定义驿站、多组不猜这些规则都包含在内。
+    init(courier: String?, platform: String, resolution: StationResolution) {
+        let station = resolution.hasStation ? resolution.stationName : nil
+        self.init(courier: courier, platform: platform, station: station,
+                  group: (resolution.groupName?.isEmpty == false) ? resolution.groupName : nil)
+    }
+
+    /// 两段命名的唯一装配点：组名可直接给（`stationGroup` 是 `let`，
+    /// 不能在委托 init 之后再赋值 —— Swift 只允许在**同一个** init 里初始化 let）。
+    private init(courier: String?, platform: String, station: String?, group: String?) {
+        func clean(_ raw: String?) -> String {
+            (raw ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        let carrier = clean(courier)
+        let platformName = clean(platform)
+        let stationName = clean(station)
+
+        var main = carrier.isEmpty ? platformName : carrier
+        if main.isEmpty { main = stationName }
+        self.primary = main
+        self.station = stationName.isEmpty ? nil : stationName
+        self.stationGroup = clean(group).isEmpty ? nil : clean(group)
+
+        var suffix: String?
+        for candidate in [stationName, platformName] where !candidate.isEmpty && candidate != main {
+            suffix = candidate
+            break
+        }
+        self.secondary = suffix
+    }
+
     init(courier: String?, platform: String, station: String?) {
         // 传入的 courier 由调用方给 `record.courierDisplay`（已归一成标准名）
         func clean(_ raw: String?) -> String {
@@ -403,6 +450,11 @@ struct PickupNaming: Equatable {
         let carrier = clean(courier)
         let platformName = clean(platform)
         let stationName = clean(station)
+        // 组归属：成员唯一归属时才认（多组并存交给 `StationResolver` 判，
+        // 那条路走下面的 `resolution:` 重载，不会到这里）
+        let resolvedGroup = stationName.isEmpty
+            ? nil
+            : StationGroupStore.memberGroupName(for: stationName)
 
         // 第一段：快递公司 → 短信平台 → 驿站（三者全空才落到空串）
         var main = carrier.isEmpty ? platformName : carrier
@@ -411,9 +463,7 @@ struct PickupNaming: Equatable {
         self.station = stationName.isEmpty ? nil : stationName
         // 组关系统一在这里解析：App / 小组件 / 分享卡都走同一个 init，
         // 不必让每个调用方各传一次（漏一处就会出现「这页显示组名、那页显示成员名」）。
-        self.stationGroup = stationName.isEmpty
-            ? nil
-            : StationGroupStore.memberGroupName(for: stationName)
+        self.stationGroup = resolvedGroup
 
         // 第二段：驿站 → 短信平台，取第一个「非空且不等于第一段」的
         var suffix: String?
@@ -432,6 +482,11 @@ extension PickupRecord {
     /// 数据源不同，**规则相同** —— 这才是「一套逻辑」。
     func naming(station: String?) -> PickupNaming {
         PickupNaming(courier: courierDisplay, platform: company, station: station)
+    }
+
+    /// 走单一解析入口的卡面命名（2026-11-21 起 App 侧统一用这个）。
+    var namingResolved: PickupNaming {
+        PickupNaming(courier: courierDisplay, platform: company, resolution: stationResolution)
     }
 }
 
@@ -476,11 +531,15 @@ enum PickupCodeEmphasis {
     /// 2026-10-20：iOS 26 起 `Text + Text` 已弃用（' + ' was deprecated in iOS 26.0），
     /// 改用 `AttributedString` 承载分段着色；返回值仍为 `Text`，
     /// 因此所有调用处的 `.font/.monospaced/.strikethrough` 链式修饰完全不受影响。
+    /// - Parameter style: 显式样式。默认读存储里的当前值（所有真实渲染面都不传）；
+    ///   「取件码管理」的效果预览传的是**视图状态**拼出来的样式 —— 否则预览要等
+    ///   `onChange` 写完 UserDefaults 才更新，拨开关永远慢一拍（2026-11-20 主人反馈）。
     static func text(_ code: String,
                      isDone: Bool = false,
                      tint: Color,
-                     headOpacity: Double? = nil) -> Text {
-        let style = CodeAppearanceStyle.current
+                     headOpacity: Double? = nil,
+                     style explicitStyle: CodeAppearanceStyle? = nil) -> Text {
+        let style = explicitStyle ?? CodeAppearanceStyle.current
         let base = isDone ? Color.secondary : style.resolve(tint)
         let whole = base.opacity(style.opacity)
         guard style.emphasisEnabled, code.count > 4 else {

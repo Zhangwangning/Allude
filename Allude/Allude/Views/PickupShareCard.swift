@@ -57,9 +57,7 @@ struct PickupShareCard: View {
     /// 以前用 `brandColor`（= 短信平台色），拼多多发的圆通件会出现"紫图标 + 粉卡面"。
     private var tint: Color {
         guard let first = records.first else { return Color(hex: 0x0B63F3) }
-        let naming = first.naming(
-            station: StationDirectory.shared.matchedName(in: [first.rawMessage]))
-        return CourierBrand.color(for: naming.iconSource)
+        return CourierBrand.color(for: first.namingResolved.iconSource)
     }
     private var isSingle: Bool { records.count <= 1 }
 
@@ -103,8 +101,7 @@ struct PickupShareCard: View {
         // 图标/主名口径统一走 `PickupNaming`（2026-10-28 主人：整个Allude一套逻辑）。
         // 之前这里是第三套写法（`courier > 驿站 > 平台`），分享出去的名字
         // 与列表卡自相矛盾（拼多多发的圆通件在列表是「圆通快递｜拼多多」）。
-        let naming = record.naming(
-            station: StationDirectory.shared.matchedName(in: [record.rawMessage]))
+        let naming = record.namingResolved
         let iconSource = naming.iconSource
         let titlePrimary = naming.primary
         let titleSecondary: String? = naming.secondaryLabel
@@ -193,8 +190,7 @@ struct PickupShareCard: View {
         // 🔴 旧实现按 `record.company`（短信平台）聚合，于是拼多多发的圆通件会被
         // 归到「拼多多」组里，与卡面写的「圆通快递」对不上 —— 统一走 PickupNaming。
         func groupKey(_ record: PickupRecord) -> String {
-            record.naming(
-                station: StationDirectory.shared.matchedName(in: [record.rawMessage])).primary
+            record.namingResolved.primary
         }
         var order: [String] = []
         var firsts: [String: PickupRecord] = [:]
@@ -287,8 +283,7 @@ struct PickupShareCard: View {
     private func lineRow(_ line: PickupShareLine) -> some View {
         // 行主名 / 图标 / 取色全部走 PickupNaming（与列表卡同一真源）：
         // 以前这行写的是 `record.company` + 平台图标，圆通件会被画成「拼多多」。
-        let naming = line.record.naming(
-            station: StationDirectory.shared.matchedName(in: [line.record.rawMessage]))
+        let naming = line.record.namingResolved
         let tint = CourierBrand.color(for: naming.iconSource)
         return VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 10) {

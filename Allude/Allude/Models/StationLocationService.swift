@@ -99,6 +99,49 @@ final class StationLocationService: NSObject, ObservableObject, CLLocationManage
 
     // MARK: 围栏重排
 
+    /// 系统最多同时监控 20 个区域
+    static let regionLimit = 20
+
+    /// 这一刻**实际会被监控**的名字（组名 / 未归组驿站名），已按优先级排好序。
+    ///
+    /// `syncRegions()` 用它重排围栏；设置页也用它标出「未在监控」——
+    /// 两处必须是同一份口径，否则界面说在监控、系统里根本没有这个围栏。
+    ///
+    /// 优先级（2026-11-17 定，2026-11-21 补「最近用过优先」）：
+    ///   ① 组驿站 —— 用组自己（或它继承的成员）的位置，**只监一个围栏**；
+    ///   ② 未归组驿站 —— 各自的位置各自监控，**最近改动位置的排前面**；
+    ///   ③ 已归组成员 —— 位置保留但不单独监控，否则同一个地点会被推三次。
+    static func plannedTargets() -> [(name: String, location: StationLocation)] {
+        let store = StationLocationStore.shared
+        let groups = StationGroupStore.all()
+        let groupNames = Set(groups.map(\.name))
+        // 多组共享之后 `memberIndex()` 只保留唯一归属的成员，
+        // 用它判「是不是某个组的成员」会把跨组成员当成未归组 → 那个地点被推两次。
+        let memberNames = Set(StationGroupStore.groupsByMember().keys)
+
+        var targets: [(name: String, location: StationLocation)] = []
+
+        for group in groups {
+            let key = StationGroupStore.locationSourceName(for: group)
+            guard let loc = store.location(for: key), loc.enabled else { continue }
+            targets.append((group.name, loc))
+        }
+
+        for name in store.enabledNamesByRecency {
+            guard !groupNames.contains(name), !memberNames.contains(name) else { continue }
+            guard let loc = store.location(for: name) else { continue }
+            targets.append((name, loc))
+        }
+
+        // 组名与驿站名互斥（创建时校验过），这里只做一次保险去重
+        var unique: [(name: String, location: StationLocation)] = []
+        var seen = Set<String>()
+        for target in targets where seen.insert(target.name).inserted {
+            unique.append(target)
+        }
+        return unique
+    }
+
     /// 按「开关 + 权益 + 权限 + 已启用驿站位置」重排监控区域。
     /// iOS 同时最多 20 个区域；超出按「组优先、其余按名字」取前 20（界面会提示上限）。
     ///
@@ -116,35 +159,7 @@ final class StationLocationService: NSObject, ObservableObject, CLLocationManage
               Self.isArrivalReminderEnabled,
               manager.authorizationStatus == .authorizedAlways else { return }
 
-        let store = StationLocationStore.shared
-        let groups = StationGroupStore.all()
-        let groupNames = Set(groups.map(\.name))
-        let memberNames = Set(StationGroupStore.memberIndex().keys)
-
-        var targets: [(name: String, location: StationLocation)] = []
-
-        // ① 组：有效位置 key 可能是组名（自己的位置），也可能是某个成员名（继承）
-        for group in groups {
-            let key = StationGroupStore.locationSourceName(for: group)
-            guard let loc = store.location(for: key), loc.enabled else { continue }
-            targets.append((group.name, loc))
-        }
-
-        // ② 未归组驿站（组名不是驿站，跳过；已归组成员不单独监控）
-        for name in store.enabledNames {
-            guard !groupNames.contains(name), !memberNames.contains(name) else { continue }
-            guard let loc = store.location(for: name) else { continue }
-            targets.append((name, loc))
-        }
-
-        // 组名与驿站名互斥（创建时校验过），这里只做一次保险去重
-        var unique: [(name: String, location: StationLocation)] = []
-        var seen = Set<String>()
-        for target in targets where seen.insert(target.name).inserted {
-            unique.append(target)
-        }
-
-        for target in unique.prefix(20) {
+        for target in Self.plannedTargets().prefix(20) {
             let maxRadius = manager.maximumRegionMonitoringDistance
             let radius = min(max(target.location.radius, 100),
                              maxRadius > 0 ? maxRadius : target.location.radius)
@@ -243,14 +258,13 @@ final class StationLocationService: NSObject, ObservableObject, CLLocationManage
     /// **resolve 成组名**再比。否则站在「恒大御府」这个组里，
     /// 只有写着「菜鸟驿站」的那几条算命中，写着「妈妈驿站」的会被漏掉。
     private static func matches(_ record: PickupRecord, stationName: String) -> Bool {
-        if record.stationOverride == stationName { return true }
+        // 2026-11-21：改走单一解析入口 —— 自定义驿站、记录级手工指定的组
+        // 现在都参与围栏匹配（以前这里各自拼一套判断，指定的组等于没生效）。
+        let resolution = record.stationResolution
+        if resolution.stationName == stationName { return true }
+        if resolution.groupName == stationName { return true }
 
-        if let matched = StationDirectory.shared.matchedName(in: [record.rawMessage]) {
-            if matched == stationName { return true }
-            if StationGroupStore.displayName(for: matched) == stationName { return true }
-        }
-        if StationGroupStore.displayName(for: record.station) == stationName { return true }
-
+        // 兜底：短信平台名 / 地址里出现驿站名（老口径，保留）
         return record.company.localizedCaseInsensitiveContains(stationName)
             || record.address.localizedCaseInsensitiveContains(stationName)
     }

@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import WidgetKit
 
 // MARK: ============================================================================
 // 取件详情
@@ -96,11 +97,107 @@ struct RecordDetailView: View {
         stationDirectory.matchedName(in: [record.rawMessage])
     }
 
+    /// 详情页与列表、小组件同一份解析结论（2026-11-21）
+    private var resolution: StationResolution { record.stationResolution }
+
+    /// 只读态显示的驿站名：**组名优先**，没有组才显示成员名（与卡面副名同口径）
+    private var stationDisplayName: String {
+        if let group = resolution.groupName, !group.isEmpty { return group }
+        return resolution.hasStation ? resolution.stationName : ""
+    }
+
+    /// 手工指定驿站 / 组的选择行（编辑态）。
+    ///
+    /// 优先级：这里选的 > 自动识别。选了组就只认组；选驿站会清掉组。
+    /// 两个都选「自动识别」等于回到解析入口的默认结论。
+    private var stationPickerRow: some View {
+        let groups = StationGroupStore.all()
+        let builtins = StationDirectory.builtinNames
+        let customs = stationDirectory.customNames
+
+        return VStack(alignment: .leading, spacing: 0) {
+            Divider().padding(.horizontal, 16)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text("快递驿站")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.tertiary)
+
+                Menu {
+                    Button {
+                        assignStation(station: nil, groupID: nil)
+                    } label: {
+                        Label("自动识别", systemImage: resolution.isManual ? "circle.dashed" : "checkmark")
+                    }
+
+                    if !groups.isEmpty {
+                        Section("驿站组") {
+                            ForEach(groups) { group in
+                                Button {
+                                    assignStation(station: nil, groupID: group.id)
+                                } label: {
+                                    Label(group.name,
+                                          systemImage: resolution.groupID == group.id
+                                          ? "checkmark" : "square.stack.3d.up")
+                                }
+                            }
+                        }
+                    }
+
+                    Section("驿站") {
+                        ForEach(builtins + customs, id: \.self) { name in
+                            Button {
+                                assignStation(station: name, groupID: nil)
+                            } label: {
+                                Label(name,
+                                      systemImage: record.stationOverride == name
+                                      ? "checkmark" : "mappin.and.ellipse")
+                            }
+                        }
+                    }
+                } label: {
+                    // 与同卡其它字段一致：值靠右，chevron 跟在值后面
+                    HStack(spacing: 6) {
+                        Spacer(minLength: 0)
+                        Text(stationDisplayName.isEmpty ? "未识别" : stationDisplayName)
+                            .font(.system(size: 16))
+                            .foregroundStyle(stationDisplayName.isEmpty
+                                             ? Color(.tertiaryLabel) : .primary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                // 同一驿站落在多个组时明确说一句，别让用户以为 App 猜错了
+                if resolution.isAmbiguous {
+                    Text("这个驿站在 \(resolution.candidateGroups.joined(separator: "、"))，请选一个")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 13)
+        }
+    }
+
+    private func assignStation(station: String?, groupID: String?) {
+        guard var copy = store.records.first(where: { $0.id == record.id }) else { return }
+        copy.stationOverride = station
+        copy.stationGroupOverride = groupID
+        store.update(copy)
+        // 让列表 / 小组件立刻按新归属重画
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
     /// 卡面命名 —— **统一走 `PickupNaming`**（2026-10-28 主人：
     /// 「整个Allude遵循一套逻辑」；之前详情页自己写了一套 `courier > 驿站 > company`，
     /// 于是同一笔记录在列表写「韵达快递 ｜ 兴裕隆超市」、在详情页写反）。
     private var naming: PickupNaming {
-        record.naming(station: stationDirectory.matchedName(in: [record.rawMessage]))
+        record.namingResolved
     }
     private var titlePrimary: String { naming.primary }
     private var titleSecondary: String? { naming.secondaryLabel }
@@ -274,7 +371,11 @@ struct RecordDetailView: View {
             locker: record.locker,
             // 🔴 通知历史是**证据**：只读、可累积、任何编辑都不能改也不能清空。
             //    构造 PickupRecord 时漏传就等于 nil ——「保存一下地址，通知记录全没了」。
+            // 🔴 驿站 / 组的手工指定同样是**用户的选择**（2026-11-21）：
+            //    漏传就等于「改一下地址，刚指定好的驿站被清掉」。
+            stationOverride: record.stationOverride,
             history: record.history,
+            stationGroupOverride: record.stationGroupOverride,
             pickedUpAt: record.pickedUpAt
         )
         store.update(edited)
@@ -538,10 +639,13 @@ struct RecordDetailView: View {
             // StationDirectory 从短信原文 + 地址实时匹配，不落库、不可手改。
             // 匹配不到：只读态整行隐藏；编辑态显「未识别」占位
             //（主人 10-15 定：编辑时所有字段都要显示）。
-            if edit.isEditing || !(stationName ?? "").isEmpty {
-                infoBlock(label: "快递驿站", value: stationName ?? "未识别",
-                          tint: stationName == nil ? Color(.tertiaryLabel) : .primary,
-                          divider: true)
+            // 2026-11-21 主人定「加」：驿站 / 驿站组**可以在这一条上手工指定**。
+            // 只读态仍是纯展示（组名优先）；编辑态换成菜单 ——
+            // 同一个品牌在两个小区各有一个点时，自动识别必然分不清，得有地方说话。
+            if edit.isEditing {
+                stationPickerRow
+            } else if !stationDisplayName.isEmpty {
+                infoBlock(label: "快递驿站", value: stationDisplayName, divider: true)
             }
 
             editableBlock(label: "短信平台", value: record.company, keyPath: \.company,

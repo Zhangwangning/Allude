@@ -217,6 +217,10 @@ final class StationDirectory: ObservableObject {
     private func persist() {
         defaults.set(customNames, forKey: Self.storeKey)
         defaults.set(iconFiles, forKey: Self.iconKey)
+        // 2026-11-21：顺手把名单同步到 App Group —— 小组件 / 实时活动进程
+        // 读不到 App 私有的 `UserDefaults.standard`，不同步就会出现
+        // 「App 里建了自定义驿站、桌面却显示未标注驿站」。
+        StationCatalog.save(customNames)
     }
 
     // MARK: 匹配
@@ -227,6 +231,11 @@ final class StationDirectory: ObservableObject {
     ///
     /// ⚠️ 调用方**只传短信原文**（2026-10-18 主人定：驿站从短信匹配，不是从地址），
     /// 传入地址会让「恒大御府东门菜鸟驿站」这类地址噪声被误判成驿站品牌。
+    /// 启动后调一次：把已有的自定义名单补进 App Group（升级用户第一次跑时用）
+    func syncCatalog() {
+        StationCatalog.save(customNames)
+    }
+
     func matchedName(in texts: [String]) -> String? {
         var best = CourierBrand.stationMatch(in: texts)
         for name in customNames {

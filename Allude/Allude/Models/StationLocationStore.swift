@@ -16,6 +16,12 @@ struct StationLocation: Codable, Hashable {
     var radius: CLLocationDistance
     /// 是否纳入到达提醒监控。设了位置但不启用 = 只存不监控。
     var enabled: Bool
+    /// 最后一次改动这个位置的时间（2026-11-21）。
+    ///
+    /// 用途只有一个：围栏超过 iOS 的 20 个上限时，**优先监控最近用过的**地点 ——
+    /// 用户刚设好位置的驿站才是他这几天要去的地方。
+    /// 🔴 Optional：旧数据没有这个键，`decodeIfPresent` 会给 nil，排序时置底即可。
+    var updatedAt: Date? = nil
 
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
@@ -49,7 +55,8 @@ final class StationLocationStore: ObservableObject {
 
     /// 写入 / 更新位置。传 nil = 删除这个驿站的位置。
     func set(_ location: StationLocation?, for name: String) {
-        if let location {
+        if var location {
+            location.updatedAt = Date()
             locations[name] = location
         } else {
             locations.removeValue(forKey: name)
@@ -61,6 +68,7 @@ final class StationLocationStore: ObservableObject {
     func setEnabled(_ enabled: Bool, for name: String) {
         guard var value = locations[name] else { return }
         value.enabled = enabled
+        value.updatedAt = Date()
         locations[name] = value
         persist()
         StationLocationService.shared.syncRegions()
@@ -69,6 +77,19 @@ final class StationLocationStore: ObservableObject {
     /// 已启用围栏的驿站名（排序保证列表稳定，也让 20 个上限的裁剪可预期）
     var enabledNames: [String] {
         locations.filter { $0.value.enabled }.keys.sorted()
+    }
+
+    /// 已启用的名字，**按最近改动倒序**（围栏 20 上限按这个顺序裁）
+    var enabledNamesByRecency: [String] {
+        locations
+            .filter { $0.value.enabled }
+            .sorted { a, b in
+                let ta = a.value.updatedAt ?? .distantPast
+                let tb = b.value.updatedAt ?? .distantPast
+                if ta != tb { return ta > tb }
+                return a.key < b.key
+            }
+            .map(\.key)
     }
 
     /// 已设过位置的全部驿站名

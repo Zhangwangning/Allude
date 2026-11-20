@@ -197,6 +197,8 @@ enum StationGroupStore {
 
     /// 成员名 → 组名 的内存索引。列表渲染会给每条记录查一次，必须缓存。
     private static var cachedMemberIndex: [String: String]?
+    /// 成员名 → 所有包含它的组（多组共享时用）
+    private static var cachedMemberGroups: [String: [StationGroup]]?
 
     /// `all()` 的缓存。
     /// 🔴 必须缓存：`StationLogo` 每画一个格子都会问「这是不是一个组」，
@@ -218,24 +220,34 @@ enum StationGroupStore {
 
     static func save(_ groups: [StationGroup]) {
         guard let data = try? JSONEncoder().encode(groups) else { return }
+        // 目录可能还不存在（首次建组 / 命令行工具里跑）：不建目录 write 会静默失败
+        try? FileManager.default.createDirectory(at: PickupStorage.directory,
+                                                 withIntermediateDirectories: true)
         try? data.write(to: fileURL, options: .atomic)
-        cachedGroups = groups
+        // 🔴 顺序不能反：先清派生索引，**再**落下新缓存。
+        //    原来是「设缓存 → invalidateCache()」，等于把刚存的组从缓存里抹掉，
+        //    下一次 `all()` 又从磁盘读 —— 磁盘写失败时组就凭空消失了。
         invalidateCache()
+        cachedGroups = groups
     }
 
     static func invalidateCache() {
         cachedMemberIndex = nil
+        cachedMemberGroups = nil
         cachedGroups = nil
     }
 
     // MARK: 派生索引
 
-    /// 成员驿站名 → 组名。
+    /// 成员驿站名 → 所有包含它的组（**多组共享**，2026-11-21 主人定「组是地点」）。
     ///
     /// 走「成员 ID → 成员名」反查，所以成员改名后自动跟到新名字上，
     /// 不需要任何字符串迁移。
-    static func memberIndex() -> [String: String] {
-        if let cachedMemberIndex { return cachedMemberIndex }
+    ///
+    /// 🔴 「丰巢」这种品牌在 A 小区和 B 小区都有 → 它可以是两个组的成员。
+    ///    所以这里给的是**列表**；单值的 `memberIndex()` 只在恰好唯一时才有值。
+    static func groupsByMember() -> [String: [StationGroup]] {
+        if let cachedMemberGroups { return cachedMemberGroups }
 
         let names = StationIdentity.allNames()
         var idToName: [String: String] = [:]
@@ -243,13 +255,24 @@ enum StationGroupStore {
             idToName[id] = name
         }
 
-        var map: [String: String] = [:]
+        var map: [String: [StationGroup]] = [:]
         for group in all() {
             for memberID in group.memberIDs {
                 if let memberName = idToName[memberID] {
-                    map[memberName] = group.name
+                    map[memberName, default: []].append(group)
                 }
             }
+        }
+        cachedMemberGroups = map
+        return map
+    }
+
+    /// 成员驿站名 → 组名（**只在唯一归属时**给值；多组并存返回 nil，交给记录级覆盖去定）。
+    static func memberIndex() -> [String: String] {
+        if let cachedMemberIndex { return cachedMemberIndex }
+        var map: [String: String] = [:]
+        for (name, groups) in groupsByMember() where groups.count == 1 {
+            map[name] = groups[0].name
         }
         cachedMemberIndex = map
         return map
@@ -280,6 +303,13 @@ enum StationGroupStore {
         all().first { $0.id == id }
     }
 
+    /// 某个成员驿站当前属于哪些组（可能多个：同一个品牌在不同小区）
+    static func groups(containingMemberNamed name: String) -> [StationGroup] {
+        let key = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else { return [] }
+        return groupsByMember()[key] ?? []
+    }
+
     /// 某个成员驿站当前属于哪个组（按成员 ID 查）
     static func group(containingMemberNamed name: String) -> StationGroup? {
         guard let memberID = StationIdentity.id(for: name) else { return nil }
@@ -293,14 +323,17 @@ enum StationGroupStore {
 
     /// 还没被任何组收编的驿站名
     static func ungroupedNames(in candidates: [String]) -> [String] {
-        let index = memberIndex()
-        return candidates.filter { index[$0] == nil }
+        // 2026-11-21：判「有没有组」必须用 `groupsByMember()`（多组共享下
+        // `memberIndex()` 对跨组成员给 nil，会把它当成没归组 → 网格里同一条
+        // 既在主网格出现、又在「已归入驿站组」段出现两次）。
+        let map = groupsByMember()
+        return candidates.filter { (map[$0] ?? []).isEmpty }
     }
 
     /// 已被归组的驿站名
     static func groupedNames(in candidates: [String]) -> [String] {
-        let index = memberIndex()
-        return candidates.filter { index[$0] != nil }
+        let map = groupsByMember()
+        return candidates.filter { !(map[$0] ?? []).isEmpty }
     }
 
     // MARK: 校验
@@ -336,7 +369,12 @@ enum StationGroupStore {
                                  iconInheritMemberID: iconInheritMemberID,
                                  locationInheritMemberID: locationInheritMemberID)
         groups.append(group)
-        save(detach(group, in: groups))
+        // 2026-11-21 主人定：一个驿站**只属于一个组**（取件地点固定，多个组都收同一个品牌
+        // 会让短信没法定组）。所以建组时把成员从别的组里摘掉，由调用方把旧记录钉在原组。
+        for index in groups.indices where groups[index].id != group.id {
+            groups[index].memberIDs.removeAll { memberIDs.contains($0) }
+        }
+        save(groups)
         StationGroupLocationBridge.syncRegions()
         return group
     }
@@ -345,27 +383,56 @@ enum StationGroupStore {
     static func update(_ group: StationGroup) {
         var groups = all()
         guard let index = groups.firstIndex(where: { $0.id == group.id }) else { return }
+        let members = Set(group.memberIDs)
         groups[index] = group
-        save(detach(group, in: groups))
+        for other in groups.indices where groups[other].id != group.id {
+            groups[other].memberIDs.removeAll { members.contains($0) }
+        }
+        save(groups)
         // 组的名字 / 成员 / 位置来源任何一项变了，围栏都可能要重排
         StationGroupLocationBridge.syncRegions()
     }
 
-    /// 把 `group.memberIDs` 从其它组的成员表里移除
-    private static func detach(_ group: StationGroup, in groups: [StationGroup]) -> [StationGroup] {
-        let owned = Set(group.memberIDs)
-        return groups.map { other -> StationGroup in
-            guard other.id != group.id else { return other }
-            var copy = other
-            copy.memberIDs = other.memberIDs.filter { !owned.contains($0) }
-            if let inherit = copy.iconInheritMemberID, owned.contains(inherit) {
-                copy.iconInheritMemberID = nil
+    /// 把一个驿站放进某个组，并从原组移出（2026-11-21：一个驿站只属于一个组）。
+    /// 返回它原来所在的组 ID —— 调用方用它把已有记录钉在原组。
+    @discardableResult
+    static func addMember(stationName: String, toGroup groupID: String) -> String? {
+        guard let memberID = StationIdentity.id(for: stationName) else { return nil }
+        var groups = all()
+        var previous: String?
+        for index in groups.indices where groups[index].id != groupID {
+            if groups[index].memberIDs.contains(memberID) {
+                if previous == nil { previous = groups[index].id }
+                groups[index].memberIDs.removeAll { $0 == memberID }
             }
-            if let inherit = copy.locationInheritMemberID, owned.contains(inherit) {
-                copy.locationInheritMemberID = nil
-            }
-            return copy
         }
+        guard let target = groups.firstIndex(where: { $0.id == groupID }) else { return previous }
+        if !groups[target].memberIDs.contains(memberID) {
+            groups[target].memberIDs.append(memberID)
+        }
+        save(groups)
+        StationGroupLocationBridge.syncRegions()
+        return previous
+    }
+
+    /// 把一个驿站从所有组里移出（「不归组」）。
+    static func removeMember(stationName: String) {
+        guard let memberID = StationIdentity.id(for: stationName) else { return }
+        dropMember(stationID: memberID)
+    }
+
+    /// 保存前先算一遍「这次保存会把哪些成员从哪个组里拿走」。
+    /// 调用方拿到结果后把**已有记录**钉到原组（`PickupStore.pinRecords`），
+    /// 否则一次移组会把历史记录一起改判到新组 —— 那批件当初是在老地方取的。
+    /// 返回 memberID → 原组 ID。
+    static func displacedMembers(_ memberIDs: [String], excluding groupID: String?) -> [String: String] {
+        var out: [String: String] = [:]
+        for group in all() where group.id != groupID {
+            for member in group.memberIDs where memberIDs.contains(member) && out[member] == nil {
+                out[member] = group.id
+            }
+        }
+        return out
     }
 
     /// 某个成员驿站被删 / 被解除归组：从所有组里摘掉它。
@@ -604,5 +671,129 @@ enum PickupCodeOrder {
         // 分段后完全同形（例如仅分隔符不同）：回落原文，保证全序、排序稳定
         if lhs == rhs { return .same }
         return lhs < rhs ? .before : .after
+    }
+}
+
+// MARK: - 驿站解析：单一入口（2026-11-21 主人定）
+//
+// 🔴 背景：识别与「归组」原先散在三处 —— App 用 `StationDirectory.matchedName`
+//    （内置 + 自定义），小组件用 `record.station`（只有内置），分组键又各算各的。
+//    结果：用户在 App 里用自定义驿站建的组，桌面上掉进「未标注驿站」。
+//    现在**所有消费端只调 `StationResolver.resolve(_:)`**，识别源与组归属只有一份答案。
+//
+// 优先级（主人 2026-11-21 定：①组是地点 ②加手工指定 ③组名不参与识别）：
+//   1. 记录级「指定了驿站组」→ 直接用该组
+//   2. 记录级「指定了驿站」→ 用它
+//   3. 内置词表（`record.station`）
+//   4. 自定义驿站名单（跨进程副本，见 `StationCatalog`）
+//   5. 驿站名 → 组的唯一归属；出现在多个组时**不猜**，把候选留给界面
+
+/// 自定义驿站名单的**跨进程副本**。
+///
+/// 权威写入方是 App 的 `StationDirectory`（那里管理改名 / 删除 / 图标），
+/// 它每次落盘顺手同步到这里；小组件与实时活动进程只读这里，
+/// 这样「自定义驿站建的组」在桌面上也不会掉进「未标注驿站」。
+enum StationCatalog {
+
+    /// App Group 里的键。刻意与 `StationDirectory` 自己的 `station.customNames`
+    /// （`UserDefaults.standard`，App 私有）分开：扩展读不到 standard。
+    static let key = "allude.station.customNames"
+
+    static var customNames: [String] {
+        (PickupStorage.sharedDefaults.stringArray(forKey: key) ?? [])
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    static func save(_ names: [String]) {
+        PickupStorage.sharedDefaults.set(names, forKey: key)
+    }
+
+    /// 在文本里找命中的自定义驿站名（最长优先）。
+    /// 与内置词表同一口径：**只用名字**，不用短 key —— 否则「中邮大厦」会被判成「中邮」。
+    static func match(in text: String) -> String? {
+        guard !text.isEmpty else { return nil }
+        return customNames
+            .filter { text.localizedStandardContains($0) }
+            .max { $0.count < $1.count }
+    }
+}
+
+/// 一条记录解析出来的驿站 / 驿站组。
+///
+/// 分组键、卡面副名、围栏匹配、详情页显示**都读这一份**，
+/// 任何地方想加规则都改 `StationResolver`，不要在消费端各写一遍。
+struct StationResolution: Hashable {
+
+    enum Source: String {
+        case groupOverride   // 记录里指定了组
+        case stationOverride // 记录里指定了驿站
+        case builtin         // 内置词表命中
+        case custom          // 自定义驿站命中
+        case none
+    }
+
+    var stationName: String = ""
+    var groupID: String? = nil
+    var groupName: String? = nil
+    /// 同一驿站出现在多个组时的候选组名（不自动归属，等用户在详情页指定）
+    var candidateGroups: [String] = []
+    var source: Source = .none
+
+    var hasStation: Bool { !stationName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+    /// 分组键 / 卡面副名：组名 > 驿站名 > 未标注驿站
+    var displayName: String {
+        if let groupName, !groupName.isEmpty { return groupName }
+        return hasStation ? stationName : PickupSortLogic.noStation
+    }
+
+    /// 出现在多个组（需要用户指定）—— 界面据此提示，不要自己挑一个
+    var isAmbiguous: Bool { candidateGroups.count > 1 }
+
+    /// 结论来自用户在记录上的指定（不是自动识别）
+    var isManual: Bool { source == .groupOverride || source == .stationOverride }
+}
+
+enum StationResolver {
+
+    static func resolve(_ record: PickupRecord) -> StationResolution {
+        var out = StationResolution()
+
+        // ① 记录级指定的组（最高优先：用户说了算，识别再准也不覆盖它）
+        let overrideID = (record.stationGroupOverride ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if !overrideID.isEmpty,
+           let group = StationGroupStore.all().first(where: { $0.id == overrideID }) {
+            out.groupID = group.id
+            out.groupName = group.name
+            out.source = .groupOverride
+        }
+
+        // ② 驿站名：记录覆盖 → 内置词表 → 自定义名单
+        let manual = (record.stationOverride ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let builtin = record.station.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !manual.isEmpty {
+            out.stationName = manual
+            if out.source == .none { out.source = .stationOverride }
+        } else if !builtin.isEmpty {
+            out.stationName = builtin
+            if out.source == .none { out.source = .builtin }
+        } else if let custom = StationCatalog.match(in: record.rawMessage) {
+            out.stationName = custom
+            if out.source == .none { out.source = .custom }
+        }
+
+        // ③ 没被手工指定组时按成员归属推：唯一才认，多个组不猜
+        if out.groupID == nil, out.hasStation {
+            let candidates = StationGroupStore.groups(containingMemberNamed: out.stationName)
+            if candidates.count == 1 {
+                out.groupID = candidates[0].id
+                out.groupName = candidates[0].name
+            } else if candidates.count > 1 {
+                out.candidateGroups = candidates.map(\.name)
+            }
+        }
+
+        return out
     }
 }

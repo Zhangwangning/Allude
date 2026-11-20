@@ -229,12 +229,9 @@ struct PickedUpView: View {
                     : groupingName(for: $0) < groupingName(for: $1)
             }
         case .station:
-            let inner = StationInnerOrder.current
-            return searchedList.sorted {
-                let a = stationName(for: $0), b = stationName(for: $1)
-                if a != b { return a < b }
-                return inner.isOrderedBefore($0, $1)
-            }
+            // 2026-11-21：与待取页、桌面小组件同一套口径（件数多在前 → 同数按名字 →
+            // 未标注置底 → 组内按「驿站内排序」），不再单独按名字升序。
+            return PickupSortLogic.sort(searchedList, mode: .station)
         }
     }
 
@@ -315,9 +312,8 @@ struct PickedUpView: View {
     }
 
     private func stationName(for record: PickupRecord) -> String {
-        let name = record.station.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return "未标注驿站" }
-        return StationGroupStore.displayName(for: name)
+        // 与待取页 / 桌面小组件同一门函数（走单一解析入口）
+        return PickupSortLogic.stationName(of: record)
     }
 
     /// 归类名 —— 与待取页、卡片主名三方同源，组头与卡片不会打架。
@@ -1327,7 +1323,7 @@ struct HistoryRow: View {
 
     /// 卡面命名 —— **统一走 `PickupNaming`**（与待取卡 / 详情页 / 分享卡同一真源）。
     private var naming: PickupNaming {
-        record.naming(station: stationDirectory.matchedName(in: [record.rawMessage]))
+        record.namingResolved
     }
     private var titlePrimary: String { naming.primary }
     private var titleSecondary: String? { naming.secondaryLabel }
