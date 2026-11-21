@@ -1,7 +1,7 @@
 import SwiftUI
 
 // MARK: ============================================================================
-// 关于 Allude › 开源项目 / 特别鸣谢（2026-11-21 主人）
+// 关于 Codelumi › 开源项目 / 特别鸣谢（2026-11-21 主人）
 //
 // 口径（主人 2026-11-21 第二次强调）：**页面上不写解释文字**。
 //   · 开源项目：只有两个仓库，点进去自己看。
@@ -23,7 +23,7 @@ enum OpenSourceLinks {
     }
 
     static let repos: [Repo] = [
-        Repo(name: "Allude",
+        Repo(name: "Codelumi",
              symbol: "app.badge.checkmark.fill",
              tint: AppTheme.indigo,
              url: alludeApp),

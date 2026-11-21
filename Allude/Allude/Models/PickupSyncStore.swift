@@ -8,7 +8,10 @@ import Network
 // 这一层碰 FileManager / iCloud Drive / 通知 UI，合并逻辑仍然只有一份。
 //
 // 文件位置：
-//  · iCloud Drive：`<iCloud 容器>/Documents/Allude/records.json`
+//  · iCloud Drive：`<iCloud 容器>/Documents/records.json`
+//    （容器 ID 仍是 `iCloud.com.jikezhang.allude`；「文件」App 里显示的文件夹名
+//      取 Info.plist 的 `NSUbiquitousContainerName`，2026-11-21 起显示 Codelumi。
+//      🔴 容器 ID 与 Documents 路径都不能改，改了老用户云端记录就读不到。）
 //  · 本机墓碑：App Group 的 `Library/Application Support/pickup-sync-tombstones.json`
 //    （和取件记录同目录，卸载 App 一起没；iCloud 里的副本仍会被另一台设备用到）
 
@@ -132,7 +135,7 @@ final class ICloudSyncController: ObservableObject {
     // MARK: 开关
 
     func setEnabled(_ enabled: Bool) {
-        // 🔴 2026-11-15 主人：iCloud 同步并入 Allude Pro。
+        // 🔴 2026-11-15 主人：iCloud 同步并入 Codelumi Pro。
         //    非 Pro 一律不许开启（入口处已经弹订阅页，这里是第二道门，
         //    挡住「Pro 到期时页面还开着」这类绕过入口的情况）。
         guard !enabled || EntitlementSnapshot.licensedPro else { return }
@@ -217,7 +220,7 @@ final class ICloudSyncController: ObservableObject {
                                              remote: remote)
 
             if local.remoteTooNew {
-                status = .failed("iCloud 里是更新版本 Allude 写的记录，本版本只读不写")
+                status = .failed("iCloud 里是更新版本 Codelumi 写的记录，本版本只读不写")
                 return
             }
 

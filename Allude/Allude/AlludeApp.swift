@@ -186,8 +186,8 @@ struct AlludeApp: App {
         // 退到桌面点它，看 App 是否打开并跳到对应记录（日志里有 [notify] tapped）。
         if environment["PUSH_TEST"] == "1" {
             let content = UNMutableNotificationContent()
-            content.title = "Allude测试通知"
-            content.body = "点我：应该打开Allude并跳到这条取件记录。"
+            content.title = "Codelumi测试通知"
+            content.body = "点我：应该打开Codelumi并跳到这条取件记录。"
             content.sound = .default
             if let record = PickupStore.shared.records.first {
                 content.userInfo = ["recordID": record.id.uuidString]
@@ -1381,3 +1381,4 @@ private func runWidgetRollbackProbe(store: PickupStore) {
     }
 }
 #endif
+

@@ -74,8 +74,8 @@ struct AICapabilityView: View {
             Text(isChecking
                  ? "正在向系统查询本机是否可用…"
                  : (isAvailable
-                    ? "Allude会用 iPhone 本机的智能来识别短信，不联网、不上传。"
-                    : "这台 iPhone 目前没向Allude开放本机智能，Allude会自动改用正则解析，收码照样正常。"))
+                    ? "Codelumi会用 iPhone 本机的智能来识别短信，不联网、不上传。"
+                    : "这台 iPhone 目前没向Codelumi开放本机智能，Codelumi会自动改用正则解析，收码照样正常。"))
                 .font(AppTheme.TypeScale.body)
                 .foregroundStyle(.secondary)
                 .lineSpacing(3)
@@ -145,11 +145,11 @@ struct AICapabilityView: View {
                 .font(AppTheme.TypeScale.rowTitleMedium)
 
             bullet("shield.lefthalf.filled",
-                   "Allude用 iPhone 自己的端侧智能辅助识别短信，**不联网、不上传**——数据一直在本机。")
+                   "Codelumi用 iPhone 自己的端侧智能辅助识别短信，**不联网、不上传**——数据一直在本机。")
             bullet("text.alignleft",
                    "识别主力是本机正则；端侧智能在旁边补齐、校对，结果更完整。系统没开放时只是少了这层辅助，收码照常。")
             bullet("questionmark.circle",
-                   "能不能用由 iOS 决定，Allude没法绕过，也不会伪造。")
+                   "能不能用由 iOS 决定，Codelumi没法绕过，也不会伪造。")
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -175,7 +175,7 @@ struct AICapabilityView: View {
             Text("怎么打开")
                 .font(AppTheme.TypeScale.rowTitleMedium)
 
-            Text("Apple 智能默认是关的，可以在 **设置 › Apple 智能与 Siri** 里打开。开不开这个开关由系统和你的账号地区决定，Allude 不代你判断，也不会为此联网。")
+            Text("Apple 智能默认是关的，可以在 **设置 › Apple 智能与 Siri** 里打开。开不开这个开关由系统和你的账号地区决定，Codelumi 不代你判断，也不会为此联网。")
                 .font(AppTheme.TypeScale.note)
                 .foregroundStyle(.secondary)
                 .lineSpacing(3)
@@ -255,7 +255,7 @@ struct AICapabilityUnsupportedView: View {
                         .font(AppTheme.TypeScale.rowTitle)
                 }
 
-                Text("端侧模型（Apple 智能）需要 iOS 26 或更高版本。\n当前系统的Allude使用纯正则 + 系统分词解析，收码功能不受影响。")
+                Text("端侧模型（Apple 智能）需要 iOS 26 或更高版本。\n当前系统的Codelumi使用纯正则 + 系统分词解析，收码功能不受影响。")
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.secondary)
                     .lineSpacing(3)

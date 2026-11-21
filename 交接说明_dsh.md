@@ -61,7 +61,7 @@
 | 常量 | 值 | 含义 |
 |---|---|---|
 | `freeVisible` | **4** | 列表与小组件同屏条数 |
-| `freeStorage` | **60** | 本机存储上限，超出 FIFO 淘汰最旧（只在 `ingest()` 触发，启动不删） |
+| `freeStorage` | **50** | 本机存储上限，超出 FIFO 淘汰最旧（只在 `ingest()` 触发，启动不删） |
 | `unlimited` | 9,999 | 代替 `Int.max`，避免 `count - limit` 溢出崩溃 |
 | `widgetListCap` | 60 | 小组件可翻动上限（头部总数仍显真实值） |
 
@@ -1003,3 +1003,296 @@ parser 识别 193/514（基线 192）+ 地址 192/514（基线 189）；clean bu
 
 截图：`/tmp/v3-openSource.png`、`/tmp/v9-credits-c.png`、`/tmp/v3-encourage.png`、
 `/tmp/chk-aboutAllude-c.png`（关于页含「推荐给朋友」且无 chevron）、`/tmp/v6-confirm-c.png`（确认框）。
+
+---
+
+## 24. 标签栏显隐改原生 + 首启页玻璃（2026-11-21 深夜）
+
+### 24.1 为什么改：Duo 内屏横屏「标签栏看得见、点不动」
+
+主人实测：Duo **内屏横屏**下只有待取页能滑能点，点标签栏换不了页；外屏与内屏竖屏正常。
+
+定位结论（未改代码阶段）：
+
+- 那根竖排标签栏是**系统**在 regular 宽度下自动放到右侧的浮动条，不是我们自绘的；
+  实测尺寸 46×190pt、距右边 20pt，**完整可见**，所以不是被挤出屏幕。
+- 全工程只有 **Duo 内屏**这一种组合让「系统标签栏」与旧 `TabBarCloak` 同时活着：
+  iPad 走 `PadTabChrome(enabled: PadLayout.isPad)` 把系统栏藏了、自绘 `PadBottomBar`；
+  Duo 的 idiom 仍是 phone，`PadLayout.isPad == false`，于是两套都在。
+- `TabBarCloak` 收起时做三件事：`transform` 下移、`alpha = 0`、**`isUserInteractionEnabled = false`**。
+  恢复只在 `reveal()`，而它要求手里那个 `bar` 引用**还是同一个 UITabBar 实例**（`RootView.swift`
+  旧注释已承认 iOS 27 浮动标签栏会被系统重新布局、旧引用会被摘掉）。
+  一旦实例被换掉／`isHidden` 卡在 true，就出现「画出来了、但不可交互」——
+  点击穿透到下面的详情列，表现为「点了没反应」。
+
+### 24.2 改法：不再碰任何 UIKit 视图
+
+`RootView.swift` 删掉整块 `TabBarCloak`（计数、定位、弹簧动画）与 `NativeTabBarBridge`；
+`cloaksTabBar()` 改成一行原生调用：
+
+```swift
+private struct TabBarCloakModifier: ViewModifier {
+    @Environment(\.suppressTabBarCloak) private var suppressed
+    func body(content: Content) -> some View {
+        content.toolbar(suppressed ? .visible : .hidden, for: .tabBar)
+    }
+}
+```
+
+- 显隐与动画都交给系统（`.toolbar(.hidden, for: .tabBar)`，iOS 16+）；
+- 5 处 `TabBarCloak.shared.reveal()` 调用（待取/已取/统计/设置根页 + 设置分栏）一并删除；
+- `suppressTabBarCloak` 环境值保留：设置分栏的常驻 pane 仍然靠它不收起。
+
+🔴 **不要再抓 `UITabBar` 改 `transform / alpha / isUserInteractionEnabled`** ——
+那是「非原生」的那部分，也正是这次踩到的坑。系统标签栏只允许通过 SwiftUI 的
+`.toolbar(...)` / `.tabBarMinimizeBehavior` 控制。
+
+### 24.3 首启同意页补玻璃材质
+
+`Allude/Allude/Views/LegalConsentView.swift` 三处换成同一条材质链（`appGlass`）：
+
+| 位置 | 改前 | 改后 |
+|---|---|---|
+| 条款 + 勾选卡 | `.cardSurface()`（不透明分组卡） | `.settingsCard()` → iOS 26+ 真液态玻璃 / 低版本系统卡片 |
+| 确认弹窗 | 写死 `.regularMaterial` | `.appGlass(.rect(cornerRadius: 22))` |
+| 底部操作条 | `.background(.bar)` | `.appGlass(.rect(cornerRadius: 0))` |
+
+`appGlass`（`Allude/AlludeShared/GlassCompat.swift`）的分档：≥ iOS 26 且开关开 → `glassEffect`；
+其余（iOS 17–25，或用户关掉玻璃）→ `.ultraThinMaterial` + 细描边。iOS 18 上 tint 必须画在
+**内容下方**（画在 `.overlay` 会盖住文字，2026-11-08 踩过）。
+
+测试：iOS 27 模拟器 `SCREEN=consent` 截图 `/tmp/g-consent.png` 通过；19 Pro/26 以下需另机验证。
+
+### 24.4 2026-11-21 深夜：Duo 内屏横屏「点不动」的真实原因（已修）
+
+删掉 cloak 改成原生 `.toolbar(.hidden, for: .tabBar)` 之后主人实测**仍然不行**。
+于是加了一个 Debug 探针（`Allude/Allude/Views/TabBarProbe.swift`，
+`SIMCTL_CHILD_TABPROBE=1` 启动，3 秒后把窗口层级写进 `Documents/tabprobe.txt`），
+在**内屏横屏的真实姿态**下取证（命令行的取证办法见下）：
+
+```
+window=951×669  safeArea=t0 l0 b34 r84
+tabBars=1
+  [0] frame= x882 y0 w69 h669  hidden=false alpha=1.0 interactive=true items=4
+      superview=_UITouchPassthroughView
+  _UITabButton[881,435,44,58] / [881,485] / [881,535] / [881,585]
+```
+
+**结论有两层**：
+
+1. 系统把浮动标签栏摆在 **x882…951**，而窗口的**右侧安全区是 84pt**
+   （`951-84=867`）—— 整条标签栏都落在右侧**摄像头 / dock 保留区**里。
+   那一带收不到触摸事件，所以「看得见、点不动」。
+2. 标签栏本身是好的：探针给第 2 个 `_UITabButton` 程序化发
+   `sendActions(for: .touchUpInside)`，**界面当场切到「已取」**。
+   所以问题不在 `TabView` / selection 绑定，而在**触摸投递**。
+
+**改法**：Duo 内屏横屏不再用系统标签栏，改用 iPad 那条自绘底部栏
+（`PadBottomBarGlassHost`，SwiftUI + 系统玻璃，in-app 已稳定跑了几个版本）：
+
+| 位置 | 改为 |
+|---|---|
+| `RootView.swift` 底部栏显示条件 | `PadLayout.isPad` → `PadLayout.isPad \|\| PadLayout.isExpandedFoldable` |
+| `suppressTabBarCloak` 环境值 | 同上（Duo 内屏也收起系统栏） |
+| 4 处 `PadTabChrome(enabled:)` | 同上（给自绘栏让出 76pt 底部内边距） |
+
+验证：`xcrun simctl io EEFA6F55… screenshot --display=3 /tmp/duo-fix.png`
+（2853×2007，内屏横屏）→ 底部出现带文字的标签栏，整条都在安全区内。
+
+🔴 **命令行怎么看到内屏横屏**（极有用）：`simctl` 没有转屏命令，
+但**只要设备已经展开**，`xcrun simctl io <udid> screenshot --display=3 <path>`
+直接给出 2853×2007 的横向画面；`screenConfig geometry 2853x2007` 会报
+`No mode found`，别在那上面浪费时间。
+
+⚠️ 同一姿态下，详情栏顶部的「编辑 / 分享」按钮也在 x884 一带（保留区内），
+可能同样收不到触摸 —— 需要主人实测确认；若确实不行，下一步在分栏详情侧
+补 trailing 内边距，把交互元素推出保留区。
+
+---
+
+
+### 24.5 更正（2026-11-21 13:57）：Duo 内屏横屏**继续用系统原生标签栏**
+
+§24.4 的结论「系统把标签栏摆进右侧 84pt 摄像头保留区、那里收不到触摸」**是错的**，本机实测推翻了它：
+
+- 用 `TABPROBE=1` 在真机上取系统 `_UITabButton` 的**真实** frame（`x881 y435/485/535/585 w44 h58`），
+  再对每个按钮中心做 `window.hitTest` —— 四个点**全部命中 `_UITabButton`**；
+- 对第 2 个按钮 `sendActions(for: .touchUpInside)`，界面当场切到「已取」。
+
+即：**系统标签栏本身是可点的**。之前「看得见点不动」的真正来源是已删除的 `TabBarCloak`
+（它把 `isUserInteractionEnabled` 置假、靠 `reveal()` 恢复，实例一换就再也恢复不回来）。
+
+现在的口径（2026-11-21 主人：「能用原生组件就用原生组件，Duo 也是 iOS」）：
+
+| 设备 / 姿态 | 标签栏 |
+|---|---|
+| iPhone 直板机 | 系统原生（底部） |
+| Duo 外屏（compact） | 系统原生（底部） |
+| **Duo 内屏横屏（regular）** | **系统原生（系统自己摆成侧边竖排，符合 HIG《针对 iPhone Duo 设计》）** |
+| iPad | 自绘底部栏（2026-11-14 主人当时的决定；现在不做 iPadOS，可按需删） |
+
+`suppressTabBarCloak` 只在 iPad 为真；`PadTabChrome` 的 76pt 底部留白也只在 iPad 生效。
+**不要再给 Duo 画任何自绘标签栏**——试过底部栏与侧边胶囊两条路，都被主人否掉（遮内容、非原生）。
+
+## §25 iPhone Duo 技能包（2026-11-21）
+
+主人要求「把官网内容扒下来，总结成一个专业的 iPhone Duo 开发 skill，并不断强化」。
+产物是 `skills/iphone-duo/`，**只从 Apple 官方原文提炼**，不是我凭经验编的：
+
+| 文件 | 行数 | 内容 |
+|---|---|---|
+| `SKILL.md` | 220 | 何时用、三条铁律、**布局基线六条（HIG《布局》）**、四态表、8 步流程、快速判断表、交付 checklist |
+| `references/hig-designing-for-iphone-duo.md` | 266 | HIG《Designing for iPhone Duo》**页面正文原文**（6,953 字符） |
+| `references/dev-preparing-your-app.md` | 72 | 开发者文档要点 + API 对照 |
+| `references/api.md` | 164 | 全部 API 签名 + 可用性 + 最小示例 |
+| `references/poses.md` | 114 | 几何真值表、判据推导、simctl 取数、两套探针模板 |
+| `references/pitfalls.md` | 97 | 7 条踩坑（含本次标签栏事故的完整证据） |
+| `references/hig-layout.md` | 84 | HIG《布局》**页面正文原文**（3,597 字符，2026-11-21 补） |
+
+### 25.1 原文怎么来的
+
+主人给的 `.webarchive` 是 Apple binary plist，用 `plistlib` 取出
+`WebMainResource['WebResourceData']` 就是 205,335 字节 HTML（另含 39 个 subresource）。
+正则去 script/style/svg、`h1-6 → ###`、`li → -`、`td → | `、剥标签 → 6,953 字符正文。
+开发者文档那篇 `web_fetch` 直接拿。
+
+### 25.2 API 可用性全部对 SDK 核过
+
+对照 `iPhoneOS27.2.sdk/.../SwiftUICore.swiftinterface`，三条关键结论：
+
+```
+@available(anyAppleOS 27.1, *) public struct ReservedRegion
+@available(anyAppleOS 27.1, *) public func reservedRegions(kind:options:layoutDirectionBehavior:) -> [ReservedRegion]
+@available(anyAppleOS 27.1, *) public struct ArrangementView<Primary, Secondary>
+@available(anyAppleOS 27.1, *) public func toolbarVerticalBehavior(_: ToolbarVerticalBehavior)
+```
+
+即 **`ReservedRegion` / `ArrangementView` / `toolbarVerticalBehavior` 都是 iOS 27.1 起**，
+不是 26、也不是 27.0。UIKit 侧 `UIView.reservedRegionsOfKind:options:` 同样是 27.1。
+
+### 25.3 三条铁律（为什么写这三条）
+
+1. **按窗口几何判据**，不用 `idiom` / 方向 / 机型名 / `UIScreen.main`
+   —— 官方口径就是「按 size class 与几何适配」，而且我们实测过 `UIDevice.model` 恒为 iPhone。
+2. **系统容器优先**：能交给 `TabView` / `NavigationSplitView` / `ArrangementView` 就别自绘
+   —— 本次事故的根因正是「自己抓 `UITabBar` 改 transform」。
+3. **折叠时只做小幅调整**：内容不因折叠而重排。
+
+### 25.4 「不断强化」的约定
+
+以后再在 Duo 上踩坑，**往 `references/pitfalls.md` 追加一条**（症状 / 证据 / 根因 / 处置），
+不要新建文档、不要写进 SKILL.md 正文。`AGENTS.md` 已有该节指向这里。
+
+---
+
+## §26 Apple HIG 全量入库（skills/apple-hig，2026-11-21）
+
+主人先给了 28 个 `.webarchive`，随后说「https://developer.apple.com/cn/design/ 这里直接自己去看吧」。
+最终把 HIG 全站**167 个主题页**逐字镜像进仓库，脚本化、可增量更新。
+
+### 26.1 首先踩到的坑：`.webarchive` 里没有正文
+
+28 个文件的 `WebMainResource['WebResourceURL']` 全是同一页 `designing-for-iphone-duo`，
+HTML 里只有 `vue-recycle-scroller` 的导航卡片，正文由 JS 运行时渲染、**保存时没落盘**。
+第一次提取把壳当成了正文（28 份文件的一级标题完全相同，都是「探索"入门汇总"」这类导航文案）。
+判断方法：抓完如果正文不足 2 KB 且标题雷同，就是壳。
+
+### 26.2 正解：官方文档 JSON + 脚本 `tools/fetch-hig.py`
+
+```bash
+python3 tools/fetch-hig.py --missing        # 只补索引里还没入库的
+python3 tools/fetch-hig.py --all            # 全量重抓（167 篇）
+python3 tools/fetch-hig.py widgets tab-bars # 指定主题
+```
+
+端点：`https://developer.apple.com/tutorials/data/cn/design/human-interface-guidelines/<slug>.json`
+（液态玻璃那篇是 `.../documentation/technologyoverviews/adopting-liquid-glass.json`）。
+
+- 必须走 `curl` 子进程：本机 python 的 urllib 会撞代理 MITM，报
+  `CERTIFICATE_VERIFY_FAILED: self-signed certificate in certificate chain`；
+  偶发 `curl: (35) TLS connect error` 是抖动，重跑即可（脚本里带了 UA 与 `-sSL`）。
+- 递归遍历 `heading / paragraph / codeListing / unorderedList / orderedList / table / aside / links`；
+  **`links` 块是一串 `doc://` 标识，必须用同页 `references` 映射成标题 + 摘要 + 内部链接**，
+  否则那些目录页（`components` / `presentation` / `patterns` / `technologies`…）会读成一堆裸标识符。
+- 正文 < 350 字符的直接跳过（Apple 有些分区只有导航，没有正文）。
+
+### 26.3 入库清单
+
+`skills/apple-hig/references/` 共 **167 篇、1.6 MB**，覆盖：
+
+| 分类 | 代表页面 |
+|---|---|
+| 基础 | 布局 / 材质 / 字体排印 / 颜色 / App 图标 / 图像 / SF 符号 / 深色模式 / 动效 / 触感 / 无障碍 / 包容性 / 编写 / 品牌 / RTL / 撤销重做 |
+| 组件 | 标签页栏 / 工具栏 / 侧边栏 / 拆分视图 / 列表 / 按钮 / 滑块 / 开关 / 分段控制 / 搜索栏 / 文本框 / 表单 / 提醒 / 弹出窗口 / 进度指示 / 页面控制 / 菜单 / 上下文菜单 … |
+| 模式 | 启动 / 加载 / 设置 / 搜索 / 数据输入 / 反馈 / 模态化 / 用户引导 / 全屏 / 评分与评论 / 文件管理 / 数据图表化 … |
+| 输入 | 手势 / 键盘 / 虚拟键盘 / 指针设备 / 相机控制 / 操作按钮 / 聚焦与选择 |
+| 技术 | 小组件 / 实时活动 / 通知 / Siri / 通过 Apple 登录 / Apple Pay / iCloud / 同播共享 / 轻 App / 快捷指令 … |
+| 平台 | 针对 iOS / iPadOS / iPhone Duo / macOS / tvOS / watchOS / visionOS / 游戏设计（本项目只做 iOS，其余备查） |
+
+### 26.4 SKILL.md 的两个要点
+
+1. **「本项目必须守的 12 条」**：每条都写成「官方怎么说 + 我们怎么做（带文件名）」——
+   尺寸分类 / 安全区 / 控制与内容分层 / 玻璃只做分层不做装饰 / 字号只用 `TypeScale` 档位 /
+   少让人打字（粘贴、拍照、快捷指令三条入口）/ 加载立刻有东西看 / 启动即用 /
+   设置只放不常改的 / 权限按需最小化 / 反馈多通道 / 文案说人话。
+2. **「有意识的偏离」表**：官方明说不建议、但主人明确要了的，一律记在这里并注明原因——
+   目前两条：App 内「外观」三档选择（`dark-mode.md`）、App 内字号滑块（`typography.md`）；
+   另加一条产品选择：App 内不显示备案号。
+
+### 26.5 与其它文档的关系
+
+- `AGENTS.md` 新增「## 设计规范：skills/apple-hig（2026-11-21 接入）」放在 Duo 那节前面；
+- `skills/iphone-duo/SKILL.md` 顶部加了交叉链接，只讲折叠设备；
+- 维护约定：**只替换 `references/` 原文，不手改原文**；新主题跑 `--missing` 即可。
+
+---
+
+## §27 Duo 内屏横屏：竖排栏为什么点不动（2026-11-21 收口）
+
+### 27.1 现象与排除过程
+
+主人反馈：内屏横屏下右侧标签栏点不动，「编辑」「分享」也点不动；左侧列表与卡片正常。
+
+排除顺序（都做过，别再重复）：
+
+1. **不是卡顿/固件**：同一运行期外屏一点就切页；进程内对这 4 个 `_UITabButton` 发
+   `sendActions(for: .touchUpInside)` 立刻切页。
+2. **不是我们的代码拦的**：`TabBarCloak` 那套 UIKit 接管已整段删除（§24），
+   `TabView` / selection 绑定 / 按钮 target 全部正常。
+3. **不是自定义修饰引起的**：把这一姿态的四个修饰（`PushTrailingSafeArea`、
+   `AdaptiveTabBarStyle`、`TabBarMinimizeNever`、`ToolbarVerticalCompat`）全关掉，
+   栏位置不变，仍然点不动。
+4. **不是这次改出来的**：`git worktree` 拉交接版 `27b085b` 重新构建装到同一台 Duo，
+   标签栏位置/外观与当前构建**完全一致**（见 §24.4 的对照截图）。
+5. **连裸系统 TabView 也一样**：`SCREEN=minimalTabs` 的最小复现页（四个 `Color.clear`
+   + `.tabItem`）点右侧栏同样没反应 —— 与我们的业务视图无关。
+
+### 27.2 决定性证据（保留区域 API）
+
+`window.reservedRegions(kind:)`（iOS 27.1+，`UIView.ReservedRegion.Kind`）实测：
+
+```
+window=951x669  safe=t0.0 l0.0 b34.0 r84.0
+occlusion.count=0
+division.count=0
+```
+
+**系统自己报告展开态没有任何保留区域，但 `safeAreaInsets.right` 仍是 84。**
+系统把这 84pt 当成不可交互区，又把竖排栏摆进 `x882…951` —— 栏看得见、点不到。
+
+### 27.3 结论与主人的选择
+
+- 这是**模拟器的幽灵安全区**（真机完全展开时右侧没有摄像头遮挡），App 侧无法打开这条带子；
+- 主人 2026-11-21 选 **A：保持系统原生竖排，接受模拟器里点不动，记为环境限制**；
+- 备选 B（`.toolbarVerticalBehavior(.disabled)`，iOS 27.1+）能让栏回底部横排、点得动，
+  但那不是 Duo 的竖排设计；⚠️ 挂 `NavigationSplitView` 上会让分栏塌成单列，挂根视图只影响标签栏。
+- 同一结论已写进 `skills/iphone-duo/references/pitfalls.md` 第 8 条。
+
+### 27.4 代码现状（本轮收口后的净结果）
+
+- `Allude/Allude/Views/RootView.swift` 与 `27b085b` **无差异**（`git diff 27b085b -- …/RootView.swift` 为空）；
+- 探查期新增的文件全部删除：`DuoInnerShell.swift` / `TabBarProbe.swift` / `TouchLogProbe.swift` /
+  `DuoRegionProbe.swift` / `ToolbarVerticalCompat.swift`，`AlludeApp.swift` 里的挂载与
+  `MinimalTabFixture` 一并清掉；
+- 保留与 Duo 无关的改动：驿站解析入口与驿站组、关于页（开源/鸣谢/推荐）、端侧 AI 收口、
+  圆通→中通纠错、法务与版本历史、首启页材质、构建号 323。

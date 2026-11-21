@@ -6,7 +6,7 @@ import SwiftUI
 // 由原「自动化设置」（AutomationGuideView，5 步配置详解）与
 // 「引导教程」（首启引导回放）合并而来：
 //   · 原「引导教程」三页里与本页重复的自动化概要已并入「短信自动入库」；
-//   · 原引导的「认识Allude」三点收编为第一节；
+//   · 原引导的「认识Codelumi」三点收编为第一节；
 //   · 原「搜不到动作」「运行横幅」两条提示分别归位到所属章节。
 // 入口：设置 › 使用教程；首启引导第 2 页「查看完整配置教程」也进这里。
 // ============================================================================
@@ -36,8 +36,8 @@ struct UsageGuideView: View {
         Step(index: 4, title: "关闭「运行前询问」",
              detail: "**开着的话每收到一条短信都要手动点一次确认**，自动化等于没做。新建时把它关掉；新系统里这一项显示为打开「**立即运行**」。"),
 
-        Step(index: 5, title: "添加动作「添加到Allude」",
-             detail: "在动作搜索框输入「Allude」，选「**添加到Allude**」；「短信内容」一栏选「**快捷指令输入**」——自动化触发时它就是刚收到的那条短信。",
+        Step(index: 5, title: "添加动作「添加到Codelumi」",
+             detail: "在动作搜索框输入「Codelumi」，选「**添加到Codelumi**」；「短信内容」一栏选「**快捷指令输入**」——自动化触发时它就是刚收到的那条短信。",
              isKey: true),
     ]
 
@@ -68,7 +68,7 @@ struct UsageGuideView: View {
 
     /// 🔴 2026-11-08 主人：设置页里的「快捷指令自动化」把教程**内联**成一页，
     /// 所以正文抽成这个视图；左右边距不由它加，谁用它谁给。
-    /// 「认识Allude」已删除 —— 与 设置 › 关于 › 软件说明 重复。
+    /// 「认识Codelumi」已删除 —— 与 设置 › 关于 › 软件说明 重复。
     struct UsageGuideContent: View {
         private let guide = UsageGuideView()
 
@@ -97,8 +97,8 @@ struct UsageGuideView: View {
 
             // 第 5 步的常见卡点直接跟在这一节后面
             infoCard(symbol: "questionmark.circle.fill", tint: AppTheme.sky,
-                     title: "搜不到「Allude」这个动作？",
-                     detail: "先在手机上**打开一次Allude**再回快捷指令搜索。iOS 需要 App 至少运行过一次，才会把它提供的动作索引到动作库。")
+                     title: "搜不到「Codelumi」这个动作？",
+                     detail: "先在手机上**打开一次Codelumi**再回快捷指令搜索。iOS 需要 App 至少运行过一次，才会把它提供的动作索引到动作库。")
         }
     }
 
@@ -130,7 +130,7 @@ struct UsageGuideView: View {
 
             infoCard(symbol: "checkmark.seal.fill", tint: AppTheme.doneTint,
                      title: "怎么验证配置生效",
-                     detail: "让家人或同事给你发一条带取件码的快递短信试试。自动化运行几秒后切回Allude，「待取」里会多出一条；桌面小组件也会同步刷新，同时你会收到一条通知（标题就是取件码，下面是平台与地址）。若没反应，多半是第 3 步的条件没切到「信息内容」。")
+                     detail: "让家人或同事给你发一条带取件码的快递短信试试。自动化运行几秒后切回Codelumi，「待取」里会多出一条；桌面小组件也会同步刷新，同时你会收到一条通知（标题就是取件码，下面是平台与地址）。若没反应，多半是第 3 步的条件没切到「信息内容」。")
 
             infoCard(symbol: "lightbulb.fill", tint: AppTheme.pendingTint,
                      title: "小提示",

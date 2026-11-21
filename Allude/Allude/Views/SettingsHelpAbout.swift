@@ -55,13 +55,13 @@ struct HelpCenterView: View {
 
                     SettingsDivider()
 
-                    // 帮助改进Allude（2026-11-05 主人 A+B 方案：手动提供样本 → 本地存 → 用户主动导出）
+                    // 帮助改进Codelumi（2026-11-05 主人 A+B 方案：手动提供样本 → 本地存 → 用户主动导出）
                     Button {
                         DiagnosticsLog.record("help", "tap-training")
                         if let openPane { openPane(.trainingSamples) } else { showTraining = true }
                     } label: {
                         SettingsRow(symbol: "sparkles.rectangle.stack.fill",
-                                    title: "帮助改进Allude",
+                                    title: "帮助改进Codelumi",
                                     tint: AppTheme.violet)
                     }
                     .buttonStyle(.plain)
@@ -276,7 +276,7 @@ struct AboutView: View {
                 .frame(width: 78, height: 78)
                 .clipShape(.rect(cornerRadius: 78 * 0.2237, style: .continuous))
 
-            Text("Allude")
+            Text("Codelumi")
                 .font(AppTheme.TypeScale.rowTitle.weight(.semibold))
 
             Text(AppVersion.display.L)
@@ -303,14 +303,14 @@ struct AboutView: View {
 
 /// 版本号页脚。参考里这几个 App 都把它固定在二级页底部。
 ///
-/// 🔴 App 备案（2026-11-07 判断）：Allude是无服务器、不联网的单机 App，
+/// 🔴 App 备案（2026-11-07 判断）：Codelumi是无服务器、不联网的单机 App，
 /// 唯一网络行为是 StoreKit（仅连 Apple），按官方口径「单机不联网的 App 无需备案」，
 /// 走苹果豁免即可 —— 因此**App 内不展示备案号**（网站备案号只用于开发者网站）。
 /// 若将来加了任何自建网络服务（如上传训练数据到自建服务器），就必须备案并在页脚补号。
 struct PageFooter: View {
     var body: some View {
         VStack(spacing: 4) {
-            Text("Allude \(AppVersion.display)")
+            Text("Codelumi \(AppVersion.display)")
         }
         .font(AppTheme.TypeScale.note)
         .foregroundStyle(.tertiary)

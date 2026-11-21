@@ -4,7 +4,7 @@ import CryptoKit
 // MARK: ============================================================================
 // 离线凭证（2026-09-23 定型）
 //
-// 商业形态：Allude**纯离线**运行 —— App 内不含任何价格、购买按钮、外链或
+// 商业形态：Codelumi**纯离线**运行 —— App 内不含任何价格、购买按钮、外链或
 // 订阅引导。用户在外部平台下单后拿到一串凭证，在「解锁」页粘贴导入即可。
 //
 // **为什么用非对称签名，而不是校验一个固定字符串**
@@ -119,7 +119,7 @@ enum LicenseError: Error, Equatable {
     var title: String {
         switch self {
         case .malformed: return "凭证格式不对"
-        case .wrongPrefix: return "这不是Allude的凭证"
+        case .wrongPrefix: return "这不是Codelumi的凭证"
         case .badSignature: return "凭证校验未通过"
         case .expired: return "凭证已过期"
         case .unbound: return "凭证没有绑定设备"
@@ -132,7 +132,7 @@ enum LicenseError: Error, Equatable {
         case .malformed:
             return "看起来少复制了一段。凭证是一整串没有空格的字符，从 CLIP1 开始、到末尾结束，请整段复制。"
         case .wrongPrefix:
-            return "Allude的凭证以 CLIP1 开头。如果卖家给的是图片或链接，请让对方发原始的一串码。"
+            return "Codelumi的凭证以 CLIP1 开头。如果卖家给的是图片或链接，请让对方发原始的一串码。"
         case .badSignature:
             return "这串码校验不通过，可能是复制时漏了字符或多了空格。请整段重新复制一次；仍然不行请向签发方核对。"
         case .expired(let date):

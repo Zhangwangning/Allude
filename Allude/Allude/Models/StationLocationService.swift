@@ -10,7 +10,7 @@ extension Notification.Name {
 // MARK: - 到达提醒 · 地理围栏（2026-11-16 主人：实验室功能）
 //
 // 口径：
-//   · 只在**用户主动打开「到达提醒」**且为 Allude Pro 时才申请「始终允许」定位；
+//   · 只在**用户主动打开「到达提醒」**且为 Codelumi Pro 时才申请「始终允许」定位；
 //   · 只监视为数不多的驿站圆形区域（系统上限 20 个），不连续取位置、不记轨迹；
 //   · 进入区域时读本机共享文件，**该驿站还有待取件才推通知**，没件不打扰；
 //   · 位置只用于系统地理围栏判断，全部在本机，不上传、不联网。
@@ -32,7 +32,7 @@ final class StationLocationService: NSObject, ObservableObject, CLLocationManage
     /// 「用当前位置」的一次性定位回调
     private var oneShot: ((CLLocationCoordinate2D?) -> Void)?
 
-    /// 到达提醒开关（实验室 + Allude Pro）。
+    /// 到达提醒开关（实验室 + Codelumi Pro）。
     static var isArrivalReminderEnabled: Bool {
         get { UserDefaults.standard.object(forKey: arrivalEnabledKey) as? Bool ?? false }
         set { UserDefaults.standard.set(newValue, forKey: arrivalEnabledKey) }
@@ -153,7 +153,7 @@ final class StationLocationService: NSObject, ObservableObject, CLLocationManage
         for region in manager.monitoredRegions where region.identifier.hasPrefix(Self.regionPrefix) {
             manager.stopMonitoring(for: region)
         }
-        // 🔴 老大 2026-11-16 补充：到达提醒是 Allude Pro 功能。
+        // 🔴 老大 2026-11-16 补充：到达提醒是 Codelumi Pro 功能。
         //    降级 / 权益过期 / 关开关 / 权限不是 Always，一律把围栏全撤干净。
         guard EntitlementSnapshot.licensedPro,
               Self.isArrivalReminderEnabled,

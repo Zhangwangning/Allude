@@ -231,7 +231,7 @@ struct AutoRecordSettingsView: View {
                 // iOS 26 及更早：系统不支持导入带触发器的自动化，只能手动新建
                 stepRow(index: 1, title: "新建一条自动化", detail: "快捷指令 › 自动化 › 新建", showsDivider: true)
                 stepRow(index: 2, title: "触发条件选「信息」", detail: "包含「【」，立即运行", showsDivider: true)
-                stepRow(index: 3, title: "动作选 Allude", detail: "「添加到 Allude」", showsDivider: true)
+                stepRow(index: 3, title: "动作选 Codelumi", detail: "「添加到 Codelumi」", showsDivider: true)
                 stepRow(index: 4, title: "关掉运行前询问", detail: "以后自动收码，不用点确认", showsDivider: false)
             }
         }

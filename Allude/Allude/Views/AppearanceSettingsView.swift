@@ -188,7 +188,7 @@ struct FontSizeView: View {
                 .padding(16)
                 .settingsCard()
 
-                Text("字号只影响Allude自己，不改系统的文字大小。设置页、列表与卡片会一起变化。")
+                Text("字号只影响Codelumi自己，不改系统的文字大小。设置页、列表与卡片会一起变化。")
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)

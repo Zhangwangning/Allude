@@ -199,8 +199,8 @@ struct WidgetGalleryContent: View {
     ///
     /// 原来免费版会把大尺寸整块藏掉，理由是不想让人到系统图库里找不到；
     /// 但主人的口径是：**这里就应该把所有尺寸都摆出来**，
-    /// 免费版/Allude Pro 的差别是"能不能用"，不是"看不看得到"。
-    /// 所以现在全部渲染，付费档才有的尺寸挂一个「Allude Pro」标记并说明。
+    /// 免费版/Codelumi Pro 的差别是"能不能用"，不是"看不看得到"。
+    /// 所以现在全部渲染，付费档才有的尺寸挂一个「Codelumi Pro」标记并说明。
     ///
     /// 仍保留设备过滤：iPad 超大只存在于 iPad 桌面，iPhone 上渲染它等于展示一个加不出来的尺寸。
     private var styles: [WidgetCanvas.Style] {
@@ -224,7 +224,7 @@ struct WidgetGalleryContent: View {
                 .padding(.top, 2)
 
             // 档位说明（2026-11-01 主人）：这里展示**全部尺寸**，
-            // 免费版与Allude Pro 的差别只是"能不能加到桌面"，不是"看不看得到"。
+            // 免费版与Codelumi Pro 的差别只是"能不能加到桌面"，不是"看不看得到"。
 
             ForEach(styles, id: \.rawValue) { style in
                 block(title: style.title) {
@@ -315,12 +315,12 @@ struct WidgetGalleryContent: View {
         }
     }
 
-    /// 档位说明。命名按主人定的：免费版 = Allude，付费版 = Allude Pro。
+    /// 档位说明。命名按主人定的：免费版 = Codelumi，付费版 = Codelumi Pro。
     private var proBadge: some View {
         HStack(spacing: 4) {
             Image(systemName: "lock.fill")
                 .font(.system(size: 9, weight: .bold))
-            Text("Allude Pro")
+            Text("Codelumi Pro")
                 .font(AppTheme.TypeScale.badge)
         }
         .foregroundStyle(.white)

@@ -30,6 +30,20 @@ struct AppIconSettingsView: View {
                 .padding(14)
                 .settingsCard()
 
+                // 当前选中（2026-11-21 主人要的「目录号」）：显示 DZYTB 编号 + 名称。
+                // 12/13/15 都是深色底，光看格子分不清；有这么一行，"选的是哪一张"可直接核对。
+                HStack(spacing: 5) {
+                    Text(selected.catalogID)
+                        .font(.system(size: 12, design: .monospaced))
+                        .monospacedDigit()
+                    Text("·")
+                        .foregroundStyle(.quaternary)
+                    Text(selected.title)
+                        .font(AppTheme.TypeScale.note)
+                }
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 4)
+
                 Text("更换后，桌面、App 资源库、多任务和通知里的图标会一起改变。")
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.tertiary)
@@ -58,6 +72,12 @@ struct AppIconSettingsView: View {
                         if error == nil {
                             selected = choice
                             Task { await PickupActivityController.refreshForAppIconChange() }
+                        } else {
+                            // 🔴 与 apply() 一致：失败必须回滚已经写进共享状态的偏好，
+                            //    否则存储里留着「用户其实没换成的那个图标」，
+                            //    下次冷启动 selected 会读回它、界面显示一个假选中态
+                            //    （2026-11-21 在模拟器上撞到：明明报错，格子却是蓝框）。
+                            AppIconStore.store(selected)
                         }
                     }
                 }
@@ -66,7 +86,17 @@ struct AppIconSettingsView: View {
         .alert("更换图标失败", isPresented: $showError) {
             Button("好", role: .cancel) {}
         } message: {
+            // 🔴 2026-11-21：模拟器**永远**换不了图标，不是"稍后再试"能等到的。
+            // 系统要靠 CoreServicesUI 的 upcall bundle 弹「正在更改图标」确认，
+            // 而模拟器里这个 bundle 加载失败（日志：NSPOSIXErrorDomain Code=5
+            // "couldn't load upcall bundle principal class"），重启模拟器也不会好；
+            // 真机则正常（同日实测 iPhone 16 Pro 换成第 14 套并生效）。
+            // 所以这里按环境分开说，别让开发者对着「稍后再试」白等。
+            #if targetEnvironment(simulator)
+            Text("模拟器不支持更换主屏幕图标，请在真机上试。这是模拟器的限制，与 App 本身无关。")
+            #else
             Text("系统暂时不能更换图标，请稍后再试。")
+            #endif
         }
     }
 
@@ -116,7 +146,7 @@ struct AppIconSettingsView: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(choice.title)图标")
+        .accessibilityLabel("\(choice.catalogID) \(choice.title)图标")
     }
 
     private func apply(_ choice: AppIconChoice) {

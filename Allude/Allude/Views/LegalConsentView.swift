@@ -56,8 +56,14 @@ struct LegalConsentView: View {
             // 截图脚手架：`CONSENT_CONFIRM=1` 启动即复现「未勾选点同意」的确认框
             // （simctl 点不了屏幕，这条路径只能靠这个入口验）
             .onAppear {
-                guard BuildFlags.scaffoldsEnabled,
-                      ProcessInfo.processInfo.environment["CONSENT_CONFIRM"] == "1" else { return }
+                guard BuildFlags.scaffoldsEnabled else { return }
+                // 截图脚手架：`AUTO_ACCEPT_CONSENT=1` 自动走一遍「同意并继续」，
+                // 用来在没有触摸注入通道的情况下验证「收起同意页 → 拉起引导页」这条链路
+                if ProcessInfo.processInfo.environment["AUTO_ACCEPT_CONSENT"] == "1" {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { onAccept() }
+                    return
+                }
+                guard ProcessInfo.processInfo.environment["CONSENT_CONFIRM"] == "1" else { return }
                 agreed = true
                 // 视图还没挂稳就 present，alert 会静默不弹（踩过），延一拍
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { showConfirm = true }
@@ -66,7 +72,7 @@ struct LegalConsentView: View {
         .alert("需要同意后才能使用", isPresented: $showDeclineAlert) {
             Button("知道了", role: .cancel) {}
         } message: {
-            Text("《使用条款》与《隐私政策》说明了数据处理方式与使用规则。不同意的话，暂时无法使用Allude。")
+            Text("《使用条款》与《隐私政策》说明了数据处理方式与使用规则。不同意的话，暂时无法使用Codelumi。")
         }
         .sheet(item: $readingDoc) { doc in
             NavigationStack {
@@ -92,7 +98,7 @@ struct LegalConsentView: View {
                     .clipShape(.rect(cornerRadius: 56 * 0.2237, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Allude")
+                    Text("Codelumi")
                         .font(AppTheme.TypeScale.rowTitle.weight(.semibold))
                     Text("取件码，只留在你手机上")
                         .font(AppTheme.TypeScale.rowSubtitle)
@@ -227,7 +233,9 @@ struct LegalConsentView: View {
             }
             .buttonStyle(.plain)
         }
-        .cardSurface()
+        // 🔴 2026-11-21 主人：首启页也要跟设置页一样 —— iOS 26+ 真液态玻璃，
+        //    iOS 17–25 走系统毛玻璃/分组卡片（`settingsCard` 内部已分档）。
+        .settingsCard()
     }
 
     // MARK: 确认框（未勾选直接点「同意并继续」时）
@@ -280,7 +288,8 @@ struct LegalConsentView: View {
                 }
             }
             .frame(maxWidth: 300)
-            .background(.regularMaterial, in: .rect(cornerRadius: 22, style: .continuous))
+            // 弹窗也用同一条材质链：iOS 26+ 液态玻璃取样背后的页面，低版本毛玻璃
+            .appGlass(.rect(cornerRadius: 22, style: .continuous))
             .shadow(color: .black.opacity(0.12), radius: 24, y: 8)
         }
     }
@@ -333,6 +342,8 @@ struct LegalConsentView: View {
         .padding(.horizontal, AppTheme.hInset)
         .padding(.top, 10)
         .padding(.bottom, 8)
-        .background(.bar)
+        // ⚠️ 这里**不要**再垫一层背景（.bar / 玻璃都不行）：
+        //    底栏是 `safeAreaInset(edge: .bottom)`，正文本来就不会滚到它下面，
+        //    垫上材质只会得到一条突兀的白板（2026-11-21 主人当场指出）。
     }
 }

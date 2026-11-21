@@ -7,7 +7,7 @@ import UIKit
 // 三件事：
 //   · 外观：自动（跟随系统）/ 浅色 / 深色
 //   · 字体大小：二级页里预览 + 滑块 + 「跟随系统」
-//   · 语言：只做入口，跳到 iOS 设置 › App › Allude（系统里改语言，App 自己不做切换）
+//   · 语言：只做入口，跳到 iOS 设置 › App › Codelumi（系统里改语言，App 自己不做切换）
 //
 // 存 **App Group**（`PickupStorage.appGroupID`）而不是 standard：
 //   · 小组件/灵动岛由扩展进程渲染，也要跟随同一份字号倍率；

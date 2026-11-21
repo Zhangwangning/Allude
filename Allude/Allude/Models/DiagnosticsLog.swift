@@ -109,7 +109,7 @@ enum DiagnosticsLog {
         // 「已解锁」必须取 `licensedPro`：快照里的 `isPro` 只是个缓存布尔值，
         // 订阅到期后它仍是 true（没人会去改文件），照它写会让诊断信息说谎。
         return """
-        ===== Allude诊断信息 =====
+        ===== Codelumi诊断信息 =====
         版本：\(version) (\(build))
         系统：iOS \(system) · \(model)
         权益：\(plan) · 已解锁 \(EntitlementSnapshot.licensedPro ? "是" : "否") · 到期 \(expiry)

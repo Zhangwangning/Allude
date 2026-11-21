@@ -601,17 +601,48 @@ enum CourierNameCorrector {
         // 名称过短（2 字）时形近字误纠的概率明显上升，只对 3 字及以上做近似匹配
         guard trimmed.count >= 3 else { return trimmed }
 
-        var best: (name: String, distance: Int)?
+        // 🔴 2026-11-21 主人抓到：「【圆通快递】…」的平台被纠成「中通快递」。
+        //    原因是纯编辑距离打平 —— 「圆通快递」到「中通快递」（圆→中）与到
+        //    「圆通速递」（快→速）都是 1，按表内顺序前者先命中就赢了。
+        //    修法：同距离时**优先选「短信原文里已经含有它的关键词」的那个品牌**，
+        //    其次比公共前缀长度，仍打平才按表内顺序。
+        //    这样「圆通快递」→ 圆通速递（原文含「圆通」），而「国通快递」这种
+        //    不含任何关键词的错字仍按距离走进「中通快递」（既有基线的行为不变）。
+        struct Candidate {
+            var name: String
+            var distance: Int
+            var keyContained: Bool
+            var prefix: Int
+        }
+        var best: Candidate?
         for item in CourierBrand.table {
             let distance = min(editDistance(trimmed, item.name),
                                editDistance(trimmed, item.key))
             guard distance <= 1 else { continue }
-            if best == nil || distance < best!.distance {
-                best = (item.name, distance)
+            let keyContained = item.key.count >= 2
+                && trimmed.localizedCaseInsensitiveContains(item.key)
+            let candidate = Candidate(name: item.name,
+                                      distance: distance,
+                                      keyContained: keyContained,
+                                      prefix: commonPrefixLength(trimmed, item.name))
+            guard let current = best else { best = candidate; continue }
+            if candidate.distance < current.distance
+                || (candidate.distance == current.distance && candidate.keyContained && !current.keyContained)
+                || (candidate.distance == current.distance && candidate.keyContained == current.keyContained
+                    && candidate.prefix > current.prefix) {
+                best = candidate
             }
         }
 
         return best?.name ?? trimmed
+    }
+
+    /// 公共前缀长度（同距离时的平局判据）。
+    private static func commonPrefixLength(_ lhs: String, _ rhs: String) -> Int {
+        let a = Array(lhs), b = Array(rhs)
+        var i = 0
+        while i < a.count, i < b.count, a[i] == b[i] { i += 1 }
+        return i
     }
 
     /// Levenshtein 距离。只用于很短的字符串（≤ 6 字 × 56 项），无需做算法优化。

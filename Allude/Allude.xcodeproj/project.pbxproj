@@ -506,12 +506,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Config/Allude.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 322;
+				CURRENT_PROJECT_VERSION = 327;
 				DEVELOPMENT_TEAM = 8499X3S9X8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Allude;
+				INFOPLIST_KEY_CFBundleDisplayName = Codelumi;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "用于扫描取件码二维码与快递面单条码，识别后自动填入待取件列表。";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "保存分享图到相册时使用。";
@@ -540,12 +540,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Config/Allude.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 322;
+				CURRENT_PROJECT_VERSION = 327;
 				DEVELOPMENT_TEAM = 8499X3S9X8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Allude;
+				INFOPLIST_KEY_CFBundleDisplayName = Codelumi;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "用于扫描取件码二维码与快递面单条码，识别后自动填入待取件列表。";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "保存分享图到相册时使用。";
@@ -575,12 +575,12 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = Config/AlludeWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 322;
+				CURRENT_PROJECT_VERSION = 327;
 				DEVELOPMENT_TEAM = 8499X3S9X8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AlludeWidget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Allude;
+				INFOPLIST_KEY_CFBundleDisplayName = Codelumi;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -604,12 +604,12 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = Config/AlludeWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 322;
+				CURRENT_PROJECT_VERSION = 327;
 				DEVELOPMENT_TEAM = 8499X3S9X8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AlludeWidget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Allude;
+				INFOPLIST_KEY_CFBundleDisplayName = Codelumi;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

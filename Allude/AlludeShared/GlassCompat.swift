@@ -4,7 +4,7 @@ import SwiftUI
 // 液态玻璃兼容层（2026-11-07）
 //
 // 背景：`.glassEffect`（Liquid Glass）是 iOS 26 新增 API。
-// Allude要同时兼容 iOS 18 / 26 / 27，所以统一走这一层：
+// Codelumi要同时兼容 iOS 18 / 26 / 27，所以统一走这一层：
 //
 //   · 系统 < 26           → 一律用系统毛玻璃 `.ultraThinMaterial` + 细描边
 //   · 系统 >= 26 且开关开 → 真·液态玻璃

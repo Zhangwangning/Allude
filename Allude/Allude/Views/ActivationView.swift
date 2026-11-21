@@ -143,7 +143,7 @@ struct ActivationView: View {
             SectionHeader(title: "当前状态")
 
             VStack(spacing: 0) {
-                SettingsPlainRow(title: "Allude Pro") {
+                SettingsPlainRow(title: "Codelumi Pro") {
                     Text(store.isPro ? "已解锁" : "未解锁")
                         .font(AppTheme.TypeScale.rowTitle)
                         .foregroundStyle(store.isPro ? AppTheme.doneTint : .secondary)

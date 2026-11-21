@@ -3,7 +3,7 @@ import Combine
 import PhotosUI
 
 // MARK: ============================================================================
-// Allude 设计系统（App 专属组件）
+// Codelumi 设计系统（App 专属组件）
 //
 // 依据 iOS 27 Liquid Glass 官方规则落地，三条硬约束：
 //
@@ -179,7 +179,7 @@ struct CompleteButton: View {
 // MARK: - 类别标签（已于 2026-10-28 删除）
 //
 // 原来这里有个 `KindTag`：按凭证类型（取件码 / 运单号 / 尾号 / 特殊码）画彩色胶囊。
-// 主人 2026-10-28 定：「Allude内再不区分取件码信息的类型」——
+// 主人 2026-10-28 定：「Codelumi内再不区分取件码信息的类型」——
 // 所有卡片、预览、编辑、通知、锁屏一律只认「取件码」，分类退化成纯后台字段，
 // 于是这个组件没有任何调用点，整体删除。要恢复分类展示时别急着照抄旧样式：
 // 先想清楚「用户拿到这条信息时真的需要知道它是哪类凭证吗」。
@@ -1095,7 +1095,7 @@ struct SplitDetailPlaceholder: View {
 /// 分栏右栏的「非 Pro · 搜索态」占位（2026-11-16 主人）。
 ///
 /// 背景：非 Pro 用户可以用搜索查到任意一条已取 / 待取记录，但**点不开详情**
-/// （详情是 Allude Pro 的权益）。窄屏下点击会被拦下来弹订阅页；分栏右栏这块
+/// （详情是 Codelumi Pro 的权益）。窄屏下点击会被拦下来弹订阅页；分栏右栏这块
 /// 常驻区域没有"点击"这个动作可拦 —— 它会自动渲染第一/选中那条，
 /// 所以必须在这里换成锁定说明，否则一搜就把详情白送了。
 struct ProLockedSplitPlaceholder: View {
@@ -1107,7 +1107,7 @@ struct ProLockedSplitPlaceholder: View {
                 .font(.system(size: 30, weight: .regular))
                 .foregroundStyle(.tertiary)
 
-            Text("详情需要 Allude Pro")
+            Text("详情需要 Codelumi Pro")
                 .font(AppTheme.TypeScale.rowTitleMedium)
 
             Text("免费版可以搜索并看到记录，打开详情需要解锁。")
@@ -1117,7 +1117,7 @@ struct ProLockedSplitPlaceholder: View {
                 .padding(.horizontal, 24)
 
             Button(action: onUnlock) {
-                Text("了解 Allude Pro")
+                Text("了解 Codelumi Pro")
                     .font(AppTheme.TypeScale.bodyMedium)
             }
             .buttonStyle(.borderedProminent)

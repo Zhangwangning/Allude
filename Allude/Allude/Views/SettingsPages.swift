@@ -9,7 +9,7 @@ import StoreKit
 //   ② 外观与个性化（二级页收拢：App 图标 / 外观 / 字体大小 / 语言）
 //   ③ 存储空间
 //   ④ 帮助与反馈
-//   ⑤ 更多：快递公司 / 驿站管理 / 关于 Allude
+//   ⑤ 更多：快递公司 / 驿站管理 / 关于 Codelumi
 //
 // 这一版把「界面自定义」和「关于」各自收成**一个入口**，首页不再一行行铺开。
 // 宽屏（Duo 展开 / iPad）的分栏里，这些页是常驻详情列，`NavigationLink` 不落地，
@@ -27,7 +27,7 @@ struct AppearancePersonalizationView: View {
                 store: UserDefaults(suiteName: PickupStorage.appGroupID))
     private var showsStats = true
 
-    /// 「显示「统计」」属于 Allude Pro：非 Pro 点一下直接弹订阅页（2026-11-15 主人）。
+    /// 「显示「统计」」属于 Codelumi Pro：非 Pro 点一下直接弹订阅页（2026-11-15 主人）。
     @State private var showPaywall = false
 
     /// 当前是否 Pro。放进 `@State` 是为了**买完回来立刻生效** ——
@@ -82,7 +82,7 @@ struct AppearancePersonalizationView: View {
                 // 底部菜单栏：统计页可以关掉（2026-11-13 主人要求）。
                 // 关掉后底栏只剩 待取 / 已取 / 设置，统计页也就没有入口。
                 //
-                // 🔴 2026-11-15 主人：这一项属于 **Allude Pro**。非 Pro 点一下开关
+                // 🔴 2026-11-15 主人：这一项属于 **Codelumi Pro**。非 Pro 点一下开关
                 //    = 直接弹订阅页，与「超时未取提醒」同一套做法（不显示任何加锁标志、
                 //    不先翻转开关再回弹）。买完回来开关立刻可用。
                 VStack(spacing: 0) {
@@ -108,7 +108,7 @@ struct AppearancePersonalizationView: View {
                                     .contentShape(Rectangle())
                                     .onTapGesture { showPaywall = true }
                                     .accessibilityLabel("显示「统计」")
-                                    .accessibilityHint("需要Allude Pro")
+                                    .accessibilityHint("需要Codelumi Pro")
                             }
                         }
                     }
@@ -152,7 +152,7 @@ struct AppearancePersonalizationView: View {
     }
 
     /// 「推荐给朋友」是系统分享面板，不是 push（2026-11-21 主人从「鼓励一下」挪过来）
-    private static let shareText = "推荐 Allude：一个只在本机整理快递取件码的 App，不联网、不上传、不用注册。"
+    private static let shareText = "推荐 Codelumi：一个只在本机整理快递取件码的 App，不联网、不上传、不用注册。"
 
     @ViewBuilder
     private func row(_ item: SettingsPane) -> some View {
@@ -288,7 +288,7 @@ struct StorageSpaceView: View {
     }
 }
 
-// MARK: - 关于 Allude
+// MARK: - 关于 Codelumi
 
 struct AboutAlludeView: View {
     var openPane: ((SettingsPane) -> Void)? = nil
@@ -316,7 +316,7 @@ struct AboutAlludeView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("关于 Allude")
+        .navigationTitle("关于 Codelumi")
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -329,8 +329,13 @@ struct AboutAlludeView: View {
                 .frame(width: 78, height: 78)
                 .clipShape(.rect(cornerRadius: 78 * 0.2237, style: .continuous))
 
-            Text("Allude")
+            Text("Codelumi")
                 .font(AppTheme.TypeScale.rowTitle.weight(.semibold))
+
+            // 中文名只在关于页出现一次（2026-11-21 主人：主要使用英文名称）
+            Text("珞米")
+                .font(AppTheme.TypeScale.note)
+                .foregroundStyle(.secondary)
 
             Text(AppVersion.display.L)
                 .font(AppTheme.TypeScale.note)
@@ -387,7 +392,7 @@ struct AboutAlludeView: View {
 
 // MARK: - 鼓励一下
 
-/// 「鼓励一下」= 只做 App Store 评分（2026-11-21 主人：推荐给朋友挪到「关于 Allude」）。
+/// 「鼓励一下」= 只做 App Store 评分（2026-11-21 主人：推荐给朋友挪到「关于 Codelumi」）。
 /// 用系统的 `requestReview`：什么时候弹由 iOS 决定，我们不诱导、也不追踪。
 struct EncourageView: View {
     @Environment(\.requestReview) private var requestReview
@@ -401,7 +406,7 @@ struct EncourageView: View {
                         .foregroundStyle(AppTheme.pendingTint)
                         .padding(.top, 8)
 
-                    Text("如果 Allude 帮你少翻了几次短信、少漏了几件快递，就是它最想要的了。")
+                    Text("如果 Codelumi 帮你少翻了几次短信、少漏了几件快递，就是它最想要的了。")
                         .font(AppTheme.TypeScale.body)
                         .foregroundStyle(.primary)
                         .multilineTextAlignment(.center)
@@ -481,7 +486,7 @@ struct PrivacySimpleView: View {
                 .settingsCard()
 
                 // 🔴 2026-11-15 主人：这里**不要**再放「查看完整隐私政策」入口。
-                //    上一级「关于 Allude」里已经有「隐私政策（完整版）」，
+                //    上一级「关于 Codelumi」里已经有「隐私政策（完整版）」，
                 //    简明版再挂一个等于同一个东西两个入口，纯冗余。
                 //    （原 NavigationLink + settingsCard 已删，别再加回来。）
 
@@ -555,7 +560,7 @@ struct ICloudSyncView: View {
 
     /// 开关的唯一入口（手指点击与脚手架都走这里）。
     ///
-    /// 🔴 2026-11-15 主人：iCloud 同步并入 Allude Pro —— 订阅页弹在**这个开关**上，
+    /// 🔴 2026-11-15 主人：iCloud 同步并入 Codelumi Pro —— 订阅页弹在**这个开关**上，
     ///    不是设置首页那一行（点标题照常进本页）。界面上不加锁形标记。
     private func setSyncEnabled(_ newValue: Bool) {
         if newValue, !isPro {
@@ -654,8 +659,8 @@ struct ICloudSyncHelpView: View {
     private let steps: [(String, String)] = [
         ("1", "两台设备登录同一个 Apple ID"),
         ("2", "设置 › Apple ID › iCloud › iCloud 云盘 打开"),
-        ("3", "同一页的「使用 iCloud 的 App」里确认有 Allude"),
-        ("4", "回到本页打开「开启同步」，两台设备各打开一次 Allude"),
+        ("3", "同一页的「使用 iCloud 的 App」里确认有 Codelumi"),
+        ("4", "回到本页打开「开启同步」，两台设备各打开一次 Codelumi"),
         ("5", "之后任意一台改动，另一台启动或回到前台时自动合并")
     ]
 

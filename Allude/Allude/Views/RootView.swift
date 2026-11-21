@@ -132,7 +132,7 @@ struct RootView: View {
 
     /// 生效值；Debug 下可用 `ALLUDE_TAB_SHOWS_STATS=0` 强制关掉，方便截图验收。
     ///
-    /// 🔴 2026-11-15：这项已是 **Allude Pro** 功能，非 Pro 一律显示统计页。
+    /// 🔴 2026-11-15：这项已是 **Codelumi Pro** 功能，非 Pro 一律显示统计页。
     ///    否则「Pro 期间关掉统计 → 订阅过期」会留下一个**没有任何入口**的统计页，
     ///    而设置里那个开关在非 Pro 下恒显示为"开" —— 两边自相矛盾。
     private var showsStats: Bool {
@@ -242,16 +242,27 @@ struct RootView: View {
                 model.selection = record.isPickedUp ? .picked : .pending
             }
         }
-        // 首次启动：**先合法同意，再引导**。两个都是全屏，互不叠加。
-        .fullScreenCover(isPresented: $model.showConsent) {
-            LegalConsentView {
-                model.acceptConsent()
-            }
+        // 首次启动的两级全屏：**先法律同意，再安装引导**。
+        //
+        // 🔴 2026-11-21 修（主人实测「点同意并继续没进下一级」）：
+        //    原来是**两个** `fullScreenCover` 分别盯 `showConsent` / `showOnboarding`，
+        //    `acceptConsent()` 在同一个更新周期里关前者、开后者 —— 两个呈现槽互相抢，
+        //    结果是日志里 `[consent] accepted` 一直写、页面却退不出去。改成
+        //    `onDismiss` 接力也不行：待取页 `.onAppear` 会弹系统通知授权，
+        //    那个弹窗又把引导页的呈现顶掉。
+        //    现在收成**一条呈现通道 + 阶段状态**（`launchStage`）：同意页和引导页
+        //    共用同一个 cover，同意时只切阶段、不关不重开，彻底没有抢占位这回事。
+        .fullScreenCover(isPresented: $model.showLaunchGate) {
+            LaunchGateView(model: model)
         }
-        // 首次安装引导（写完标记后不再出现；设置页可重看）
-        .fullScreenCover(isPresented: $model.showOnboarding) {
-            OnboardingView {
-                model.completeOnboarding()
+        // 首启流程刚走完、待取页真正露出来的这一刻才问通知授权。
+        // （待取页 `.onAppear` 里那条请求在首启门开着时会被 `isLaunchGateActive` 拦下。）
+        .onChange(of: model.launchStage) { _, stage in
+            guard stage == nil else { return }
+            guard ProcessInfo.processInfo.environment["SKIP_PERM"] == nil else { return }
+            // 等 cover 收起动画走完再弹，否则系统弹窗会顶掉收起动作
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                PickupNotifier.requestAuthorizationIfNeeded()
             }
         }
     }
@@ -445,24 +456,41 @@ enum RootTab: String, Hashable {
 final class RootTabModel: ObservableObject {
     @Published var selection: RootTab
 
-    /// 首次启动的**法律同意页**（2026-11-01）：必须先同意条款才能进 App。
-    @Published var showConsent: Bool
-    /// 首次安装引导的呈现态（UserDefaults 手写持久化，工程不用 @AppStorage）。
-    @Published var showOnboarding: Bool
+    /// 首启流程走到哪一步。`nil` = 已经走完，正常进 App。
+    ///
+    /// 2026-11-21 起把原来的 `showConsent` / `showOnboarding` 两个布尔合成这一个 ——
+    /// 两个 `fullScreenCover` 抢同一个呈现槽会把引导页丢掉（见 body 里的注释）。
+    enum LaunchStage {
+        case consent
+        case onboarding
+    }
+
+    /// 首启两级全屏是否还盖在最上面。
+    ///
+    /// 🔴 2026-11-21：待取页一出现就会问通知授权，而系统授权弹窗会**盖住引导页**
+    ///    （用户在首启流程里第一眼看到的是权限弹窗，不是欢迎页）。
+    ///    所以首启门还开着时先不问，等门关了再由 RootView 统一问一次。
+    static var isLaunchGateActive = false
+
+    @Published var launchStage: LaunchStage?
+
+    /// 首启门是否还在（供 `.fullScreenCover(isPresented:)` 用）。
+    var showLaunchGate: Bool {
+        get { launchStage != nil }
+        set {
+            guard !newValue else { return }
+            launchStage = nil
+            RootTabModel.isLaunchGateActive = false
+        }
+    }
 
     private static let onboardingKey = "onboarding.completed.v1"
     private static let consentKey = "legal.consent.v1"
 
     init() {
-        // 截图脚手架统一跳过首启流程（SKIP_ONBOARDING=1）
-        let skipping = ProcessInfo.processInfo.environment["SKIP_ONBOARDING"] != nil
-
-        // 顺序很重要：**先同意条款，再看引导**。同意过就直接看引导。
-        showConsent = !skipping && !UserDefaults.standard.bool(forKey: Self.consentKey)
-        showOnboarding = !skipping
-            && UserDefaults.standard.bool(forKey: Self.consentKey)
-            && !UserDefaults.standard.bool(forKey: Self.onboardingKey)
-
+        // ① 先把没有默认值的存储属性（selection）定下来 —— 否则后面读 launchStage
+        //    会报 "'self' used before all stored properties are initialized"。
+        //
         // 截图脚手架：`SIMCTL_CHILD_TAB=pending|picked|stats|settings` 直接落到目标页
         // （simctl 没有触摸注入通道，点不了底部标签栏）。旧值兼容映射：
         // ticket→picked（票夹已删，2026-10-14）、browse→stats。
@@ -473,21 +501,70 @@ final class RootTabModel: ObservableObject {
         case "settings":         selection = .settings
         default:                 selection = .pending
         }
+
+        // ② 首启门控：截图脚手架统一跳过（SKIP_ONBOARDING=1）
+        let skipping = ProcessInfo.processInfo.environment["SKIP_ONBOARDING"] != nil
+
+        // 顺序很重要：**先同意条款，再看引导**。
+        let consented = UserDefaults.standard.bool(forKey: Self.consentKey)
+        let onboarded = UserDefaults.standard.bool(forKey: Self.onboardingKey)
+        if skipping {
+            launchStage = nil
+        } else if !consented {
+            launchStage = .consent
+        } else if !onboarded {
+            launchStage = .onboarding
+        } else {
+            launchStage = nil
+        }
+
+        DiagnosticsLog.record("gate", "init skipping=\(skipping) consented=\(consented) onboarded=\(onboarded) stage=\(String(describing: launchStage))")
+        RootTabModel.isLaunchGateActive = launchStage != nil
     }
 
-    /// 同意条款：写标记 + 收起同意页、接着进入引导页。
+    /// 同意条款：写标记，然后把同一个 cover 的内容换成引导页。
+    ///
+    /// 🔴 **不要再拆回两个 `fullScreenCover`**，也不要在外面用 `onDismiss` 接力 ——
+    ///    两条路都踩过（页面退不出去 / 引导页被系统通知授权弹窗顶掉）。
     func acceptConsent() {
         UserDefaults.standard.set(true, forKey: Self.consentKey)
-        showConsent = false
-        if !UserDefaults.standard.bool(forKey: Self.onboardingKey) {
-            showOnboarding = true
-        }
+        let onboarded = UserDefaults.standard.bool(forKey: Self.onboardingKey)
+        DiagnosticsLog.record("gate", "acceptConsent onboarded=\(onboarded)")
+        launchStage = onboarded ? nil : .onboarding
+        RootTabModel.isLaunchGateActive = launchStage != nil
     }
 
-    /// 引导完成：写标记 + 收起引导页。
+    /// 引导完成：写标记 + 收起。
     func completeOnboarding() {
+        DiagnosticsLog.record("gate", "completeOnboarding")
         UserDefaults.standard.set(true, forKey: Self.onboardingKey)
-        showOnboarding = false
+        launchStage = nil
+        RootTabModel.isLaunchGateActive = false
+    }
+}
+
+// MARK: - 首次启动的两级全屏（同意 → 引导）
+
+/// 首启流程的**唯一呈现者**。
+///
+/// 同意页与引导页必须共用同一个 `fullScreenCover`：分两个 cover 时，
+/// 「关一个、开另一个」会在同一个更新周期里抢呈现槽 —— 表现是点「同意并继续」
+/// 页面退不出去（2026-11-21 主人实测）。用 `onDismiss` 接力也不行，
+/// 主界面 `.onAppear` 的系统通知授权弹窗会把后一个 cover 顶掉。
+/// 这里只切内容、不关不重开，两页之间也顺带做到无闪烁。
+private struct LaunchGateView: View {
+    @ObservedObject var model: RootTabModel
+
+    var body: some View {
+        switch model.launchStage {
+        case .consent:
+            LegalConsentView { model.acceptConsent() }
+        case .onboarding:
+            OnboardingView { model.completeOnboarding() }
+        case nil:
+            // 走到这里说明刚刚收起，SwiftUI 会在下一帧把 cover 关掉。
+            Color.clear
+        }
     }
 }
 
@@ -527,6 +604,12 @@ struct OnboardingView: View {
                let page = Int(raw), (0...2).contains(page) {
                 state.page = page
             }
+            // 截图脚手架：AUTO_FINISH_ONBOARDING=1 自动点「开始使用」，
+            // 用来把「首启 → 待取页 → 通知授权」这条链路一次跑完（simctl 点不了屏幕）。
+            if BuildFlags.scaffoldsEnabled,
+               ProcessInfo.processInfo.environment["AUTO_FINISH_ONBOARDING"] == "1" {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { onFinish?() }
+            }
         }
     }
 
@@ -536,7 +619,7 @@ struct OnboardingView: View {
         OnboardingPage(
             symbol: "tray.full.fill",
             tint: AppTheme.accent,
-            title: "欢迎使用Allude",
+            title: "欢迎使用Codelumi",
             subtitle: "快递取件码自动收集，到驿站打开就能报码")
         {
             OnboardingPoint(symbol: "bubble.left.and.text.bubble.right.fill",
@@ -569,7 +652,7 @@ struct OnboardingView: View {
                 OnboardingStep(index: 1, tint: AppTheme.amber,
                                title: "导入自动化",
                                detail: quickImportAvailable
-                                   ? "点下面的按钮，把「收到短信 → 添加到Allude」导进系统"
+                                   ? "点下面的按钮，把「收到短信 → 添加到Codelumi」导进系统"
                                    : "当前系统不支持一键导入：到「设置 › 快捷指令」看 35 秒视频教程，照着建一次")
                 SettingsDivider()
                 OnboardingStep(index: 2, tint: AppTheme.amber,
@@ -603,7 +686,7 @@ struct OnboardingView: View {
             VStack(spacing: 8) {
                 Text("一切就绪")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
-                Text("所有功能已开放，数据只在本机。\n到驿站时打开Allude，报码就走。")
+                Text("所有功能已开放，数据只在本机。\n到驿站时打开Codelumi，报码就走。")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

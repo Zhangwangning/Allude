@@ -1,4 +1,4 @@
-# Allude
+# Codelumi
 
 [English](README.md) · **简体中文**
 
@@ -10,13 +10,15 @@
 
 | | |
 |---|---|
-| 名称 | Allude（1.0.0，构建 322） |
+| 名称 | Codelumi / 珞米（1.0.0，构建 325） |
 | 平台 | iOS 17 及以上（iPhone；iPhone Duo 折叠屏另做适配） |
 | 工程 | 纯 Xcode 工程，SwiftUI，无 SPM 包、无第三方库 |
 | 结构 | 仓库根 `Allude/` → 工程根 `Allude/` → `Allude/`（App 源码）、`AlludeShared/`（App 与小组件共用）、`AlludeWidget/`（小组件扩展） |
 | 状态 | 已上 TestFlight 内测，App Store 版本在审核流程中 |
 
-对外名称是 Allude。Bundle ID、App Group、小组件 kind 这类内部标识从第一版起没改过，改了用户的数据容器就会换新。
+对外名称是 **Codelumi**（中文名「珞米」，只在关于页与商店中文页出现一次）。
+
+Bundle ID、App Group、iCloud 容器、小组件 kind、仓库目录这类内部标识仍叫 `allude`，从第一版起没改过 —— 改了用户的数据容器就会换新，老记录直接读不到。更名链路：拾码 → Allude → Codelumi。
 
 ## 创意来源：先有一个快捷指令
 

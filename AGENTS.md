@@ -1,10 +1,24 @@
-# Allude — 项目指令
+# Codelumi（珞米）— 项目指令
 
 iOS 取件码收纳 App。核心承诺：**数据只在本机，不联网、不上传、不需要注册**。
 SwiftUI + iOS 27 SDK，纯 Xcode 工程，零第三方依赖、零 SPM 包。
 
+> 🔴 **品牌名（2026-11-21 主人定）**：对外名称 **Codelumi**，中文名「珞米」，**主要用英文名**。
+> 界面文案（简中 / 繁中 / 英文）一律写 `Codelumi`；「珞米」只出现在两处：设置 › 关于页名字
+> 下方那一行、App Store 中文页。档位名是 `Codelumi Pro`。
+>
+> **技术标识符仍叫 `allude`，永远不改**：Bundle ID `com.jikezhang.allude`、App Group、
+> iCloud 容器 `iCloud.com.jikezhang.allude`、记录子目录 `Documents/`、小组件 kind
+> `AlludePickupWidget`、资源名（`AlludePickup.mlmodel`、`Allude.storekit`）、
+> 仓库与工程目录 `Allude/`、Swift 类型名（`AlludeApp`、`AlludeWidget`、`AboutAlludeView`、
+> `aboutAllude` 等）、UserDefaults 键 `allude.*`。
+> 改了其中任何一个 → 老用户的数据容器换新 / 云端记录读不到 / 已加的桌面小组件失配。
+>
+> 更名链路：拾码 → Allude → **Codelumi**。版本历史里 0.x 那几条**保留 Allude 原名**（史实），
+> 1.0.0 那条写「拾码 → Allude → Codelumi（珞米）」。
+
 > 🔴 **对外不表述收费（2026-11-21 主人定）**：隐私政策、使用条款、版本历史、App Store
-> 文案与支持页里**不出现价格、档位名（Allude Pro）、订阅 / 买断 / 恢复购买、iPadOS 适配**
+> 文案与支持页里**不出现价格、档位名（Codelumi Pro）、订阅 / 买断 / 恢复购买、iPadOS 适配**
 > 这类表述。本节下面的商品信息只作开发者内部备查（App Store Connect 里两条商品仍在，
 > 是否继续售卖待定）；改动对外文案前先按这条口径过一遍。
 
@@ -194,32 +208,43 @@ iPhone 直板机已完工（0.3.3）；**iPhone Duo 折叠屏适配已开工**�
 
 ## App 图标切换
 
-**十七套内置图标**，2026-11-15 反复增删后的最终形态：16 套按「从上到下、从左到右」
-重排为 01–16，2026-11-16 又补了一张「皮革卡包」成 17。
-**默认是第 7 套「黑盒立体」**（2026-11-20 主人改的；此前默认是第 4 套「C 标」，
-再往前是第 2 套「取件袋」）。
-🔴 **编号与网格顺序严格一致（01…16 连续）**。重排会让老用户存的 `rawValue`
+**十五套内置图标**（2026-11-21 精简 + 追加后的形态）。演进：
+2026-11-15 按「从上到下、从左到右」重排为 01–16，11-16 补「皮革卡包」成 17，
+11-21 删掉 6 套（包裹 / 蓝牌 / 黑牌 / 暗牌 / 光泽黑标 / 白盒平涂 —— 其中 5 套图面上
+印着「ALLUDE」，品牌改名 Codelumi 后不能用），剩 11 套按原相对顺序重排为 **01–11**。
+同日晚在 11 套后面**追加 12–15**（用户给的「优化App图标」四张：黑牌微笑 / 蓝牌微笑 /
+玻璃立方 / 四格蓝柱）—— 纯追加、不动已有序号，所以 `currentScheme` 仍是 `"3"`。
+**默认是第 6 套「黑盒立体」**（原来是第 7 套，删完往前挪一位；再往前是第 4 套「C 标」、
+第 2 套「取件袋」）。
+🔴 **编号与网格顺序严格一致（01…15 连续）**。重排会让老用户存的 `rawValue`
 指向另一张图（新旧 iconNN 同名不同图），所以 `AppIconStore` 里有一套
-**一次性迁移** `migrateLegacyNumberingIfNeeded()`：靠 `allude.appIcon.scheme`
-版本标记 + `legacyMap`（老编号→新图标）换算，冷启动时执行一次并同步系统图标。
-⚠️ 以后再改编号，必须同步扩 `legacyMap` 并升 `currentScheme`，否则老用户选择错位。
+**链式一次性迁移** `migrateLegacyNumberingIfNeeded()`：靠 `allude.appIcon.scheme`
+版本标记（当前 `"3"`）+ 两张序号表（方案1→2、方案2→3）换算，冷启动时执行一次并同步系统图标。
+⚠️ 以后再改编号，必须同步扩这两张序号表并升 `currentScheme`，否则老用户选择错位。
+**表里存的是序号不是 case 名** —— `icon09` 在三个方案里是三种不同的图，只有序号能跨版本对齐。
 设置 › 外观与个性化 › 自定义 App 图标可切换（版式同快递公司页的网格）。
 原主图标「取件袋」现在作为 alternate icon `Icon02` 保留，仍可在设置里选。
 
 - 主图标：`Allude/Assets.xcassets/AppIcon.appiconset`（1024，**不能有透明通道、不能自带圆角**）。
-- 🔴 **17 套 `AppIconNN.imageset`（App 内预览 / 灵动岛 / 关于页 / 分享卡共用）
+- 🔴 **15 套 `AppIconNN.imageset`（App 内预览 / 灵动岛 / 关于页 / 分享卡共用）
   统一放 `AlludeShared/Assets.xcassets`**（2026-11-15 从 App 的 catalog 迁过来）。
   理由：共享 catalog 被 App 与小组件**两个 target 各编译一次**，扩展进程才查得到；
   放在 App 的 catalog 里，小组件取不到图，`Image("AppIconNN")` 会**静默渲染成灰块**
   —— 1.0.0(312) 灵动岛不显示 App 图标就是这个原因。每份 imageset 必须带
   `"template-rendering-intent": "original"` + 1x(60)/2x(120)/3x(180) 三档。
-- 除默认那套（`Icon07` = 黑盒立体 = 主图标，不注册为 alternate）以外，全部由
+- 除默认那套（`Icon06` = 黑盒立体 = 主图标，不注册为 alternate）以外，全部由
   **真实 `Allude/Info.plist`** 的 `CFBundleIcons › CFBundleAlternateIcons`
-  声明 `Icon01`…`Icon17` 中的 16 条（去掉 `Icon07`），文件是 bundle 根目录的
+  声明 `Icon01`…`Icon15` 中的 **14 条**（去掉 `Icon06`），文件是 bundle 根目录的
   `IconNN@2x.png`(120) / `@3x.png`(180)（纯 iPhone 工程，不需要 `~ipad`）。
   换默认图标也要同时动三处：`AppIcon.appiconset` 三张 1024、Info.plist 里新旧两条
   alternate 互换、`AppIconChoice.fallback`。新增一套要同时动三处：imageset、`AppIcons/IconNN*.png`、Info.plist 声明，
-  再加 `AppIconChoice` 的 case 与 `title`（`assetName`/`alternateName` 由 `number` 自动拼）。
+  再加 `AppIconChoice` 的 case、`number`、`title`（`assetName`/`alternateName` 由 `number` 自动拼）。
+- 🔴 **工程是 Xcode 16 同步文件夹**（`PBXFileSystemSynchronizedRootGroup`）：
+  `Allude/` 下新增 Swift 与 PNG 都**不用改 pbxproj**，自动进包。
+- ⚠️ `setAlternateIconName` 密集连切会被系统限流（模拟器 `LSIconAlertManager` Code=35
+  "Resource temporarily unavailable"，真机表现为静默不生效）。验图标一次只切一个、间隔 20s 以上。
+- ⚠️ `simctl launch` 的脚手架环境变量必须写成 `SIMCTL_CHILD_SCREEN=x xcrun simctl launch …`，
+  写在 bundle id 后面会被当成 argv 丢弃；真机对应 `DEVICECTL_CHILD_SCREEN=x`。
   `AppIcons/` 与 `Allude/` 都在 Xcode 的同步组里，**不用改 pbxproj**。
 - 图源自满幅方图，**不再裁切**（早期那批是白底圆角，裁过角）。
   ⚠️ `sips -z` 只改尺寸、**不改格式**：源是 JPEG 时要显式加 `-s format png`，
@@ -228,7 +253,7 @@ iPhone 直板机已完工（0.3.3）；**iPhone Duo 折叠屏适配已开工**�
   增删 Info.plist 键要改那个真实文件，`INFOPLIST_KEY_*` 不再生效。
 - 选择状态存 **App Group**（`allude.appIcon`），但 🔴 **灵动岛/锁屏不靠它**：
   选择随 `ContentState.appIconRaw` 过进程边界（2026-11-15 修）。扩展进程自己读
-  共享偏好域那条链一断就回落到默认图标（第 7 套黑盒立体），表现为「桌面换了、岛里还是旧图标」。
+  共享偏好域那条链一断就回落到默认图标（第 6 套黑盒立体），表现为「桌面换了、岛里还是旧图标」。
 - `AppMarkIcon(choice:)`（灵动岛/锁屏）、关于页顶部、设置网格读同一份选择。
 - 🔴 **给灵动岛用的图片资源，`Contents.json` 必须写两样**，否则折叠态会渲染成
   一个纯色方块（2026-11-01 真机修复）：
@@ -810,6 +835,50 @@ App Store 版没有这个文件 → 整行自动不显示。
 ```
 
 🔴 改这里的铁律：兜底**只能填空**，不得覆盖已抓到的地址 —— 否则语料命中数会掉。
+
+## 设计规范：skills/apple-hig（2026-11-21 接入）
+
+Apple HIG **全站主题**的离线镜像（**167 篇**，基础 / 组件 / 模式 / 输入 / 技术 / 平台全覆盖），
+原文逐字、未改写，放在 `skills/apple-hig/references/`；`SKILL.md` 里有索引表、**「本项目必须守的 12 条」**
+和一张**「有意识的偏离」**表（App 内外观设置 / 字号滑块——官方不建议，但用户明确要了）。
+
+抓取/更新用 `tools/fetch-hig.py`：`python3 tools/fetch-hig.py --missing` 补新主题、
+`--all` 全量重抓、也可以直接列 slug（如 `… widgets tab-bars`）。**原文只替换不改写。**
+
+🔴 改任何一屏 UI、文案、字号、图标、动效、权限请求之前，先读 `SKILL.md` 的 12 条；
+要原文依据就 `grep` 对应 `references/*.md`。**别凭印象说「Apple 就是这么设计的」。**
+
+⚠️ 官方页面是 SPA，`curl` 拿到的 HTML 只有导航壳；正文要从
+`https://developer.apple.com/tutorials/data/cn/design/human-interface-guidelines/<slug>.json` 取。
+Safari 存的 `.webarchive` 同样只有壳（导航卡片在、正文不在），别拿它当底稿。
+
+## iPhone Duo 适配：skills/iphone-duo（2026-11-21 接入）
+
+官方 HIG《针对 iPhone Duo 设计》+《Preparing your app for iPhone Duo》扒下来整理的技能包，
+不是二手总结：`skills/iphone-duo/references/hig-designing-for-iphone-duo.md` 是页面原文（6.9 KB），
+`references/dev-preparing-your-app.md` 是开发者指南要点 + API 对照，
+`references/api.md` 的签名与可用性全部对 `iPhoneOS27.2.sdk` 核过（`ReservedRegion` /
+`ArrangementView` / `toolbarVerticalBehavior` 都是 **iOS 27.1 起**）。
+
+**动 Duo 相关代码前先读 `skills/iphone-duo/SKILL.md`**，三条铁律：
+按窗口几何判据（不用 idiom / 方向 / 机型名 / `UIScreen.main`）、系统容器优先、
+折叠时只做小幅调整。
+
+🔴 两条血泪已写进 `references/pitfalls.md`，别再犯：
+1. **Duo 内屏横屏的系统标签栏被系统摆进右侧 84pt 保留区，那里收不到触摸**
+   → 表现是「看得见点不动」（探针 + 程序化点击已证实，见 `交接说明_dsh.md` §24.4）；
+2. **不要抓 `UITabBar` 改 transform / alpha / `isUserInteractionEnabled`**
+   → 系统会换实例，恢复逻辑失效，整条栏永久不可交互。
+
+⚠️ **2026-11-21 更正**：第 1 条的成因查清了 —— 展开态
+`window.reservedRegions(kind: .occlusion)` 返回 **0 个**，但 `safeAreaInsets.right` 仍是 84，
+是**模拟器给的幽灵安全区**；系统据此把竖排栏摆进 `x882…951`，那带子不吃触摸。
+真机完全展开无摄像头遮挡，不应出现。主人当天定：**保持系统原生竖排（方案 A），
+记为环境限制**；备选 B `.toolbarVerticalBehavior(.disabled)`（iOS 27.1+）能让栏回底部横排、点得动，
+但不是 Duo 的设计。详见 `交接说明_dsh.md` §27 与 `skills/iphone-duo/references/pitfalls.md` 第 8 条。
+
+📄 仓库根另有两份 Duo 文档：`iPhone Duo 官方设计规范笔记_v1.md`（Tech Talks 逐字整理，**冲突时以它为准**）
+与 `iPhone Duo 折叠屏开发实战笔记_v1.md`（代码事实层，对应构建 321）。
 
 ## 去 AI 味：skills/unslop-ios（2026-11-08 接入）
 

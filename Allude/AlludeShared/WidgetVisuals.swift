@@ -266,7 +266,7 @@ struct WidgetPagedContent: View {
     ///
     /// 「Pro」与「今日已取」互斥显示：被截断时说明「为什么只看到这几条」
     /// 远比今天的成绩重要，两者同排会把头部挤到换行。
-    /// 🔴 文案不带「免费版」「付费版」—— 对外只有「Allude」与「Allude Pro」
+    /// 🔴 文案不带「免费版」「付费版」—— 对外只有「Codelumi」与「Codelumi Pro」
     ///    （2026-11-01 主人）。组部件里空间紧，这里用最短的「Pro」。
     private var header: some View {
         HStack(spacing: 6) {
@@ -551,9 +551,9 @@ struct WidgetLockedContent: View {
             Image(systemName: "lock.fill")
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(AppTheme.accent)
-            Text("Allude Pro")
+            Text("Codelumi Pro")
                 .font(.system(size: 14, weight: .semibold))
-            Text("大尺寸小组件需要解锁 Allude Pro")
+            Text("大尺寸小组件需要解锁 Codelumi Pro")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

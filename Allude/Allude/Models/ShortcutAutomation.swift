@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 // MARK: ============================================================================
-// 自动收录：把「收到短信 → 添加到Allude」的自动化直接导入系统（2026-11-04）
+// 自动收录：把「收到短信 → 添加到Codelumi」的自动化直接导入系统（2026-11-04）
 //
 // 事实基础（实测拆包）：
 //   .shortcut 文件由 AA01 归档里的 `Shortcut.wflow` 组成，里面**带触发器**：
@@ -24,8 +24,8 @@ enum ShortcutAutomation {
         var recommended: Bool = false
         var id: String { keyword }
 
-        /// 导入后显示的名称：Allude 取件码解析「关键词」
-        var displayName: String { "Allude 取件码解析「\(keyword)」" }
+        /// 导入后显示的名称：Codelumi 取件码解析「关键词」
+        var displayName: String { "Codelumi 取件码解析「\(keyword)」" }
         /// 一句话说明适用场景
         var hint: String {
             switch keyword {
@@ -48,7 +48,7 @@ enum ShortcutAutomation {
 
     /// iCloud 链接（推荐方式）。在 Shortcuts 里「共享 › 拷贝 iCloud 链接」拿到后填这里；
     /// 为空时界面只给「用文件导入」。
-    /// 🔴 2026-11-10 改名 Allude 后重新分享的一批：4 个都指向新 bundle
+    /// 🔴 2026-11-10 改名 Codelumi 后重新分享的一批：4 个都指向新 bundle
     ///    （com.jikezhang.allude.ParsePickupTextIntent）的包，链接均 200 可下载。
     ///    旧包（com.jikezhang.codeclip）的 4 条链接已全部作废，不要再用。
     static let icloudLinks: [String: String] = [
@@ -105,7 +105,7 @@ enum ShortcutAutomation {
         }
         let target = FileManager.default.temporaryDirectory
             // 🔴 2026-11-11 修：这里曾被双重转义成 `\(preset.keyword)`，
-            //    分享面板里显示成「Allude·自动收录（\(preset.…」这种字面量。
+            //    分享面板里显示成「Codelumi·自动收录（\(preset.…」这种字面量。
             //    文件名 = 导入后的名称（shortcuts sign 会剥掉 WFWorkflowName），
             //    所以直接用 displayName。
             .appendingPathComponent("\(preset.displayName).shortcut")

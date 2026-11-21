@@ -28,7 +28,7 @@ final class ReminderSettingsModel: ObservableObject {
     /// 重复提醒（2026-11-16 新增）：全局一条按间隔催，全部取完自动停
     @Published var repeatEnabled = PickupNotifier.isRepeatReminderEnabled
     @Published var repeatHours = PickupNotifier.repeatReminderHours
-    /// 到达提醒（实验室 + Allude Pro）
+    /// 到达提醒（实验室 + Codelumi Pro）
     @Published var arrivalEnabled = StationLocationService.isArrivalReminderEnabled
     /// 系统定位权限：界面要如实显示，避免「开关开着但系统没给权限」静默失效
     @Published var locationStatus: CLAuthorizationStatus = CLLocationManager().authorizationStatus
@@ -81,7 +81,7 @@ final class ReminderSettingsModel: ObservableObject {
     }
 
     func setPendingEnabled(_ value: Bool) {
-        // 超时未取提醒属于Allude Pro：非 Pro 一律落回关闭态
+        // 超时未取提醒属于Codelumi Pro：非 Pro 一律落回关闭态
         let allowed = value && EntitlementSnapshot.licensedPro
         PickupNotifier.isPendingReminderEnabled = allowed
         pendingEnabled = allowed
@@ -95,7 +95,7 @@ final class ReminderSettingsModel: ObservableObject {
     }
 
     func setRepeatEnabled(_ value: Bool) {
-        // 重复提醒与超时提醒同属 Allude Pro：非 Pro 一律落回关闭态
+        // 重复提醒与超时提醒同属 Codelumi Pro：非 Pro 一律落回关闭态
         let allowed = value && EntitlementSnapshot.licensedPro
         PickupNotifier.isRepeatReminderEnabled = allowed
         repeatEnabled = allowed
@@ -109,7 +109,7 @@ final class ReminderSettingsModel: ObservableObject {
     }
 
     func setArrivalEnabled(_ value: Bool) {
-        // 🔴 老大 2026-11-16 补充：到达提醒也是 Allude Pro 功能。
+        // 🔴 老大 2026-11-16 补充：到达提醒也是 Codelumi Pro 功能。
         //    非 Pro 一律落回关闭态，并把围栏全撤（service 内部按权益校验）。
         let allowed = value && EntitlementSnapshot.licensedPro
         StationLocationService.shared.setArrivalEnabled(allowed)
@@ -159,7 +159,7 @@ struct NotificationSettingsView: View {
         .onAppear {
             model.refresh()
             // 截图脚手架 `ARRIVAL_LAB=1`：展开全部提醒项（含实验室分组）。
-            // 需配合 `FORCE_PRO=1` —— 超时 / 重复 / 到达三项都是 Allude Pro。
+            // 需配合 `FORCE_PRO=1` —— 超时 / 重复 / 到达三项都是 Codelumi Pro。
             if ProcessInfo.processInfo.environment["ARRIVAL_LAB"] == "1" {
                 model.setPendingEnabled(true)
                 model.setRepeatEnabled(true)
@@ -214,7 +214,7 @@ struct NotificationSettingsView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("系统的「通知」权限被关掉了")
                     .font(.caption.weight(.medium))
-                Text("上面这个开关开着也不会弹。需要到系统设置里把「Allude」的通知打开。")
+                Text("上面这个开关开着也不会弹。需要到系统设置里把「Codelumi」的通知打开。")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -315,7 +315,7 @@ struct NotificationSettingsView: View {
         }
     }
 
-    /// 带 Allude Pro 门禁的开关（2026-11-16 到达提醒也用这一套）。
+    /// 带 Codelumi Pro 门禁的开关（2026-11-16 到达提醒也用这一套）。
     ///
     /// 🔴 主人 2026-11-08 定：**界面上不显示任何加锁标志**；
     ///    非 Pro 点一下开关 = 直接弹订阅页（不先翻转开关再回弹）。
@@ -337,7 +337,7 @@ struct NotificationSettingsView: View {
                         .contentShape(Rectangle())
                         .onTapGesture { showPaywall = true }
                         .accessibilityLabel(label)
-                        .accessibilityHint("需要Allude Pro")
+                        .accessibilityHint("需要Codelumi Pro")
                 }
         }
     }
@@ -413,7 +413,7 @@ struct NotificationSettingsView: View {
 
     // MARK: 实验室 · 到达提醒
 
-    /// 到达提醒是**实验性 + Allude Pro** 功能（老大 2026-11-16 定）：
+    /// 到达提醒是**实验性 + Codelumi Pro** 功能（老大 2026-11-16 定）：
     ///   · 系统地理围栏有延迟，离线 / 低电量 / 定位精度差时可能不触发；
     ///   · 只有该驿站还存在待取件时才推通知，没件不打扰；
     ///   · 位置只存本机，不上传、不记录轨迹。
@@ -423,7 +423,7 @@ struct NotificationSettingsView: View {
             note: "实验性：系统定位可能有几分钟延迟，离线、低电量或定位精度差时可能不触发。位置只存本机、不上传、不记录轨迹；需「始终允许」定位权限，最多同时监控 20 个驿站。"
         ) {
             SettingsPlainRow(title: "到达提醒") {
-                // 🔴 老大 2026-11-16 补充：到达提醒也是 Allude Pro；
+                // 🔴 老大 2026-11-16 补充：到达提醒也是 Codelumi Pro；
                 //    非 Pro 点开关直接弹订阅页，不显示加锁标志（同一套 gatedToggle）。
                 gatedToggle(isOn: model.arrivalEnabled, label: "到达提醒") {
                     model.setArrivalEnabled($0)

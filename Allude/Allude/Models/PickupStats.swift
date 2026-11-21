@@ -101,7 +101,7 @@ struct PickupStats {
 
     let companies: [CompanyPoint]
     // 🔴 2026-10-28 主人：删掉「凭证类别」维度（`kinds` / `KindPoint`）。
-    //    Allude不再区分取件码信息的类型 —— 取件码、运单号、尾号在界面上是一个东西，
+    //    Codelumi不再区分取件码信息的类型 —— 取件码、运单号、尾号在界面上是一个东西，
     //    所以统计页也不该把它们拆成四行占比。
 
     // MARK: 效率

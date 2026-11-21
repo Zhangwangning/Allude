@@ -1,4 +1,4 @@
-# Allude
+# Codelumi
 
 **English** · [简体中文](README.zh-CN.md)
 
@@ -11,15 +11,16 @@ device: no network calls, nothing uploaded, no account.
 
 | | |
 |---|---|
-| Name | Allude (1.0.0, build 322) |
+| Name | Codelumi / 珞米 (1.0.0, build 325) |
 | Platform | iOS 17 and later (iPhone; iPhone Duo foldable has its own layout work) |
 | Project | Plain Xcode project, SwiftUI, no SPM packages, no third-party libraries |
 | Layout | repository root `Allude/` → project root `Allude/` → `Allude/` (app), `AlludeShared/` (shared with the widget), `AlludeWidget/` (widget extension) |
 | Status | In TestFlight beta; the App Store version is in the review pipeline |
 
-The user-facing name is Allude. Internal identifiers (bundle ID, App Group, widget
-kind) have not changed since the first build — changing them would orphan users'
-data containers.
+The user-facing name is **Codelumi** (Chinese: 珞米). Internal identifiers (bundle ID,
+App Group, iCloud container, widget kind, repository path) are still `allude` and have
+not changed since the first build — changing them would orphan users' data containers.
+The rename history is 拾码 → Allude → Codelumi.
 
 ## Where the idea came from: a shortcut first
 

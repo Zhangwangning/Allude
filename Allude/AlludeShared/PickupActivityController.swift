@@ -303,7 +303,7 @@ enum PickupActivityController {
             return
         }
 
-        // 🔴 实时活动 / 灵动岛是 **Allude Pro 权益**，免费版不支持。
+        // 🔴 实时活动 / 灵动岛是 **Codelumi Pro 权益**，免费版不支持。
         //    免费版口径：有活动在跑也一律收掉，且不再起新的 ——
         //    升级 / 降级后下一次数据同步自动对齐，不需要专门的开关刷新。
         //
@@ -456,7 +456,7 @@ enum LiveActivitySetting {
         UserDefaults(suiteName: PickupStorage.appGroupID) ?? .standard
     }
 
-    /// 🔴 实时活动是 **Allude Pro** 功能：非订阅用户一律读作关闭
+    /// 🔴 实时活动是 **Codelumi Pro** 功能：非订阅用户一律读作关闭
     /// （即使文件里还留着 true —— 降级后进前台，控制器第 0 道门会当场收掉卡片）。
     static var isEnabled: Bool {
         get {

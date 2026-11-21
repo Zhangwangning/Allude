@@ -3,14 +3,17 @@ import Foundation
 // MARK: ============================================================================
 // App 图标切换（2026-11-01 主人）
 //
-// 十七套内置图标，**第 7 套（黑盒立体）为默认主图标**（2026-11-20 主人定）。
+// 十五套内置图标，**第 6 套（黑盒立体）为默认主图标**。
 //
-// 🔴 2026-11-15 大整理（主人连着几轮删改之后定的最终形态）：
-//    · 先删掉 1 号码牌 / 4 扫码件 / 6 手提袋 / 8 卡包 / 11 牛皮纸 / 13 快递箱 / 23 玻璃白盒；
-//    · 再要求「从上到下、从左至右，依次编号」，于是现存 15 套**重排为 01–15**，
-//      当晚新给的一张「蓝线稿白盒」补成 **16**。
-//    编号从此连续无空洞。⚠️ 重排会让老用户存的 `rawValue` 指向另一张图，
-//    所以 `AppIconStore` 里带了一次性的旧编号→新编号迁移（见 `legacyMap`）。
+// 🔴 编号演进（每次改动都要同步 `legacyMap` 与 `currentScheme`，否则老用户选错图）：
+//    · 方案 1：早期编号，带空洞（2,3,5,7,9,12,14…22）。
+//    · 方案 2（2026-11-15）：重排为连续 01–15，当晚补「蓝线稿白盒」成 16，
+//      次日再加「皮革卡包」成 17。默认从那时的第 4 套「C 标」换成第 7 套「黑盒立体」。
+//    · 方案 3（2026-11-21）：删掉 6 套（包裹 / 蓝牌 / 黑牌 / 暗牌 / 光泽黑标 / 白盒平涂），
+//      其中 5 套图面上印着「ALLUDE」，品牌改名 Codelumi 后不能再用。
+//      剩 11 套按原相对顺序重排为 01–11，默认那套「黑盒立体」由 07 变成 **06**。
+//    · 方案 4（2026-11-21 晚）：在 11 套后面**追加** 12–15（用户给的「优化App图标」四张）。
+//      纯追加、不动 01–11 的编号 → `legacyMap` 无需再扩，老用户选择不受影响。
 //
 // 🔴 图标的 imageset 统一放 `AlludeShared/Assets.xcassets`（2026-11-15 从 App 的
 //    catalog 迁过来）：App 与小组件两个 target **都**编译这份共享 catalog，
@@ -33,23 +36,23 @@ import Foundation
 // ============================================================================
 
 enum AppIconChoice: String, CaseIterable, Identifiable {
-    /// 编号与界面网格**严格一致**：从上到下、从左到右 = 01…17。
-    case icon01, icon02, icon03, icon04, icon05, icon06, icon07, icon08
-    case icon09, icon10, icon11, icon12, icon13, icon14, icon15, icon16, icon17
+    /// 编号与界面网格**严格一致**：从上到下、从左到右 = 01…15。
+    case icon01, icon02, icon03, icon04, icon05, icon06
+    case icon07, icon08, icon09, icon10, icon11
+    /// 2026-11-21 新增四套（用户给的「优化App图标」四张）。只追加，不动前面编号。
+    case icon12, icon13, icon14, icon15
 
-    /// 默认图标 = 第 7 套（黑盒立体）。
+    /// 默认图标 = 第 6 套（黑盒立体）。
     ///
-    /// 🔴 2026-11-20 主人：默认图标从第 4 套「C 标」换成第 7 套「黑盒立体」。
-    ///    主图标（`AppIcon.appiconset` 的三张 1024）art 同步换成第 7 套；
-    ///    反过来 **C 标（Icon04）改登记成 alternate** —— `Info.plist` 的
-    ///    `CFBundleAlternateIcons` 去掉 `Icon07`、补上 `Icon04`。
-    ///    `alternateName` 对 fallback 恒返回 nil（即「用回主图标」），所以
-    ///    第 7 套走主图标、第 4 套走 alternate，两者都能被选。
-    static let fallback: AppIconChoice = .icon07
+    /// 🔴 它同时是**主图标**（`AppIcon.appiconset` 的三张 1024），所以
+    ///    `alternateName` 对它返回 nil（= 用回主图标），`Info.plist` 的
+    ///    `CFBundleAlternateIcons` **不能**登记 `Icon06`，否则两处打架。
+    ///    其余 14 套都走 alternate，文件是 `Allude/AppIcons/IconNN@2x|@3x.png`。
+    static let fallback: AppIconChoice = .icon06
 
     var id: String { rawValue }
 
-    /// 序号（1–17），与网格顺序一致。用于文案与文件名。
+    /// 序号（1–15），与网格顺序一致。用于文案与文件名。
     var number: Int {
         switch self {
         case .icon01: 1
@@ -67,8 +70,6 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
         case .icon13: 13
         case .icon14: 14
         case .icon15: 15
-        case .icon16: 16
-        case .icon17: 17
         }
     }
 
@@ -80,23 +81,30 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
         case .icon03: "文件夹"
         case .icon04: "C 标"
         case .icon05: "霓虹 A"
-        case .icon06: "包裹"
-        case .icon07: "黑盒立体"
-        case .icon08: "蓝盒立体"
-        case .icon09: "蓝牌"
-        case .icon10: "黑盒平涂"
-        case .icon11: "蓝盒平涂"
-        case .icon12: "黑牌"
-        case .icon13: "暗牌"
-        case .icon14: "光泽黑标"
-        case .icon15: "白盒平涂"
-        case .icon16: "线框白盒"
-        case .icon17: "皮革卡包"
+        case .icon06: "黑盒立体"
+        case .icon07: "蓝盒立体"
+        case .icon08: "黑盒平涂"
+        case .icon09: "蓝盒平涂"
+        case .icon10: "线框白盒"
+        case .icon11: "皮革卡包"
+        case .icon12: "黑牌微笑"
+        case .icon13: "蓝牌微笑"
+        case .icon14: "玻璃立方"
+        case .icon15: "四格蓝柱"
         }
     }
 
     /// 资源目录里的图（App 内预览、灵动岛、关于页都用这个名字）
     var assetName: String { String(format: "AppIcon%02d", number) }
+
+    /// 🔴 **图标目录编号**（2026-11-21 主人）：`DZYTB` = 自定义图标，后 4 位补零，
+    /// 按网格**从上到下、从左到右**发号，`DZYTB0001` … `DZYTB0015`。
+    ///
+    /// 为什么要有它：口头说「第 12 套」时，"第几个"随增删会漂，而图又不是靠序号
+    /// 就能认出来的（12 和 13 都是深色底）。有了这个号，界面底部直接显示
+    /// 「当前选中 DZYTB0006」，对不上时一眼就能确认到底选的是哪一张。
+    /// 口径与驿站 ID（`NZYZ00001` / `DZYYZ00001` / `FZYD00001`）一致，方便互相对照。
+    var catalogID: String { String(format: "DZYTB%04d", number) }
 
     /// `UIApplication.setAlternateIconName` 用的名字；默认图标返回 nil
     ///
@@ -110,32 +118,48 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
 
 enum AppIconStore {
     private static let key = "allude.appIcon"
-    /// 编号方案版本。`"2"` = 2026-11-15 重排后的连续编号 01…16。
+    /// 编号方案版本。`"3"` = 2026-11-21 删 6 套、重排为连续 01…11。
+    /// ⚠️ 12–15 是**追加**，不改变已有序号，所以方案号仍留在 `"3"`。
+    ///    只有「已有图标的序号被改动」时才需要升版本并扩 `legacyMap`。
     private static let schemeKey = "allude.appIcon.scheme"
-    private static let currentScheme = "2"
+    private static let currentScheme = "3"
 
-    /// 🔴 2026-11-15 重排编号前的老 `rawValue` → 新图标。
+    /// 方案 1 的老 `rawValue` → **方案 2 的序号**。
     ///
-    /// 老编号带空洞（2,3,5,7,9,12,14…22），新编号连续（1…16），两者**同名不同图**
-    /// （老的 `icon09` 是「霓虹 A」，新的 `icon09` 是「蓝牌」）。所以不能靠
-    /// 「能不能解出 case」判断新旧，必须靠 `schemeKey` 这个版本标记走一次性迁移。
-    /// 已被主人删掉的那几套（icon01/04/06/08/10/11/13/23）不在表里 → 落到 `fallback`。
-    private static let legacyMap: [String: AppIconChoice] = [
-        "icon02": .icon01,   // 信封
-        "icon03": .icon02,   // 取件袋
-        "icon05": .icon03,   // 文件夹
-        "icon07": .icon04,   // C 标（默认）
-        "icon09": .icon05,   // 霓虹 A
-        "icon12": .icon06,   // 包裹
-        "icon14": .icon07,   // 黑盒立体
-        "icon15": .icon08,   // 蓝盒立体
-        "icon16": .icon09,   // 蓝牌
-        "icon17": .icon10,   // 黑盒平涂
-        "icon18": .icon11,   // 蓝盒平涂
-        "icon19": .icon12,   // 黑牌
-        "icon20": .icon13,   // 暗牌
-        "icon21": .icon14,   // 光泽黑标
-        "icon22": .icon15,   // 白盒平涂
+    /// ⚠️ 这里存的是序号不是 case：case 名会随方案变（`icon09` 在方案 1 是「霓虹 A」，
+    ///    在方案 2 是「蓝牌」，在方案 3 是「蓝盒平涂」），只有序号能跨版本对齐。
+    /// 已被删掉的那几套（1 号码牌 / 4 扫码件 / 6 手提袋 / 8 卡包 / 11 牛皮纸 / 13 快递箱 /
+    /// 23 玻璃白盒）不在表里 → 落到 `fallback`。
+    private static let legacyV1Numbers: [String: Int] = [
+        "icon02": 1,    // 信封
+        "icon03": 2,    // 取件袋
+        "icon05": 3,    // 文件夹
+        "icon07": 4,    // C 标
+        "icon09": 5,    // 霓虹 A
+        "icon12": 6,    // 包裹
+        "icon14": 7,    // 黑盒立体
+        "icon15": 8,    // 蓝盒立体
+        "icon16": 9,    // 蓝牌
+        "icon17": 10,   // 黑盒平涂
+        "icon18": 11,   // 蓝盒平涂
+        "icon19": 12,   // 黑牌
+        "icon20": 13,   // 暗牌
+        "icon21": 14,   // 光泽黑标
+        "icon22": 15,   // 白盒平涂
+    ]
+
+    /// **方案 2 的序号 → 方案 3 的序号**。
+    ///
+    /// 被删的 6 套（2 号方案里的 6 包裹 / 9 蓝牌 / 12 黑牌 / 13 暗牌 / 14 光泽黑标 /
+    /// 15 白盒平涂）故意不在表里 → 那些用户落到默认图标。
+    private static let v2ToV3Numbers: [Int: Int] = [
+        1: 1, 2: 2, 3: 3, 4: 4, 5: 5,
+        7: 6,          // 黑盒立体（原名默认，现仍是默认）
+        8: 7,          // 蓝盒立体
+        10: 8,         // 黑盒平涂
+        11: 9,         // 蓝盒平涂
+        16: 10,        // 线框白盒
+        17: 11,        // 皮革卡包
     ]
 
     /// 同一容器内的镜像文件。
@@ -151,7 +175,7 @@ enum AppIconStore {
         PickupStorage.directory.appendingPathComponent("appicon.txt")
     }
 
-    /// 当前选中的图标。未选过 → `fallback`（C 标）。
+    /// 当前选中的图标。未选过 → `fallback`。
     ///
     /// 读取顺序：App Group 偏好 → 同容器镜像文件 → 本进程 `.standard`。
     static var current: AppIconChoice {
@@ -184,22 +208,48 @@ enum AppIconStore {
         return UserDefaults.standard.string(forKey: key)
     }
 
-    /// 一次性迁移：把老编号方案下的选择换算到新编号。
+    /// 已记录过的编号方案；没记过就当方案 1（最早那版）。
+    private static var storedScheme: String {
+        UserDefaults(suiteName: PickupStorage.appGroupID)?.string(forKey: schemeKey)
+            ?? UserDefaults.standard.string(forKey: schemeKey)
+            ?? "1"
+    }
+
+    /// 一次性迁移：把老方案下存的选择换算到当前方案。
     ///
-    /// 只在 `schemeKey != "2"` 时执行，跑完打标记，之后永久 no-op。
+    /// 只在 `storedScheme != currentScheme` 时执行，跑完打标记，之后永久 no-op。
+    /// 升级路径是**链式**的：方案 1 → 方案 2 → 方案 3，中途不能跳步
+    /// （`icon09` 三个方案里是三种不同的图，直接查一张表会对错人）。
     /// 返回**迁移后应当生效的图标**；调用方负责把它同步给系统
     /// （`UIApplication.shared.setAlternateIconName(choice.alternateName)`）。
-    /// 没有迁移发生（已是新方案）时返回 nil。
+    /// 没有迁移发生（已是当前方案）时返回 nil。
     @discardableResult
     static func migrateLegacyNumberingIfNeeded() -> AppIconChoice? {
-        if UserDefaults.standard.string(forKey: schemeKey) == currentScheme { return nil }
+        let scheme = storedScheme
+        if scheme == currentScheme { return nil }
 
-        // 迁移只认「旧方案存下来的名字」：命中 legacyMap 就换算，
-        // 其余（没存过 = 全新安装，或存的是已删除图标）一律回落到当前默认图标。
-        // ⚠️ 不能写成「能解出 case 就沿用」—— 新旧方案的 iconNN 同名不同图。
-        let target = storedRawValue.flatMap { legacyMap[$0] } ?? .fallback
+        var v2Number: Int?
+        if let raw = storedRawValue {
+            if scheme == "2" {
+                // 方案 2 的 rawValue 就是 "iconNN"，直接取序号
+                if raw.hasPrefix("icon"), let n = Int(raw.dropFirst(4)) {
+                    v2Number = n
+                }
+            } else {
+                v2Number = legacyV1Numbers[raw]
+            }
+        }
 
-        // `store` 会顺手把方案标记写进去，这里再补一遍确保三处一致
+        // 已删掉的图、或从没存过 → 回落到当前默认图标
+        let target: AppIconChoice
+        if let n = v2Number, let new = v2ToV3Numbers[n],
+           let match = AppIconChoice.allCases.first(where: { $0.number == new }) {
+            target = match
+        } else {
+            target = .fallback
+        }
+
+        // `store` 会顺手把方案标记写成当前版本，这里再补一遍确保三处一致
         store(target)
         return target
     }
@@ -208,8 +258,8 @@ enum AppIconStore {
     /// 保证「有 App Group」与「没有 App Group」两种情况下扩展都读得到。
     /// 真正切换系统图标由 App 侧调用 `UIApplication.setAlternateIconName` 完成。
     ///
-    /// 🔴 顺手打上 `schemeKey` 标记：新版本写下的值一律是「新编号方案」，
-    ///    否则下次冷启动的一次性迁移会把它当成旧编号再换一遍（会换错）。
+    /// 🔴 顺手打上 `schemeKey` 标记：新版本写下的值一律是「当前编号方案」，
+    ///    否则下次冷启动的一次性迁移会把它当成老编号再换一遍（会换错）。
     static func store(_ choice: AppIconChoice) {
         UserDefaults(suiteName: PickupStorage.appGroupID)?.set(choice.rawValue, forKey: key)
         UserDefaults(suiteName: PickupStorage.appGroupID)?.set(currentScheme, forKey: schemeKey)

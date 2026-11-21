@@ -326,7 +326,7 @@ struct ScanPickupSheet: View {
                 symbol: "camera.metering.unknown",
                 tint: AppTheme.amber,
                 title: "没有相机权限",
-                detail: "在「设置 → 隐私与安全性 → 相机」中允许Allude使用相机，然后重新进入本页。",
+                detail: "在「设置 → 隐私与安全性 → 相机」中允许Codelumi使用相机，然后重新进入本页。",
                 primary: ("去设置", openSettings)
             )
 

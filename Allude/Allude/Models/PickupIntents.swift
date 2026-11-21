@@ -44,10 +44,10 @@ import UniformTypeIdentifiers
 //  · 需要排查时看日志：`log stream --predicate 'subsystem == "com.jikezhang.allude"'`。
 
 struct ParsePickupTextIntent: AppIntent {
-    static var title: LocalizedStringResource { "添加到Allude" }
+    static var title: LocalizedStringResource { "添加到Codelumi" }
 
     static var description: IntentDescription {
-        IntentDescription("从短信文本中提取取件码、运单号或尾号，连同取件地址写入「Allude」的待取件列表。配合「信息 · 信息内容 · 包含【」自动化即可自动收纳取件短信。")
+        IntentDescription("从短信文本中提取取件码、运单号或尾号，连同取件地址写入「Codelumi」的待取件列表。配合「信息 · 信息内容 · 包含【」自动化即可自动收纳取件短信。")
     }
 
     /// 只支持后台执行：自动化触发时不把 App 拉到前台，快捷指令里「运行时显示」默认关闭。
@@ -107,7 +107,7 @@ struct ParsePickupImageIntent: AppIntent {
     static var title: LocalizedStringResource { "识别取件截图" }
 
     static var description: IntentDescription {
-        IntentDescription("对传入的截图做文字识别，识别到取件码 / 运单号 / 尾号就存进「Allude」。配合快捷指令自带的「截屏」动作，可一键把截图里的取件信息收进待取件列表；识别不到则不写入。")
+        IntentDescription("对传入的截图做文字识别，识别到取件码 / 运单号 / 尾号就存进「Codelumi」。配合快捷指令自带的「截屏」动作，可一键把截图里的取件信息收进待取件列表；识别不到则不写入。")
     }
 
     /// 只支持后台执行：截屏后静默入库，不把 App 拉到前台打断当前操作
@@ -185,7 +185,7 @@ struct AlludeShortcuts: AppShortcutsProvider {
                 "把短信存到 \(.applicationName)",
                 "让 \(.applicationName) 记下这个取件码",
             ],
-            shortTitle: "添加到Allude",
+            shortTitle: "添加到Codelumi",
             systemImageName: "shippingbox.fill"
         )
     }

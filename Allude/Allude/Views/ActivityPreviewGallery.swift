@@ -851,7 +851,7 @@ struct ActivityPreviewGallery: View {
                                 .contentShape(Rectangle())
                                 .onTapGesture { showPaywall = true }
                                 .accessibilityLabel("实时活动")
-                                .accessibilityHint("需要Allude Pro")
+                                .accessibilityHint("需要Codelumi Pro")
                         }
                 }
             }

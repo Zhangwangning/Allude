@@ -1,7 +1,7 @@
 import SwiftUI
 
 // MARK: ============================================================================
-// 设置 › 帮助与反馈 › 帮助改进Allude（2026-11-05 主人 A+B 方案）
+// 设置 › 帮助与反馈 › 帮助改进Codelumi（2026-11-05 主人 A+B 方案）
 //
 // 用户手动提供短信样本 → 存本地 → 用户主动导出（分享 / 邮件）给开发者，
 // 开发者在 Mac 上重训分类器，发新版本。
@@ -29,7 +29,7 @@ struct TrainingDataView: View {
             .padding(.vertical, 16)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("帮助改进Allude")
+        .navigationTitle("帮助改进Codelumi")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             samples = TrainingSampleStore.load()
@@ -47,7 +47,7 @@ struct TrainingDataView: View {
         }
         .sheet(isPresented: $pendingMail) {
             MailComposeView(
-                subject: "Allude · 训练样本（\(samples.count) 条）",
+                subject: "Codelumi · 训练样本（\(samples.count) 条）",
                 body: "开发者你好，附件是我手动提供的短信样本，用于改进识别。\n\n"
                     + "说明：样本由我手动添加，手机号/身份证/邮箱已脱敏。",
                 attachment: ("allude-training.jsonl", TrainingSampleStore.exportData())

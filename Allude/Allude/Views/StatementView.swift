@@ -13,7 +13,7 @@ struct StatementView: View {
             VStack(alignment: .leading, spacing: 16) {
                 section(title: "来源",
                         body: """
-                        Allude 由**极客ZHANG** 独立开发。
+                        Codelumi 由**极客ZHANG** 独立开发。
 
                         它衍生自开发者本人制作的「**快递取件码**」快捷指令：那一版快捷指令负责从快递短信里取出取件码，App 把这套逻辑搬进原生应用，再补上列表、搜索、桌面小组件与实时活动。**没有第二个来源。**
                         """)
@@ -107,7 +107,7 @@ enum StatementHTML {
     <p class="note" style="margin:0 0 8px">以下为「声明与免责」，最后更新：2026-11-01</p>
 
     <h2>来源</h2>
-    <p>Allude 由<b>极客ZHANG</b> 独立开发。</p>
+    <p>Codelumi 由<b>极客ZHANG</b> 独立开发。</p>
     <p>它衍生自开发者本人制作的「<b>快递取件码</b>」快捷指令：那一版快捷指令负责从快递短信里取出取件码，App 把这套逻辑搬进原生应用，再补上列表、搜索、桌面小组件与实时活动。<b>没有第二个来源。</b></p>
 
     <h2>技术</h2>

@@ -4,7 +4,7 @@ import UserNotifications
 // MARK: ============================================================================
 // 添加取件信息后的本地通知
 //
-// 场景：快捷指令自动化把短信写进Allude时，用户多半**不在Allude里** —— 正在微信聊天、
+// 场景：快捷指令自动化把短信写进Codelumi时，用户多半**不在Codelumi里** —— 正在微信聊天、
 // 正在刷别的 App。写进去了却没人知道，等于白收。所以每次真的新写入就发一条本地通知，
 // 锁屏上一眼能读到取什么、去哪取。
 //
@@ -316,9 +316,9 @@ enum PickupNotifier {
             let where_ = [newest.company, newest.address]
                 .filter { !$0.isEmpty }
                 .joined(separator: fieldSeparator)
-            content.body = where_.isEmpty ? "打开Allude查看取件码" : "最新：\(where_)"
+            content.body = where_.isEmpty ? "打开Codelumi查看取件码" : "最新：\(where_)"
         } else {
-            content.body = "打开Allude查看取件码"
+            content.body = "打开Codelumi查看取件码"
         }
         content.sound = .default
         content.threadIdentifier = threadID
@@ -340,7 +340,7 @@ enum PickupNotifier {
     static func rescheduleRepeatReminder() {
         let center = UNUserNotificationCenter.current()
         let defaults = UserDefaults.standard
-        // 与超时提醒同属 Allude Pro；降级后下一次数据变化/回前台就撤干净
+        // 与超时提醒同属 Codelumi Pro；降级后下一次数据变化/回前台就撤干净
         guard isRepeatReminderEnabled, EntitlementSnapshot.licensedPro else {
             center.removePendingNotificationRequests(withIdentifiers: [repeatReminderID])
             defaults.removeObject(forKey: repeatSignatureKey)
@@ -367,7 +367,7 @@ enum PickupNotifier {
         let where_ = [newest?.company ?? "", newest?.address ?? ""]
             .filter { !$0.isEmpty }
             .joined(separator: fieldSeparator)
-        content.body = where_.isEmpty ? "打开Allude查看取件码" : "最新：\(where_)"
+        content.body = where_.isEmpty ? "打开Codelumi查看取件码" : "最新：\(where_)"
         content.sound = .default
         content.threadIdentifier = threadID
         content.userInfo = ["kind": "repeatReminder"]
@@ -387,7 +387,7 @@ enum PickupNotifier {
     /// 增删改与撤销共用一条链路。设置页改开关 / 改时长后调用
     /// `rescheduleAllPendingReminders` 全量对齐。
     static func schedulePendingReminder(for record: PickupRecord) {
-        // 超时未取提醒是 **Allude Pro** 功能（2026-11-08 主人定）：
+        // 超时未取提醒是 **Codelumi Pro** 功能（2026-11-08 主人定）：
         // 非 Pro 一律不排期，并把已排的全部撤掉（降级后下一次进前台就清干净）。
         guard isPendingReminderEnabled, EntitlementSnapshot.licensedPro else { return }
         let hours = pendingReminderHours
@@ -423,7 +423,7 @@ enum PickupNotifier {
     /// 关掉开关时撤掉全部在排的提醒。
     static func rescheduleAllPendingReminders() {
         let center = UNUserNotificationCenter.current()
-        // 超时未取提醒是 **Allude Pro** 功能（2026-11-08 主人定）：
+        // 超时未取提醒是 **Codelumi Pro** 功能（2026-11-08 主人定）：
         // 非 Pro 一律不排期，并把已排的全部撤掉（降级后下一次进前台就清干净）。
         guard isPendingReminderEnabled, EntitlementSnapshot.licensedPro else {
             center.getPendingNotificationRequests { requests in

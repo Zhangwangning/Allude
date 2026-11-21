@@ -84,7 +84,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .courier:      return "快递公司"
         case .station:      return "驿站管理"
         case .guide:        return "使用教程"
-        case .license:      return "Allude Pro"
+        case .license:      return "Codelumi Pro"
         case .activation:   return "激活"
         // 2026-11-12 主人：改叫「存储空间」，它现在是独立入口（不再挂在「本机数据」组下）
         case .storage:      return "存储空间"
@@ -98,11 +98,11 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .termsDoc:     return "服务条款"
         case .disclaimer:   return "声明与免责"
         case .help:         return "帮助与反馈"
-        case .trainingSamples: return "帮助改进Allude"
+        case .trainingSamples: return "帮助改进Codelumi"
         case .contactInfo:  return "联系方式"
         // 2026-11-12 设置页改版
         case .appearanceGroup: return "外观与个性化"
-        case .aboutAllude:  return "关于 Allude"
+        case .aboutAllude:  return "关于 Codelumi"
         case .icloudSync:   return "iCloud 同步"
         case .encourage:    return "鼓励一下"
         case .privacySimple: return "隐私政策（简明版）"
@@ -196,7 +196,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     ///   ② 外观与个性化（二级页收拢 App 图标 / 外观 / 字体大小 / 语言）
     ///   ③ 存储空间
     ///   ④ 帮助与反馈
-    ///   ⑤ 更多：快递公司 / 驿站管理 / 关于 Allude
+    ///   ⑤ 更多：快递公司 / 驿站管理 / 关于 Codelumi
     static let generalGroupAll: [SettingsPane] = [
         .automation, .notification, .widget, .codeManagement, .activity,
         .icloudSync, .aiCapability,
@@ -209,7 +209,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     /// 「外观与个性化」二级页里的四条（顺序就是主人给的顺序）
     static let appearanceDetailGroup: [SettingsPane] = [.appIcon, .appearance, .fontSize, .language]
 
-    /// 「关于 Allude」二级页的顺序：鼓励一下 / 服务条款 / 隐私政策（完整版）/
+    /// 「关于 Codelumi」二级页的顺序：鼓励一下 / 服务条款 / 隐私政策（完整版）/
     /// 隐私政策简明版 / 版本信息
     static let aboutDetailGroup: [SettingsPane] = [
         .encourage, .share, .termsDoc, .privacyDoc, .privacySimple,
@@ -275,7 +275,7 @@ struct SettingsView: View {
 
     /// **是否真的在分栏**（左列目录 + 右栏内容）。
     ///
-    /// 🔴 2026-11-16 主人：「Duo 内屏竖屏时，外观与个性化里的四个功能、关于 Allude 里的
+    /// 🔴 2026-11-16 主人：「Duo 内屏竖屏时，外观与个性化里的四个功能、关于 Codelumi 里的
     /// 五个功能全部点不进去」。根因就是下面几处只判了 `horizontalSizeClass == .regular`：
     /// Duo 内屏**竖屏也是 regular 宽度（762pt）**，但布局走的是 `stackedSettings` 单列分支，
     /// `pane` 没有绑定任何导航 —— 子行被当成「分栏模式」渲染成 `Button { openPane(item) }`，
@@ -328,10 +328,10 @@ struct SettingsView: View {
 
     // MARK: 目录渲染（单列布局；iPad 分栏共用同一份目录）
 
-    /// 最下面的「Allude Pro」区：标题 + 一张卡，点进去是订阅页。
+    /// 最下面的「Codelumi Pro」区：标题 + 一张卡，点进去是订阅页。
     private var proSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "Allude Pro")
+            SectionHeader(title: "Codelumi Pro")
             proBanner
         }
     }
@@ -633,7 +633,7 @@ struct SettingsView: View {
         }
         .contentShape(.rect)
         .onTapGesture {
-            // 语言没有 App 内页面：按主人要求直接跳到 设置 › App › Allude
+            // 语言没有 App 内页面：按主人要求直接跳到 设置 › App › Codelumi
             pane = item
         }
         .tag(item)
@@ -819,7 +819,7 @@ struct SettingsView: View {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 8) {
-                        Text("Allude")
+                        Text("Codelumi")
                             .font(.system(size: 23, weight: .bold))
                         Text("PRO")
                             .font(AppTheme.TypeScale.note.weight(.heavy))
@@ -829,7 +829,7 @@ struct SettingsView: View {
                     }
                     .foregroundStyle(AppTheme.champagneInk)
 
-                    Text(store.isPro ? "Allude Pro 已开通" : "了解Allude Pro")
+                    Text(store.isPro ? "Codelumi Pro 已开通" : "了解Codelumi Pro")
                         .font(AppTheme.TypeScale.rowSubtitle.weight(.medium))
                         .foregroundStyle(AppTheme.champagneInk.opacity(0.8))
                 }
@@ -888,7 +888,7 @@ struct SettingsView: View {
 
     private var footer: some View {
         VStack(spacing: 6) {
-            Text("Allude")
+            Text("Codelumi")
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.tertiary)
             Text("取件码默认只在本机；开启 iCloud 同步后也只在你自己的 iCloud 里")
@@ -945,7 +945,7 @@ final class FeedbackModel: ObservableObject {
     /// 那种情况下把日志正文贴进剪贴板不合适（太长），所以只提示用户去配置邮件。
     func startMail(includeLog: Bool) {
         let version = AppVersion.display
-        composerSubject = "Allude反馈（\(version)）"
+        composerSubject = "Codelumi反馈（\(version)）"
         composerBody = """
         请描述你遇到的问题（什么时候、做了什么、预期是什么）：
 
@@ -973,7 +973,7 @@ final class FeedbackModel: ObservableObject {
 
     func openMail() {
         // 主题带上版本号，定位问题更快
-        let subject = "Allude反馈（\(AppVersion.display)）"
+        let subject = "Codelumi反馈（\(AppVersion.display)）"
         let url = URL(string: "mailto:\(Self.mail)?subject=\(subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")")!
 
         // 2026-10-20：iOS 27 起 `canOpenURL` 已弃用（官方建议「直接尝试打开、按失败分支处理」）。
@@ -1048,7 +1048,7 @@ struct SubscriptionUnavailablePane: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("Allude Pro")
+        .navigationTitle("Codelumi Pro")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -1130,7 +1130,7 @@ struct FullVersionView: View {
                 withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
             }
         }
-        .navigationTitle("Allude Pro")
+        .navigationTitle("Codelumi Pro")
         .navigationBarTitleDisplayMode(.inline)
         .cloaksTabBar()
         .onAppear {
@@ -1152,11 +1152,11 @@ struct FullVersionView: View {
 
     private var titleBlock: some View {
         // 两行标题（2026-10-31 主人指定文案）。断行位置按语义切：
-        // 「感谢」单独一行，「订阅 Allude Pro」整行 —— 与参考页同样的
+        // 「感谢」单独一行，「订阅 Codelumi Pro」整行 —— 与参考页同样的
         // 大标题节奏，但不复制它的字句。
         VStack(alignment: .leading, spacing: 2) {
             Text("感谢订阅")
-            Text("Allude Pro")
+            Text("Codelumi Pro")
         }
         .font(.system(size: 24, weight: .bold))
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1267,10 +1267,10 @@ struct FullVersionView: View {
                 //    系统 form sheet 高度上限 890pt，多一行就会把「恢复购买」顶出屏幕。
                 //    所以并进这一行的标题与说明里，行数不变。
                 featureRow(symbol: "tray.full.fill", title: "不限条数与详情",
-                           note: "免费版同屏 \(PickupStore.freeVisibleLimit) 条、最多存 \(PickupStore.freeStorageLimit) 条，搜索到的记录也打不开详情；Allude Pro 全部放开")
+                           note: "免费版同屏 \(PickupStore.freeVisibleLimit) 条、最多存 \(PickupStore.freeStorageLimit) 条，搜索到的记录也打不开详情；Codelumi Pro 全部放开")
                 SettingsDivider()
                 featureRow(symbol: "square.grid.2x2.fill", title: "桌面小组件全尺寸",
-                           note: "Allude 只有小、中两种尺寸；Allude Pro 大尺寸与大号竖版一并可用")
+                           note: "Codelumi 只有小、中两种尺寸；Codelumi Pro 大尺寸与大号竖版一并可用")
                 SettingsDivider()
                 featureRow(symbol: "iphone.gen3.radiowaves.left.and.right", title: "实时活动",
                            note: "灵动岛与锁屏常驻最新取件码")
@@ -1381,7 +1381,7 @@ struct FullVersionView: View {
                 .font(.system(size: 22, weight: .bold))
                 .foregroundStyle(AppTheme.champagneInk)
 
-            Text(store.plan == .lifetime ? "已买断 · 永久有效" : "Allude Pro 已开通")
+            Text(store.plan == .lifetime ? "已买断 · 永久有效" : "Codelumi Pro 已开通")
                 .font(AppTheme.TypeScale.rowSubtitle)
                 .foregroundStyle(AppTheme.champagneInk.opacity(0.75))
         }
@@ -1438,7 +1438,7 @@ struct AppLanguageView: View {
                 }
                 .settingsCard()
 
-                Text("切换后需要**重新打开Allude**才会生效。".richText)
+                Text("切换后需要**重新打开Codelumi**才会生效。".richText)
                     .font(AppTheme.TypeScale.note)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)

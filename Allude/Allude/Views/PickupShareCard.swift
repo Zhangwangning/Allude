@@ -75,7 +75,7 @@ struct PickupShareCard: View {
     }
 
     private var footerTitle: String {
-        !records.isEmpty && pickedCount == records.count ? "Allude · 已取件" : "Allude · 待取件"
+        !records.isEmpty && pickedCount == records.count ? "Codelumi · 已取件" : "Codelumi · 待取件"
     }
 
     var body: some View {
@@ -98,7 +98,7 @@ struct PickupShareCard: View {
         // `guard !records.isEmpty` 挡着，属于"上游保护、下游裸奔"——
         // 一旦以后从别处直接构造分享卡（预览、导出、测试）就会崩。
         if let record = records.first {
-        // 图标/主名口径统一走 `PickupNaming`（2026-10-28 主人：整个Allude一套逻辑）。
+        // 图标/主名口径统一走 `PickupNaming`（2026-10-28 主人：整个Codelumi一套逻辑）。
         // 之前这里是第三套写法（`courier > 驿站 > 平台`），分享出去的名字
         // 与列表卡自相矛盾（拼多多发的圆通件在列表是「圆通快递｜拼多多」）。
         let naming = record.namingResolved

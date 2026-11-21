@@ -82,19 +82,38 @@ xcodebuild -project Allude.xcodeproj -scheme Allude -destination "$DEST" \
   不用 `ComparisonResult`（单文件编译不可用）。`Character.isNumber` 对全角/罗马数字也 true →
   必须 `ch.isASCII && ch.isNumber`。
 
-## 图标（16 套）
+## 图标（15 套）
 - 🔴 全部 `AppIconNN.imageset` **只放 `AlludeShared/Assets.xcassets`**（两 target 都编）；
   放 App catalog → 灵动岛/锁屏静默渲染灰块。
 - 新增一套动四处：imageset（60/120/180 + original）、`Allude/AppIcons/IconNN@2x|@3x.png`、
   Info.plist 的 **`CFBundleIcons › CFBundleAlternateIcons`**（⚠️ 不在顶层）、`AppIconChoice`。
   `sips -z` 只改尺寸不改格式，源是 JPEG 必须加 `-s format png`。
-- 编号连续 01…16，`fallback` = `.icon04`（C 标），Info.plist 只注册 15 条 alternate。
-  重排靠迁移：`migrateLegacyNumberingIfNeeded()` + `allude.appIcon.scheme` 标记 + `legacyMap`。
-  以后改编号：扩 `legacyMap` + 升 `currentScheme` 一起做。
+- 编号连续 01…15，`fallback` = **`.icon06`（黑盒立体）**，Info.plist 注册 **14 条** alternate
+  （06 是主图标，不能登记）。12–15 是 2026-11-21 晚**追加**的四套（用户给的「优化App图标」），
+  纯追加不改已有序号 → `currentScheme` 仍为 `"3"`，`legacyMap` 无需扩。
+  只有「已有图标的序号被改动」时，才扩 `legacyMap` + 升 `currentScheme` 一起做。
+- 🔴 **工程是 Xcode 16 同步文件夹**（`PBXFileSystemSynchronizedRootGroup`）：
+  `Allude/` 下新增 Swift/PNG **不用改 pbxproj**，自动进包（旧笔记「必须手动进 pbxproj」已过时）。
 - 🔴 **岛内图标随 `ContentState.appIconRaw` 传**，扩展别自己读 `AppIconStore.current`
   （App Group 一断就回落 fallback）。换完走 `refreshForAppIconChange()`。
 - `AlludeWidget/Assets.xcassets` 只留 `AccentColor` + `WidgetBackground`。
 - 模拟器截不到真实灵动岛，只能真机验。
+- 🔴 **换图标的模拟器差异（2026-11-21 对照实验定论）**：
+  · **iOS 17.4 模拟器：完全正常**。实测切到第 14 套成功，系统弹「你已更改"Codelumi"的图标」，
+    弹窗里就是玻璃立方 → 证明代码与 15 套资源 100% 正确。
+  · **iOS 26.1 / 27.2 模拟器：必失败**。`setAlternateIconName` 要靠宿主侧 CoreServicesUI
+    的 upcall bundle 弹那个确认框，新系统模拟器缺这个组件：
+    `Code=5 couldn't load upcall bundle principal class`（CoreServicesUIUpcallEmbedded.m）
+    / `Code=35 Resource temporarily unavailable`（LSIconAlertManager）。
+    重启模拟器、换干净模拟器、重装都无效 → 是 Apple 侧限制，不是我们的改动。
+  · **真机（iOS 26）正常**，同日多次切换并确认桌面图标变化。
+  → 验图标：模拟器用 **iOS 17.4 runtime** 那台（iPhone 15 Pro `257AE793`）或直接真机；
+    iOS 26/27 模拟器只看网格渲染与选中态，不要拿它验切换。
+  真机截图：`devicectl device capture screenshot --device X --destination p.png`。
+- ⚠️ 图标偏好有**三处**存储且**优先级从高到低**：App Group `group.com.jikezhang.allude`
+  域（模拟器里也能用！）→ `<App容器>/Library/Application Support/appicon.txt` → standard 域。
+  改模拟器图标状态必须三处一起改，只改镜像文件会被 App Group 的旧值压过去；
+  改完要 `shutdown`+`boot` 让 cfprefsd 重新加载，否则界面还是旧选中态。
 
 ## 模拟器取证
 - 无 idb/applesimutils，AppleScript 被拒（-10004）→ 面板靠 `SIMCTL_CHILD_SCREEN=xxx` 直渲。
@@ -120,16 +139,37 @@ xcodebuild -project Allude.xcodeproj -scheme Allude -destination "$DEST" \
   → `xcrun altool --validate-app` / `--upload-app`（apiKey `34Z43R5SGY`，
   issuer `e2936bfc-e52b-4931-a763-9f03dec868e3`；`WILL RETRY` 是常态）
   → 2–3 分钟转 VALID 后 `python3 tools/testflight-publish.py --build NNN --notes-file …`。
+- 🔴 **profile 别用 Xcode 本地缓存**（2026-11-21 踩）：`~/Library/Developer/Xcode/UserData/
+  Provisioning Profiles/` 里那两个 `iOS Team Store Provisioning Profile` 是用
+  **`Apple Distribution:`** 证书签的，本机只有 **`iPhone Distribution: Wangnjng Zhang (8499X3S9X8)`**
+  → `altool` 报 90179「must be signed with the certificate that is contained in the provisioning profile」。
+  ✅ 正确来源是 **ASC 上 2027-11-15 到期那四个**（真证书 = iPhone Distribution）：
+  App `7H29P7MJ8Q`(313) / `QWXC4A3745`(322)，Widget `4F62FDJ8K2`(313) / `43ADL489RJ`(322)。
+  用 `python3 tools/asc-profiles.py --list` 现查、`GET /v1/profiles/{id}` 的
+  `profileContent`(base64) 下载。
+- ⚠️ archive 会把 `Resources/` 下的 `.mlmodel.bak` 一起打进包，**必须显式删**
+  （`rm -f .../AlludePickup.mlmodel.bak`），否则包里躺一个 30KB 垃圾文件。
 
-## 现状（2026-11-20 实测 ASC）
-- 🔴 **1.0.0 = REJECTED**（`appStoreState` 实测，仍绑构建 309；`releaseType=SCHEDULED`，
-  `earliestReleaseDate=2026-11-30`）。拒绝原因不在公开 API，须登录 Resolution Center 看。
-- 321 已 `VALID` + Beta 审核 `APPROVED`，挂「Allude公测」，测试内容已写。
-- 两个内购现为 **`READY_TO_SUBMIT`**（lifetime / annual），**尚未随版本提交**；
-  首次必须与 App 版本一起提交审核。
+## 现状（2026-11-21 实测 ASC，openssl 签 JWT 直查）
+- 构建 **326 已上传且 VALID**（2026-11-21 18:01，id `d5683166`），已挂「Allude公测」
+  （群组 `c90099fc-1862-4b2a-8f48-a7537111fe45`），测试内容 884 字，Beta 审核 submitted。
+  325（id `2508b4bc`）/324/322/321/320/319/318 均在，`expired=false`。
+- 🔴 **1.0.0 = REJECTED，理由 2.1 Information Needed**（2026-11-16）；`releaseType=SCHEDULED`。
+  提交单 `1c1857ec-d1da-4d33-bd70-80c44f2787f6` 实测 **COMPLETE**（不是 UNRESOLVED_ISSUES），仍绑 build 309。
+- 审核备注 `reviewDetail 2de42837…` 只有 128 字符，须补 6 项（真机录屏/用途受众/设置功能/外部服务/地区差异/受监管）；
+  草稿 `tools/appstore-review/1.0.0-resubmit-2.1.md`（3,861 字符 < 4,000）。
+- 内购 `inAppPurchasesV2` 只返回 **lifetime `READY_TO_SUBMIT`**；annual 是订阅（组 `22565648`），
+  走 `/v1/subscriptionGroups/.../subscriptions`，**当前 API Key 对该路径 403**，状态需去 ASC 页面看。
+- 免费额度（代码为准）：`PickupLimits.freeVisible = 4`、`freeStorage = 50`、`widgetListCap = 60`。
+  ⚠️ 旧笔记与 `交接说明_dsh.md` 表格曾写 60，是「有一份死常量没人读」的历史遗留，2026-11-20 已合成一处为 **50**。
 - App 备案未完成（网站 ICP 陇ICP备2026011130号已过，App 备案是另一套编号）。
 - 法务线上仓 `Zhangwangning/allude-legal`（GitHub Pages）；App 内文本 `Allude/Allude/Legal/*.html`，三副本同步改。
-- 移交文档：`交接说明_dsh.md`（2026-11-20，499 行，面向接手人；`交接说明_workbuddy.md` 312 版已部分过时）。
+- 当前交接主文档：**`交接说明_workbuddy_2026-11-21.md`**（345 行，dsh 写，状态最新）。
+  `交接说明_dsh.md` 已扩到 1,298 行（§1–§27，逐轮历史）；`交接说明_workbuddy.md` 312 版已废。
+- 性能范式：计算属性记忆化缓存放 **model（@StateObject 的 class）**，不放 View 的 `@State`
+  （body 求值期间写 state 会二次重算）；缓存键用 `hashValue` 不用 `count`。
+  `VStack` → `LazyVStack` 可消首帧冻结，代价 `proxy.scrollTo` 到未构建视图失效。
+  DEBUG 探针：`PERF_LOG=1`（PerfProbe，写 Documents/perf.log）、`PERF_FPS=1`（FrameMonitor）。
 - 性能范式：计算属性记忆化缓存放 **model（@StateObject 的 class）**，不放 View 的 `@State`
   （body 求值期间写 state 会二次重算）；缓存键用 `hashValue` 不用 `count`。
   `VStack` → `LazyVStack` 可消首帧冻结，代价 `proxy.scrollTo` 到未构建视图失效。

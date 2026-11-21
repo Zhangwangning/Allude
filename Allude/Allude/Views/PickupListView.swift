@@ -902,7 +902,10 @@ struct PickupListView: View {
                 // 截图脚手架：`SIMCTL_CHILD_SKIP_PERM=1` 时不弹系统通知授权。
                 // 那个弹窗会盖住屏幕中部，验收图上什么都看不见 —— 而 simctl
                 // 点不到「允许」，只能从源头绕开。
-                if ProcessInfo.processInfo.environment["SKIP_PERM"] == nil {
+                if ProcessInfo.processInfo.environment["SKIP_PERM"] == nil,
+                   !RootTabModel.isLaunchGateActive {
+                    // 🔴 首启门（同意 / 引导）还盖着时不问：系统授权弹窗会盖住引导页，
+                    //    用户第一眼看到的是权限弹窗而不是欢迎页。门关后由 RootView 统一问。
                     PickupNotifier.requestAuthorizationIfNeeded()
                 }
                 openMenuFromScaffold()
@@ -1646,7 +1649,7 @@ struct PickupCard: View {
     @ObservedObject private var stationDirectory = StationDirectory.shared
 
     /// 卡面命名 —— **统一走 `PickupNaming`**（2026-10-28 主人：
-    /// 「整个Allude遵循一套逻辑，而不是东一套西一套」）。
+    /// 「整个Codelumi遵循一套逻辑，而不是东一套西一套」）。
     /// 这里只提供驿站数据源（App 侧带用户自定义驿站），取名规则一处不写。
     private var naming: PickupNaming {
         #if DEBUG
@@ -1836,7 +1839,7 @@ struct HiddenHint: View {
         HStack(spacing: 8) {
             Image(systemName: "ellipsis.circle")
                 .font(.system(size: 14))
-            Text("还有 \(count) 条记录 · Allude Pro 可查看全部")
+            Text("还有 \(count) 条记录 · Codelumi Pro 可查看全部")
                 .font(.footnote)
             Spacer(minLength: 0)
         }

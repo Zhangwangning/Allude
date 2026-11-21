@@ -196,7 +196,7 @@ final class PurchaseStore: ObservableObject {
                 case .verified(let transaction):
                     await transaction.finish()
                     await refreshEntitlement()
-                    message = "已解锁 Allude Pro"
+                    message = "已解锁 Codelumi Pro"
                 case .unverified:
                     message = "购买凭据校验失败，请稍后重试"
                 }

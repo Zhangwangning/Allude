@@ -39,7 +39,7 @@ struct PickupActivityAttributes: ActivityAttributes {
         /// Optional + 默认 nil ⇒ 旧 ContentState 缺键也能解码。
         var station: String? = nil
         var code: String
-        // 🔴 2026-10-28 删掉 `kindLabel`：Allude不再区分凭证类型，锁屏卡与灵动岛
+        // 🔴 2026-10-28 删掉 `kindLabel`：Codelumi不再区分凭证类型，锁屏卡与灵动岛
         //    也从来没有渲染过它 —— 留着就是"传了个没人看的字段"，改它等于白改。
         //    旧 ContentState 里多出来的这个键会在解码时被忽略，不影响已发出去的活动。
         var address: String
@@ -50,7 +50,7 @@ struct PickupActivityAttributes: ActivityAttributes {
         /// 🔴 Optional + 默认 nil ⇒ 旧 ContentState 缺键也能解码，不会让活动解不出来。
         var locker: String? = nil
 
-        /// 卡面命名 —— **直接复用整个Allude唯一的一套规则**（`PickupNaming`）。
+        /// 卡面命名 —— **直接复用整个Codelumi唯一的一套规则**（`PickupNaming`）。
         /// `Item` 是 App → 扩展的状态副本，不持有 PickupRecord，但规则必须同源：
         /// ```
         /// 圆通速递 + 妈妈驿站 + 拼多多 → 主名「圆通速递」 后缀「妈妈驿站」
@@ -85,7 +85,7 @@ struct PickupActivityAttributes: ActivityAttributes {
         ///    灵动岛/锁屏由**小组件进程**渲染，那一侧和 App 之间只有 **App Group**
         ///    一条通路。App Group 一旦不可用（无签名调试包、容器重建、
         ///    扩展读不到共享偏好域），扩展读到的就是 nil，`AppIconStore.current`
-        ///    回落到 `AppIconChoice.fallback`（第 7 套「黑盒立体」）——
+        ///    回落到 `AppIconChoice.fallback`（第 6 套「黑盒立体」）——
         ///    于是「桌面图标已经换成快递箱，灵动岛里还是 C 标」，主人一眼看出对不上。
         ///    把选择**随 ContentState 跨进程传**，渲染端就完全不再依赖任何共享存储，
         ///    这条链路上再没有能"读到 nil"的地方。
@@ -503,7 +503,7 @@ struct AppMarkIcon: View {
             .scaledToFill()
             .frame(width: size, height: size)
             .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
-            .accessibilityLabel("Allude")
+            .accessibilityLabel("Codelumi")
     }
 }
 

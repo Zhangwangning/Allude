@@ -194,7 +194,7 @@ struct RecordDetailView: View {
     }
 
     /// 卡面命名 —— **统一走 `PickupNaming`**（2026-10-28 主人：
-    /// 「整个Allude遵循一套逻辑」；之前详情页自己写了一套 `courier > 驿站 > company`，
+    /// 「整个Codelumi遵循一套逻辑」；之前详情页自己写了一套 `courier > 驿站 > company`，
     /// 于是同一笔记录在列表写「韵达快递 ｜ 兴裕隆超市」、在详情页写反）。
     private var naming: PickupNaming {
         record.namingResolved
@@ -399,7 +399,7 @@ struct RecordDetailView: View {
             // ── 行 1：平台图标 + 平台名（左上角一组） ──
             // 注：不展示任何类别标签（2026-10-14 定，2026-10-28 全面执行）——
             // kind 只是解析期的后台分类，用户不需要知道「这条是按取件码还是运单号命中的」。
-            // Allude内已不再区分凭证类型，`KindTag` 组件也已整体删除。
+            // Codelumi内已不再区分凭证类型，`KindTag` 组件也已整体删除。
             HStack(spacing: 8) {
                 // 图标与主名都跟随「快递公司 > 短信平台」，与列表卡同口径。
                 // 只有「主名本身就是驿站」这一种极端情况（courier 与 company 都空）
