@@ -79,9 +79,20 @@ xcodebuild -project Allude.xcodeproj -scheme Allude -destination "$DEST" \
 - 停测旧构建：`python3 tools/asc-expire-old-builds.py --below N [--apply]`（`PATCH /v1/builds/{id}`
   `{expired:true}`；Apple 语义是「停止测试」不是删除）。
 
-## ASC 现状（2026-11-21 晚）
-- 构建 **327** 已上传 VALID（18:38，`6e1a8b57`），挂「Allude公测」（组
-  `c90099fc-1862-4b2a-8f48-a7537111fe45`），Beta 审核 submitted；326（`d5683166`）/ 325 保留。
+## ASC 现状（2026-11-21 19:16）
+- 构建 **328** 已上传 VALID（19:16，`b49a57ce`），挂「Allude公测」（组
+  `c90099fc-1862-4b2a-8f48-a7537111fe45`），测试内容 645 字，Beta 审核 submitted。
+  327（`6e1a8b57`）/ 326 / 325 保留可用。
+- 文案改名（2026-11-21 19:08 走 API 改完并回读确认）：1.0.0 版本描述 4 处
+  `Allude` → `Codelumi`（**没动** `allude-legal` 两个 URL）；内购 lifetime 本地化
+  「Allude Pro 永久 / 订阅可永久使用Allude Pro」→「Codelumi Pro 永久 / 一次买断，永久使用 Codelumi Pro」。
+  App 级名称已是 `Codelumi`，`CFBundleDisplayName` 已是 `Codelumi`，法务 HTML 全是 Codelumi；
+  版本历史 0.2.7 那条「英文名 Allude」是**史实保留**，别改。
+- 1.0.0 目前 `PREPARE_FOR_SUBMISSION`（不是之前记的 REJECTED），已绑 build 327。
+  老大 2026-11-21 19:10 决定：**先不提交审核**。
+- 🔴 仍需人工在网页做的三件：Resolution Center 回 2.1 六项、App 合规页、
+  「协议、税务和银行业务」里的付费应用协议（未生效会让**所有**内购返回空）。
+- annual 订阅状态 API 读不到（`/v1/subscriptions` 403、`/v1/subscriptionGroups` 403）。
 - **324 及以下全部停测**（324/322/321/320/319/318 六个 `expired=true`）。
 - **1.0.0 = REJECTED，2.1 Information Needed**（2026-11-16），`releaseType=SCHEDULED`；
   提交单 `1c1857ec…` 实测 COMPLETE，仍绑 build 309。审核备注 `reviewDetail 2de42837…` 只有
