@@ -100,7 +100,7 @@ cd Allude && xcodebuild -project Allude.xcodeproj -scheme Allude \
   让 cfprefsd 重载。`simctl spawn defaults read` 读不到 App Group 域，要直接读 plist 文件。
 
 ## 现状（2026-11-21 晚）
-- TestFlight 最新 **327**（VALID，`6e1a8b57`，挂「Allude公测」）；324 及以下全部停测。
+- TestFlight 最新 **328**（VALID，`b49a57ce`，挂「Allude公测」）；324 及以下全部停测。
   发版细节见 `OPS.md`。
 - 🔴 **1.0.0 = REJECTED（2.1 Information Needed）**，需先在 Resolution Center 补 6 项说明；
   草稿 `tools/appstore-review/1.0.0-resubmit-2.1.md`（3,861 字符 < 4,000）。
