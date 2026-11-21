@@ -90,9 +90,15 @@ xcodebuild -project Allude.xcodeproj -scheme Allude -destination "$DEST" \
   版本历史 0.2.7 那条「英文名 Allude」是**史实保留**，别改。
 - 1.0.0 目前 `PREPARE_FOR_SUBMISSION`（不是之前记的 REJECTED），已绑 build 327。
   老大 2026-11-21 19:10 决定：**先不提交审核**。
-- 🔴 仍需人工在网页做的三件：Resolution Center 回 2.1 六项、App 合规页、
+- 🔴 **API Key 权限差异（2026-11-21 定论）**：`34Z43R5SGY`（DSH）只有「App 管理」→
+  `/v1/subscriptions`、`/v1/subscriptionGroups` 全 403；`T359K7F6U3`（workbuddy）是「管理」→
+  订阅接口都能读能改。用法：`ASC_KEY_ID=T359K7F6U3 python3 …`（脚本 `make_token` 认这个环境变量）。
+  私钥 `~/.appstoreconnect/private_keys/AuthKey_T359K7F6U3.p8`。
+- 🔴 legacy `/v1/apps/{aid}/inAppPurchases` 报的 annual `state=CREATED` **是假的**；
+  真状态要用 Admin Key 查 `/v1/subscriptionGroups/22565648/subscriptions` → `READY_TO_SUBMIT`。
+- 两个内购的审核截图都已存在，元数据齐全，**唯一缺的就是挂进提交单送审**。
+- 仍需人工在网页做的三件：Resolution Center 回 2.1 六项、App 合规页、
   「协议、税务和银行业务」里的付费应用协议（未生效会让**所有**内购返回空）。
-- annual 订阅状态 API 读不到（`/v1/subscriptions` 403、`/v1/subscriptionGroups` 403）。
 - **324 及以下全部停测**（324/322/321/320/319/318 六个 `expired=true`）。
 - **1.0.0 = REJECTED，2.1 Information Needed**（2026-11-16），`releaseType=SCHEDULED`；
   提交单 `1c1857ec…` 实测 COMPLETE，仍绑 build 309。审核备注 `reviewDetail 2de42837…` 只有
