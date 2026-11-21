@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import WidgetKit
 
 // MARK: - 排序方式
 
@@ -53,6 +54,9 @@ final class PickupListModel: ObservableObject {
             // 写进 App Group：小组件要跟着同一套分组排（2026-11-15）
             PickupStorage.sharedDefaults.set(sort.rawValue, forKey: Self.sortKey)
             UserDefaults.standard.set(sort.rawValue, forKey: Self.sortKey)
+            // 🔴 2026-11-21：光写值不够 —— 小组件的时间线不会自己知道偏好变了，
+            //    不改这里的话，用户切了分组方式、桌面还是旧顺序（能拖几小时）。
+            WidgetCenter.shared.reloadAllTimelines()
         }
     }
 
@@ -415,14 +419,23 @@ struct PickupListView: View {
         let base = store.filtered(hasQuery ? searchBase : scopedList, query: model.query)
         switch model.sort {
         case .newest:
-            return base.sorted { $0.lastNotifiedAt > $1.lastNotifiedAt }
+            return base.sorted {
+                $0.lastNotifiedAt == $1.lastNotifiedAt
+                    ? PickupSortLogic.tieBreak($0, $1)
+                    : $0.lastNotifiedAt > $1.lastNotifiedAt
+            }
         case .oldest:
-            return base.sorted { $0.lastNotifiedAt < $1.lastNotifiedAt }
+            return base.sorted {
+                $0.lastNotifiedAt == $1.lastNotifiedAt
+                    ? PickupSortLogic.tieBreak($0, $1)
+                    : $0.lastNotifiedAt < $1.lastNotifiedAt
+            }
         case .company:
             // 只负责把同一家聚到一起；分组由 `companyGroups` 做（组头 = 公司名）
             return base.sorted {
-                $0.company == $1.company ? $0.lastNotifiedAt > $1.lastNotifiedAt
-                                          : $0.company < $1.company
+                if $0.company != $1.company { return $0.company < $1.company }
+                if $0.lastNotifiedAt != $1.lastNotifiedAt { return $0.lastNotifiedAt > $1.lastNotifiedAt }
+                return PickupSortLogic.tieBreak($0, $1)
             }
         case .station:
             // 同一驿站聚在一起；**站内**顺序由「驿站内排序」决定（2026-11-17 主人），

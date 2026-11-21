@@ -217,16 +217,26 @@ struct PickedUpView: View {
     private func computedOrderedList() -> [PickupRecord] {
         switch model.sort {
         case .newest:
-            // `store.pickedUpRecords` 本身就是收到时间倒序，直接用
-            return searchedList
+            // `store.pickedUpRecords` 虽是收到时间倒序，但并列项次序不确定
+            // （批量导入的短信大量同秒）→ 这里显式补一次确定性兜底，与其余页面一致。
+            return searchedList.sorted {
+                $0.receivedAt == $1.receivedAt
+                    ? PickupSortLogic.tieBreak($0, $1)
+                    : $0.receivedAt > $1.receivedAt
+            }
         case .oldest:
-            return searchedList.sorted { $0.receivedAt < $1.receivedAt }
+            return searchedList.sorted {
+                $0.receivedAt == $1.receivedAt
+                    ? PickupSortLogic.tieBreak($0, $1)
+                    : $0.receivedAt < $1.receivedAt
+            }
         case .company:
             // 只负责把同一家聚到一起；组头由 `companyGroups` 出
             return searchedList.sorted {
-                groupingName(for: $0) == groupingName(for: $1)
-                    ? $0.receivedAt > $1.receivedAt
-                    : groupingName(for: $0) < groupingName(for: $1)
+                let a = groupingName(for: $0), b = groupingName(for: $1)
+                if a != b { return a < b }
+                if $0.receivedAt != $1.receivedAt { return $0.receivedAt > $1.receivedAt }
+                return PickupSortLogic.tieBreak($0, $1)
             }
         case .station:
             // 2026-11-21：与待取页、桌面小组件同一套口径（件数多在前 → 同数按名字 →
@@ -276,7 +286,11 @@ struct PickedUpView: View {
             }
         }
         for index in buckets.indices {
-            buckets[index].items.sort { $0.receivedAt > $1.receivedAt }
+            buckets[index].items.sort {
+                $0.receivedAt == $1.receivedAt
+                    ? PickupSortLogic.tieBreak($0, $1)
+                    : $0.receivedAt > $1.receivedAt
+            }
         }
         buckets.sort {
             $0.company == "其他" ? false

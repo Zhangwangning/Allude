@@ -74,6 +74,12 @@ cd Allude && xcodebuild -project Allude.xcodeproj -scheme Allude \
   （等价比数值、不溢出 Int）；数字段排在字母段前；同形回落原文。自带三态 `Order` 不用
   `ComparisonResult`（单文件编译不可用）。`Character.isNumber` 对全角/罗马数字也 true →
   必须 `ch.isASCII && ch.isNumber`。
+- 🔴 **并列必须走 `PickupSortLogic.tieBreak`**（2026-11-21 定）：短信是批量导入的，47 条待取
+  只有 5 个时间戳、22 条并列在同一秒，而 Swift `sorted` 不稳定 → 同一份数据 App 与小组件排出
+  两种顺序（用户看到「桌面顺序不对」）。tieBreak = 先比取件码自然序、再比 id。所有排序点
+  （待取 / 已取 / 小组件 / 灵动岛 / 锁屏）都要带它。
+- 切「分组方式」后必须 `WidgetCenter.shared.reloadAllTimelines()`，只写 App Group 不会让
+  桌面自己知道（能拖几小时）。
 
 ## 图标（15 套）
 - 🔴 全部 `AppIconNN.imageset` **只放 `AlludeShared/Assets.xcassets`**（两 target 都编）；
@@ -100,7 +106,7 @@ cd Allude && xcodebuild -project Allude.xcodeproj -scheme Allude \
   让 cfprefsd 重载。`simctl spawn defaults read` 读不到 App Group 域，要直接读 plist 文件。
 
 ## 现状（2026-11-21 晚）
-- TestFlight 最新 **328**（VALID，`b49a57ce`，挂「Allude公测」）；324 及以下全部停测。
+- TestFlight 最新 **329**（VALID，`019d0ed6`，挂「Allude公测」）；324 及以下全部停测。
   发版细节见 `OPS.md`。
 - 🔴 **1.0.0 = REJECTED（2.1 Information Needed）**，需先在 Resolution Center 补 6 项说明；
   草稿 `tools/appstore-review/1.0.0-resubmit-2.1.md`（3,861 字符 < 4,000）。

@@ -970,6 +970,23 @@ enum PickupSortLogic {
     /// 未标注驿站时的分组名（与 App 内一致）
     static let noStation = "未标注驿站"
 
+    /// 并列时的**确定性兜底**（2026-11-21 加，修「桌面小组件和待取页顺序对不上」）。
+    ///
+    /// 🔴 病根：短信是批量导入的，47 条待取只有 5 个不同的时间戳，其中 22 条**完全并列
+    ///    在同一秒**。Swift 的 `sorted(by:)` 不保证稳定排序，等值项的顺序取决于输入数组
+    ///    的原始次序 —— 待取页排的是全量数组，小组件排的是另一份（还经过裁剪与显示层分组），
+    ///    于是同一份数据两边排出两种顺序，用户看到的就是「小组件顺序不对」。
+    ///
+    /// 这里给等值项一个**与内容绑定**的顺序：先比取件码（自然序，跟用户眼睛看到的码一致），
+    /// 码也相同（极少）再比 id。任何一端、任何时候排出来都一模一样。
+    static func tieBreak(_ a: PickupRecord, _ b: PickupRecord) -> Bool {
+        switch PickupCodeOrder.compare(a.code, b.code) {
+        case .before: return true
+        case .after:  return false
+        case .same:   return a.id.uuidString < b.id.uuidString
+        }
+    }
+
     static func stationName(of record: PickupRecord) -> String {
         // 2026-11-21：分组键改由**单一解析入口**给（含自定义驿站、记录级手工指定、
         // 多组不猜）。以前这里只是拿词表名去查组名，于是：
@@ -989,14 +1006,19 @@ enum PickupSortLogic {
     static func sort(_ records: [PickupRecord], mode: Mode) -> [PickupRecord] {
         switch mode {
         case .newest:
-            return records.sorted { $0.receivedAt > $1.receivedAt }
+            return records.sorted {
+                $0.receivedAt == $1.receivedAt ? tieBreak($0, $1) : $0.receivedAt > $1.receivedAt
+            }
         case .oldest:
-            return records.sorted { $0.receivedAt < $1.receivedAt }
+            return records.sorted {
+                $0.receivedAt == $1.receivedAt ? tieBreak($0, $1) : $0.receivedAt < $1.receivedAt
+            }
         case .company:
             return records.sorted {
                 let a = companyName(of: $0), b = companyName(of: $1)
                 if a != b { return a < b }
-                return $0.receivedAt > $1.receivedAt
+                if $0.receivedAt != $1.receivedAt { return $0.receivedAt > $1.receivedAt }
+                return tieBreak($0, $1)
             }
         case .station:
             // 🔴 2026-11-21 统一口径（主人定）：**组间按件数多在前**，同数按名字，

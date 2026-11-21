@@ -79,10 +79,20 @@ xcodebuild -project Allude.xcodeproj -scheme Allude -destination "$DEST" \
 - 停测旧构建：`python3 tools/asc-expire-old-builds.py --below N [--apply]`（`PATCH /v1/builds/{id}`
   `{expired:true}`；Apple 语义是「停止测试」不是删除）。
 
-## ASC 现状（2026-11-21 19:16）
-- 构建 **328** 已上传 VALID（19:16，`b49a57ce`），挂「Allude公测」（组
-  `c90099fc-1862-4b2a-8f48-a7537111fe45`），测试内容 645 字，Beta 审核 submitted。
-  327（`6e1a8b57`）/ 326 / 325 保留可用。
+## 提交单 / ICP（2026-11-21 21:50）
+- 内购已挂进**草稿提交单** `543c618e-8ca5-4b3b-a506-aefec5752bbf`（`READY_FOR_REVIEW`，未提交）：
+  条目 3 = 1.0.0 版本 + `inAppPurchaseVersions d0a4b8bd…` + `subscriptionVersions 25ba11be…`。
+- 🔴 `reviewSubmissionItems` 的关系名是 **`inAppPurchaseVersion` / `subscriptionVersion`**，
+  不是 `inAppPurchase` / `subscription`（会报 ENTITY_ERROR.RELATIONSHIP.UNKNOWN）。
+  版本 id 取自 `/v2/inAppPurchases/{id}/versions`、`/v1/subscriptions/{id}/versions`。
+  权威字段表：官方 OpenAPI zip → `components.schemas.ReviewSubmissionItemCreateRequest`。
+- ASC「App 合规 › 中国大陆 ICP 备案号 › 设置」弹窗**只有输入框 + 取消/保存**，
+  **没有豁免开关**；没备案号只能留空（Apple 文案是「如果有…请在此处提供」）。
+
+## ASC 现状（2026-11-21 21:52）
+- 构建 **329** 已上传 VALID（21:52，`019d0ed6`），挂「Allude公测」（组
+  `c90099fc-1862-4b2a-8f48-a7537111fe45`），测试内容 693 字，Beta 审核 submitted。
+  328（`b49a57ce`）/ 327 / 326 / 325 保留可用。
 - 文案改名（2026-11-21 19:08 走 API 改完并回读确认）：1.0.0 版本描述 4 处
   `Allude` → `Codelumi`（**没动** `allude-legal` 两个 URL）；内购 lifetime 本地化
   「Allude Pro 永久 / 订阅可永久使用Allude Pro」→「Codelumi Pro 永久 / 一次买断，永久使用 Codelumi Pro」。

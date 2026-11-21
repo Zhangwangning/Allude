@@ -153,7 +153,11 @@ enum PickupActivityController {
         let all = pendingProvider?() ?? PickupStorage.load().filter { !$0.isPickedUp }
         let pending = all
         guard pending.count > 1 else { return }
-        let sorted = pending.sorted { $0.receivedAt > $1.receivedAt }
+        let sorted = pending.sorted {
+            $0.receivedAt == $1.receivedAt
+                ? PickupSortLogic.tieBreak($0, $1)
+                : $0.receivedAt > $1.receivedAt
+        }
         let perPage = PickupActivityAttributes.LockScreenMetrics.perPage
         guard sorted.count > perPage else { return }   // 一页装得下就不用翻
         guard let current = Activity<PickupActivityAttributes>.activities.first else { return }
@@ -321,7 +325,11 @@ enum PickupActivityController {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
         // 一条待办都没有 → 收掉活动，别让锁屏挂着一张过期的取件码
-        let sorted = pending.sorted { $0.receivedAt > $1.receivedAt }
+        let sorted = pending.sorted {
+            $0.receivedAt == $1.receivedAt
+                ? PickupSortLogic.tieBreak($0, $1)
+                : $0.receivedAt > $1.receivedAt
+        }
         guard let newest = sorted.first else {
             await endAll()
             return

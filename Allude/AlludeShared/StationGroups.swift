@@ -559,15 +559,21 @@ enum StationInnerOrder: String, CaseIterable, Identifiable {
                          moment: (PickupRecord) -> Date = { $0.receivedAt }) -> Bool {
         switch self {
         case .newest:
-            return moment(a) > moment(b)
+            // 时间相同必须走确定性兜底：批量导入的短信大量并列在同一秒，
+            // `sorted` 又不稳定，不兜底就会「App 一个顺序、小组件另一个顺序」。
+            let ma = moment(a), mb = moment(b)
+            if ma != mb { return ma > mb }
+            return PickupSortLogic.tieBreak(a, b)
         case .oldest:
-            return moment(a) < moment(b)
+            let ma = moment(a), mb = moment(b)
+            if ma != mb { return ma < mb }
+            return PickupSortLogic.tieBreak(a, b)
         case .codeAsc, .codeDesc:
             switch PickupCodeOrder.compare(a.code, b.code) {
             case .before: return self == .codeAsc
             case .after:  return self == .codeDesc
-            // 同码（或空码）回落时间倒序，保证排序稳定、不会每帧跳
-            case .same:   return moment(a) > moment(b)
+            // 同码（或空码）回落确定性兜底，保证排序稳定、不会每帧跳
+            case .same:   return PickupSortLogic.tieBreak(a, b)
             }
         }
     }
