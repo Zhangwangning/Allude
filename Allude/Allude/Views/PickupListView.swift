@@ -361,7 +361,13 @@ struct PickupListView: View {
     private var searchBase: [PickupRecord] {
         // 排序时刻与卡面显示的时间同源（lastNotifiedAt）：
         // 刚被驿站催过的那件应当跳到最前，而不是按首次入库时间排在下面
-        scopedPending.sorted { $0.lastNotifiedAt > $1.lastNotifiedAt }
+        // 🔴 并列项必须走 tieBreak：`scopedList` 要按这个顺序 `prefix` 截条数，
+        //    免费版「显示哪 4 条」否则每次都不一样（批量导入的短信大量同秒）。
+        scopedPending.sorted {
+            $0.lastNotifiedAt == $1.lastNotifiedAt
+                ? PickupSortLogic.tieBreak($0, $1)
+                : $0.lastNotifiedAt > $1.lastNotifiedAt
+        }
     }
 
     private var scopedList: [PickupRecord] {

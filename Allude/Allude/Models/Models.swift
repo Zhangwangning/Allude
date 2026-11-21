@@ -679,11 +679,20 @@ final class PickupStore: ObservableObject {
 
     var pending: [PickupRecord] {
         // 排序口径 = 卡面显示的时间（最后一次通知），与 `dayGroup` 保持一致
-        records.filter { !$0.isPickedUp }.sorted { $0.lastNotifiedAt > $1.lastNotifiedAt }
+        // 并列项走 `tieBreak`（取件码 0-9/A-Z），否则同一秒入库的批量短信每次顺序都不一样
+        records.filter { !$0.isPickedUp }.sorted {
+            $0.lastNotifiedAt == $1.lastNotifiedAt
+                ? PickupSortLogic.tieBreak($0, $1)
+                : $0.lastNotifiedAt > $1.lastNotifiedAt
+        }
     }
 
     var pickedUpRecords: [PickupRecord] {
-        records.filter(\.isPickedUp).sorted { $0.receivedAt > $1.receivedAt }
+        records.filter(\.isPickedUp).sorted {
+            $0.receivedAt == $1.receivedAt
+                ? PickupSortLogic.tieBreak($0, $1)
+                : $0.receivedAt > $1.receivedAt
+        }
     }
 
     /// 当前档位下的同屏上限（免费 4 条 / 全功能不限）
@@ -882,7 +891,11 @@ final class PickupStore: ObservableObject {
     /// 免费版存储上限：超出后按时间淘汰最旧。全功能档不淘汰。
     private func enforceStorageLimit() {
         guard !isPro, records.count > Self.freeStorageLimit else { return }
-        let newest = records.sorted { $0.receivedAt > $1.receivedAt }
+        let newest = records.sorted {
+            $0.receivedAt == $1.receivedAt
+                ? PickupSortLogic.tieBreak($0, $1)
+                : $0.receivedAt > $1.receivedAt
+        }
             .prefix(Self.freeStorageLimit)
         let keep = Set(newest.map(\.id))
         let dropped = records.filter { !keep.contains($0.id) }.map(\.id)
